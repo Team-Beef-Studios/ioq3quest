@@ -21,6 +21,7 @@ typedef struct {
     followMode_t follow_mode;
     qboolean weapon_select;
     qboolean smooth_turning;
+    qboolean weapon_wheel_active;
 
     int realign; // used to realign the fake 6DoF playspace in a multiplayer game
 
@@ -49,6 +50,9 @@ typedef struct {
     vec3_t offhandoffset;
     vec3_t offhandoffset_last[2];
     vec3_t offhandposition;
+
+    float right_axis_x;
+    float right_axis_y;
 
     //////////////////////////////////////
     //    Test stuff for weapon alignment

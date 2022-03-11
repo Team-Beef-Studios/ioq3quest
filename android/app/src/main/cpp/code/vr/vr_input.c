@@ -265,6 +265,10 @@ static void IN_SendButtonAction(const char* action, qboolean pressed)
                 Cbuf_AddText("holster_select");
             }
         }
+        else if (strcmp(action, "+weapon_wheel") == 0)
+        {
+            vr.weapon_wheel_active = pressed;
+        }
         else if (action[0] == '+')
         {
             char command[256];
@@ -511,9 +515,11 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
         }
         else //right controller
         {
+            vr.right_axis_x = joystickX;
+            vr.right_axis_y = joystickY;
 
             // up, up-left, up-right (use release threshold to be more sensitive)
-            if (joystickY > releasedThreshold) {
+            if (joystickY > releasedThreshold && !vr.weapon_wheel_active) {
 
                 // stop left & right
                 vr.smooth_turning = false;
@@ -588,7 +594,7 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
                 }
 
             // down, down-left, down-right (use release threshold to be more sensitive)
-            } else if (joystickY < -releasedThreshold) {
+            } else if (joystickY < -releasedThreshold && !vr.weapon_wheel_active) {
 
                 // stop left & right
                 vr.smooth_turning = false;
@@ -697,7 +703,7 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
                 controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNRIGHT;
 
                 // left
-                if (joystickX < -pressedThreshold) {
+                if (joystickX < -pressedThreshold && !vr.weapon_wheel_active) {
 
                     // left action
                     if (IN_GetButtonAction("RTHUMBLEFT", action)) {
@@ -738,7 +744,7 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
                 }
 
                 // right
-                if (joystickX > pressedThreshold) {
+                if (joystickX > pressedThreshold && !vr.weapon_wheel_active) {
 
                     // right action
                     if (IN_GetButtonAction("RTHUMBRIGHT", action)) {

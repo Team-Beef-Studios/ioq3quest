@@ -1416,6 +1416,7 @@ void CG_AddViewWeapon (playerState_t *ps);
 void CG_DrawHolsteredWeapons( void );
 void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent, int team );
 void CG_DrawWeaponSelect( void );
+void CG_DrawWeaponWheel( void );
 void CG_LaserSight( vec3_t start, vec3_t end, byte colour[4], float width );
 
 void CG_OutOfAmmoChange( void );	// should this be in pmove?

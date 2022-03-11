@@ -1922,6 +1922,125 @@ static qboolean CG_WeaponSelectable( int i ) {
 	return qtrue;
 }
 
+
+/*
+===================
+CG_DrawWeaponWheel
+===================
+*/
+const float degToRad = M_PI / 180;
+const float axisThreshold = 0.5f;
+const float maxWeaponWheelSize = 32 * 3.0f;
+float currentWeaponWheelSize = 0.0f;
+int selectedWeapon = -1;
+
+void CG_DrawWeaponWheel( void ) {
+
+    if (!vr->weapon_wheel_active) {
+        if (selectedWeapon > -1) {
+            cg.weaponSelect = selectedWeapon;
+            selectedWeapon = -1;
+        }
+        if (currentWeaponWheelSize <= 0.0f) {
+            return;
+        } else {
+            currentWeaponWheelSize -= maxWeaponWheelSize * 0.05;
+        }
+    } else {
+        currentWeaponWheelSize += maxWeaponWheelSize * 0.05;
+        if (currentWeaponWheelSize > maxWeaponWheelSize) {
+            currentWeaponWheelSize = maxWeaponWheelSize;
+        }
+    }
+
+    float stickAngle = -1.0f;
+    if (vr->weapon_wheel_active) {
+        if (vr->right_axis_x > axisThreshold) {
+            if (vr->right_axis_y >= 0) {
+                stickAngle = 90 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            } else if (vr->right_axis_y < 0) {
+                stickAngle = 90 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            }
+        } else if (vr->right_axis_x < -axisThreshold) {
+            if (vr->right_axis_y >= 0) {
+                stickAngle = 270 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            } else if (vr->right_axis_y < 0) {
+                stickAngle = 270 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            }
+        } else if (vr->right_axis_y > axisThreshold) {
+            if (vr->right_axis_x > 0) {
+                stickAngle = 90 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            } else if (vr->right_axis_x < 0) {
+                stickAngle = 270 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            } else {
+                stickAngle = 180;
+            }
+        } else if (vr->right_axis_y < -axisThreshold) {
+            if (vr->right_axis_x > 0) {
+                stickAngle = 90 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            } else if (vr->right_axis_x < 0) {
+                stickAngle = 270 - atan(vr->right_axis_y / vr->right_axis_x) / degToRad;
+            } else {
+                stickAngle = 0;
+            }
+        }
+    }
+
+    float spacing = 360 / (WP_NUM_WEAPONS - 2); // without grappling hook
+    int iconSize = (int)(currentWeaponWheelSize / 3);
+    int iconRadius = (int)(iconSize / 2);
+
+    int slot = 0;
+    for (int w = 1; w < WP_NUM_WEAPONS; w++) {
+
+        if (w == WP_GRAPPLING_HOOK) {
+            continue;
+        }
+
+        float slotAngle = (spacing * slot) + (spacing / 2);
+
+        int posX;
+        int posY;
+        if (slotAngle < 90) {
+            posX = 320 + (int)(sin(slotAngle * degToRad) * currentWeaponWheelSize * 2);
+            posY = 240 - (int)(cos(slotAngle * degToRad) * currentWeaponWheelSize);
+        } else if (slotAngle < 180) {
+            posX = 320 + (int)(cos((slotAngle - 90) * degToRad) * currentWeaponWheelSize * 2);
+            posY = 240 + (int)(sin((slotAngle - 90) * degToRad) * currentWeaponWheelSize);
+        } else if (slotAngle < 270) {
+            posX = 320 - (int)(cos((270 - slotAngle) * degToRad) * currentWeaponWheelSize * 2);
+            posY = 240 + (int)(sin((270 - slotAngle) * degToRad) * currentWeaponWheelSize);
+        } else {
+            posX = 320 - (int)(cos((slotAngle - 270) * degToRad) * currentWeaponWheelSize * 2);
+            posY = 240 - (int)(sin((slotAngle - 270) * degToRad) * currentWeaponWheelSize);
+        }
+
+        CG_RegisterWeapon( w );
+        CG_DrawPic( posX - iconRadius * 2, posY - iconRadius, iconSize * 2, iconSize, cg_weapons[w].weaponIcon );
+        if (!CG_WeaponSelectable(w) || !cg.snap->ps.ammo[ w ]) {
+            CG_DrawPic( posX - iconRadius * 2, posY - iconRadius, iconSize * 2, iconSize, cgs.media.noammoShader );
+        }
+
+        if (stickAngle > -1.0f) {
+            float minAngle = (spacing * slot);
+            float maxAngle = (spacing * (slot + 1));
+            if (stickAngle > minAngle && stickAngle < maxAngle) {
+                int borderSize = (int)(iconSize + 8);
+                int borderRadius = (int)(borderSize / 2);
+                CG_DrawPic( posX - borderRadius * 2, posY - borderRadius, borderSize * 2, borderSize, cgs.media.selectShader );
+                selectedWeapon = w;
+            }
+        } else if (selectedWeapon > -1) {
+            cg.weaponSelect = selectedWeapon;
+            selectedWeapon = -1;
+        }
+
+        slot++;
+    }
+
+}
+
+
 /*
 ===============
 CG_NextWeapon_f

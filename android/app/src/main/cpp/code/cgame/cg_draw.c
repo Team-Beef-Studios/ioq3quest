@@ -2677,6 +2677,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 		if ( !cg.showScores && cg.snap->ps.stats[STAT_HEALTH] > 0 ) {
 
 			CG_DrawVignette();
+			CG_DrawWeaponWheel();
 
 #ifdef MISSIONPACK
 			if ( cg_drawStatus.integer ) {
