@@ -13,7 +13,8 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
 	SET(BUILD_FOLDER debug-android-aarch64)
 endif()
 add_custom_target(copy_libs
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libioquake3_opengl2.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libioquake3_opengl2.so
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libioquake3.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libioquake3.so
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libgl4es.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libgl4es.so
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libSDL2.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libSDL2.so
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libvrapi.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libvrapi.so
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/baseq3/cgameaarch64.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libcgameaarch64_baseq3.so
@@ -38,7 +39,7 @@ find_library(log-lib log)
 
 target_link_libraries(main
 	android
-	ioquake3_opengl2
+	ioquake3
 	SDL2
 	vrapi
 	${log-lib})

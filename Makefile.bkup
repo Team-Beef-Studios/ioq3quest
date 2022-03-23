@@ -228,7 +228,7 @@ USE_LOCAL_HEADERS=$(USE_INTERNAL_LIBS)
 endif
 
 ifndef USE_RENDERER_DLOPEN
-USE_RENDERER_DLOPEN=1
+USE_RENDERER_DLOPEN=0
 endif
 
 ifndef USE_YACC
@@ -250,6 +250,7 @@ BR=$(BUILD_DIR)/release-$(PLATFORM)-$(ARCH)
 CDIR=$(MOUNT_DIR)/client
 SDIR=$(MOUNT_DIR)/server
 RCOMMONDIR=$(MOUNT_DIR)/renderercommon
+GL4ESDIR=$(MOUNT_DIR)/gl4es
 RGL1DIR=$(MOUNT_DIR)/renderergl1
 RGL2DIR=$(MOUNT_DIR)/renderergl2
 CMDIR=$(MOUNT_DIR)/qcommon
@@ -441,6 +442,7 @@ ifeq ($(PLATFORM),android)
   BASE_CFLAGS = $(ANDROID_CFLAGS) -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes -pipe \
     -fno-builtin-cos -fno-builtin-sin -fPIC -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS) -DSDL_DISABLE_IMMINTRIN_H -fno-builtin-cos -fno-builtin-sin
+  GL4ES_CFLAGS =  $(BASE_CFLAGS) -g -std=gnu99 -funwind-tables -O3 -fvisibility=hidden -include $(GL4ESDIR)/include/android_debug.h -DNOX11 -DNO_GBM -DDEFAULT_ES=2 -Wno-typedef-redefinition -Wno-dangling-else
 
   OPTIMIZEVM = -O3 -funroll-loops -fomit-frame-pointer
   OPTIMIZE = $(OPTIMIZEVM)
@@ -467,11 +469,10 @@ ifeq ($(PLATFORM),android)
   CLIENT_EXTRA_FILES += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
 
   # GL4ES
-  # CLIENT_LIBS += $(LIBSDIR)/android/arm64-v8a/libgl4es.so
-  CLIENT_EXTRA_FILES += $(LIBSDIR)/android/arm64-v8a/libgl4es.so
+  RENDERER_LIBS += $(LIBSDIR)/android/arm64-v8a/libgl4es.so
 
   # VrApi
-  BASE_CFLAGS += -I$(VRAPIDIR)/Include
+  BASE_CFLAGS += -I$(VRAPIDIR)/Include -I$(GL4ESDIR)/include
   CLIENT_LIBS += $(VRAPIDIR)/Libs/Android/arm64-v8a/Release/libvrapi.so
   RENDERER_LIBS += $(VRAPIDIR)/Libs/Android/arm64-v8a/Release/libvrapi.so
   CLIENT_EXTRA_FILES += $(VRAPIDIR)/Libs/Android/arm64-v8a/Release/libvrapi.so
@@ -1053,6 +1054,7 @@ ifneq ($(BUILD_CLIENT),0)
     endif
   else
     TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
+    TARGETS += $(B)/$(LIBPREFIX)gl4es$(FULLBINEXT)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
     endif
@@ -1170,8 +1172,6 @@ ifeq ($(USE_MUMBLE),1)
   CLIENT_CFLAGS += -DUSE_MUMBLE
 endif
 
-CLIENT_CFLAGS += -DHAVE_GLES
-
 ifeq ($(USE_INTERNAL_ZLIB),1)
   ZLIB_CFLAGS = -DNO_GZIP -I$(ZDIR)
 else
@@ -1270,6 +1270,11 @@ endef
 define DO_REF_CC
 $(echo_cmd) "REF_CC $<"
 $(Q)$(CC) $(SHLIBCFLAGS) $(CFLAGS) $(CLIENT_CFLAGS) $(OPTIMIZE) -o $@ -c $<
+endef
+
+define DO_GL4ES_CC
+$(echo_cmd) "GL4ES_CC $<"
+$(Q)$(CC) $(SHLIBCFLAGS) $(CFLAGS) $(GL4ES_CFLAGS) $(OPTIMIZE) -o $@ -c $<
 endef
 
 define DO_REF_CC_ALTIVEC
@@ -1481,6 +1486,9 @@ makedirs:
 	@$(MKDIR) $(B)/autoupdater
 	@$(MKDIR) $(B)/client/opus
 	@$(MKDIR) $(B)/client/vorbis
+	@$(MKDIR) $(B)/gl4es
+	@$(MKDIR) $(B)/gl4es/wrap
+	@$(MKDIR) $(B)/gl4es/math
 	@$(MKDIR) $(B)/renderergl1
 	@$(MKDIR) $(B)/renderergl2
 	@$(MKDIR) $(B)/renderergl2/glsl
@@ -1938,7 +1946,8 @@ Q3ROBJ = \
   $(B)/renderergl1/tr_surface.o \
   $(B)/renderergl1/tr_world.o \
   \
-  $(B)/renderergl1/android_glimp.o
+  $(B)/renderergl1/sdl_gamma.o \
+  $(B)/renderergl1/sdl_glimp.o
 
 ifneq ($(USE_RENDERER_DLOPEN), 0)
   Q3ROBJ += \
@@ -2004,6 +2013,82 @@ ifneq ($(USE_INTERNAL_JPEG),0)
     $(B)/renderergl1/jutils.o
 endif
 
+GL4ESOBJ = \
+	$(B)/gl4es/arbconverter.o \
+	$(B)/gl4es/arbgenerator.o \
+	$(B)/gl4es/arbhelper.o \
+	$(B)/gl4es/arbparser.o \
+	$(B)/gl4es/array.o \
+	$(B)/gl4es/blend.o \
+	$(B)/gl4es/blit.o \
+	$(B)/gl4es/buffers.o \
+	$(B)/gl4es/build_info.o \
+	$(B)/gl4es/debug.o \
+	$(B)/gl4es/decompress.o \
+	$(B)/gl4es/depth.o \
+	$(B)/gl4es/directstate.o \
+	$(B)/gl4es/drawing.o \
+	$(B)/gl4es/enable.o \
+	$(B)/gl4es/envvars.o \
+	$(B)/gl4es/eval.o \
+	$(B)/gl4es/face.o \
+	$(B)/gl4es/fog.o \
+	$(B)/gl4es/fpe.o \
+	$(B)/gl4es/fpe_cache.o \
+	$(B)/gl4es/fpe_shader.o \
+	$(B)/gl4es/framebuffers.o \
+	$(B)/gl4es/gbm.o \
+	$(B)/gl4es/gl_lookup.o \
+	$(B)/gl4es/getter.o \
+	$(B)/gl4es/gl4es.o \
+	$(B)/gl4es/glstate.o \
+	$(B)/gl4es/hint.o \
+	$(B)/gl4es/init.o \
+	$(B)/gl4es/light.o \
+	$(B)/gl4es/line.o \
+	$(B)/gl4es/list.o \
+	$(B)/gl4es/listdraw.o \
+	$(B)/gl4es/listrl.o \
+	$(B)/gl4es/loader.o \
+	$(B)/gl4es/logs.o \
+	$(B)/gl4es/matrix.o \
+	$(B)/gl4es/matvec.o \
+	$(B)/gl4es/oldprogram.o \
+	$(B)/gl4es/pixel.o \
+	$(B)/gl4es/planes.o \
+	$(B)/gl4es/pointsprite.o \
+	$(B)/gl4es/preproc.o \
+	$(B)/gl4es/program.o \
+	$(B)/gl4es/queries.o \
+	$(B)/gl4es/raster.o \
+	$(B)/gl4es/render.o \
+	$(B)/gl4es/samplers.o \
+	$(B)/gl4es/shader.o \
+	$(B)/gl4es/shaderconv.o \
+	$(B)/gl4es/shader_hacks.o \
+	$(B)/gl4es/stack.o \
+	$(B)/gl4es/stencil.o \
+	$(B)/gl4es/string_utils.o \
+	$(B)/gl4es/stubs.o \
+	$(B)/gl4es/texenv.o \
+	$(B)/gl4es/texgen.o \
+	$(B)/gl4es/texture.o \
+	$(B)/gl4es/texture_compressed.o \
+	$(B)/gl4es/texture_params.o \
+	$(B)/gl4es/texture_read.o \
+	$(B)/gl4es/texture_3d.o \
+	$(B)/gl4es/uniform.o \
+	$(B)/gl4es/vertexattrib.o \
+	$(B)/gl4es/wrap/gl4eswraps.o \
+	$(B)/gl4es/wrap/gles.o \
+	$(B)/gl4es/wrap/glstub.o \
+	$(B)/gl4es/math/matheval.o \
+	$(B)/gl4es/hardext.o \
+	$(B)/gl4es/glx.o \
+	$(B)/gl4es/lookup.o \
+	$(B)/gl4es/streaming.o
+
+  
 ifeq ($(ARCH),x86)
   Q3OBJ += \
     $(B)/client/snd_mixa.o \
@@ -2258,22 +2343,32 @@ $(B)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ) $(JPGOBJ)
 	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3ROBJ) $(JPGOBJ) \
 		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
 
-$(B)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME): $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
-		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
+ifneq ($(BUILD_RENDERER_OPENGL2),0)
+	$(B)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME): $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ)
+		$(echo_cmd) "LD $@"
+		$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
+			$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
+endif
 else
+$(B)/$(LIBPREFIX)gl4es$(FULLBINEXT): $(GL4ESOBJ)
+	$(echo_cmd) "LD $@"
+	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(GL4ESOBJ) \
+		$(LIBS)  -llog
+
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
 		-o $@ $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
 
-$(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT): $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) $(LIBSDLMAIN)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
-		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
+ifneq ($(BUILD_RENDERER_OPENGL2),0)
+	$(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT): $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) $(LIBSDLMAIN)
+		$(echo_cmd) "LD $@"
+		$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
+			-o $@ $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
+			$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
+endif
+
 endif
 
 ifneq ($(strip $(LIBSDLMAIN)),)
@@ -2778,6 +2873,19 @@ $(B)/client/win_resource.o: $(SYSDIR)/win_resource.rc $(SYSDIR)/win_manifest.xml
 	$(DO_WINDRES)
 
 
+$(B)/gl4es/%.o: $(GL4ESDIR)/src/gl/%.c
+	$(DO_GL4ES_CC)
+
+$(B)/gl4es/%.o: $(GL4ESDIR)/src/glx/%.c
+	$(DO_GL4ES_CC)
+
+$(B)/gl4es/wrap/%.o: $(GL4ESDIR)/src/gl/wrap/%.c
+	$(DO_GL4ES_CC)
+
+$(B)/gl4es/math/%.o: $(GL4ESDIR)/src/gl/math/%.c
+	$(DO_GL4ES_CC)
+
+
 $(B)/renderergl1/%.o: $(CMDIR)/%.c
 	$(DO_REF_CC)
 
@@ -2794,9 +2902,6 @@ $(B)/renderergl1/%.o: $(RGL1DIR)/%.c
 	$(DO_REF_CC)
 
 $(B)/renderergl1/tr_altivec.o: $(RGL1DIR)/tr_altivec.c
-	$(DO_REF_CC_ALTIVEC)
-
-$(B)/renderergl1/android_glimp.o: $(ANDROIDDIR)/android_glimp.c
 	$(DO_REF_CC_ALTIVEC)
 
 $(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl
@@ -2935,7 +3040,7 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 # MISC
 #############################################################################
 
-OBJ = $(Q3OBJ) $(Q3ROBJ) $(Q3R2OBJ) $(Q3DOBJ) $(JPGOBJ) \
+OBJ = $(Q3OBJ) $(Q3ROBJ) $(Q3R2OBJ) $(Q3DOBJ) $(JPGOBJ) $(GL4ESOBJ) \
   $(MPGOBJ) $(Q3GOBJ) $(Q3CGOBJ) $(MPCGOBJ) $(Q3UIOBJ) $(MPUIOBJ) \
   $(MPGVMOBJ) $(Q3GVMOBJ) $(Q3CGVMOBJ) $(MPCGVMOBJ) $(Q3UIVMOBJ) $(MPUIVMOBJ)
 TOOLSOBJ = $(LBURGOBJ) $(Q3CPPOBJ) $(Q3RCCOBJ) $(Q3LCCOBJ) $(Q3ASMOBJ)
@@ -2954,15 +3059,17 @@ ifneq ($(BUILD_GAME_SO),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
+	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)gl4es$(FULLBINEXT) $(COPYBINDIR)/$(LIBPREFIX)gl4es$(FULLBINEXT)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
   ifneq ($(USE_RENDERER_DLOPEN),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME)
+		$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME)
     endif
   else
+	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)gl4es$(FULLBINEXT) $(COPYBINDIR)/$(LIBPREFIX)gl4es$(FULLBINEXT)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)_opengl2$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
+		$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)_opengl2$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
     endif
   endif
 endif

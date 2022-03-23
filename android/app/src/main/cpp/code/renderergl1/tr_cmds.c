@@ -365,15 +365,24 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	}
 
 	if (glConfig.stereoEnabled) {
-		if( !(cmd = R_GetCommandBuffer(sizeof(*cmd))) )
-			return;
-			
-		cmd->commandId = RC_DRAW_BUFFER;
-		
 		if ( stereoFrame == STEREO_LEFT ) {
-			cmd->buffer = (int)GL_BACK_LEFT;
+			if (tr.vrParms.valid == qtrue) {
+				switchEyeCommand_t* sec;
+				if (!(sec = R_GetCommandBuffer(sizeof(*sec))))
+					return;
+				sec->commandId = RC_SWITCH_EYE;
+				sec->eye = tr.vrParms.renderBufferL;
+				sec->stereoFrame = stereoFrame;
+			}
 		} else if ( stereoFrame == STEREO_RIGHT ) {
-			cmd->buffer = (int)GL_BACK_RIGHT;
+			if (tr.vrParms.valid == qtrue) {
+				switchEyeCommand_t* sec;
+				if (!(sec = R_GetCommandBuffer(sizeof(*sec))))
+					return;
+				sec->commandId = RC_SWITCH_EYE;
+				sec->eye = tr.vrParms.renderBufferR;
+				sec->stereoFrame = stereoFrame;
+			}
 		} else {
 			ri.Error( ERR_FATAL, "RE_BeginFrame: Stereo is enabled, but stereoFrame was %i", stereoFrame );
 		}
@@ -485,6 +494,25 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	backEnd.pc.msec = 0;
 }
 
+//#if __ANDROID__
+void R_Mat4Transpose( const float in[4][4], float* out ) {
+	int i, j;
+	for (i = 0; i < 4; ++i) {
+		for (j = 0; j < 4; ++j) {
+			out[i * 4 + j] = in[j][i];
+		}
+	}
+}
+
+
+void RE_SetVRHeadsetParms( const ovrMatrix4f *projectionMatrix,
+        int renderBufferL, int renderBufferR ) {
+	R_Mat4Transpose(projectionMatrix->M, tr.vrParms.projection);
+	tr.vrParms.renderBufferL = renderBufferL;
+	tr.vrParms.renderBufferR = renderBufferR;
+	tr.vrParms.valid = qtrue;
+}
+//#endif
 /*
 =============
 RE_TakeVideoFrame

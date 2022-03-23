@@ -190,6 +190,7 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 	public static native void nativeCreate(MainActivity thisObject);
 
 	static {
+		System.loadLibrary("gl4es");
 		System.loadLibrary("main");
 	}
 

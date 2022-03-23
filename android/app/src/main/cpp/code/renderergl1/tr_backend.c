@@ -937,6 +937,10 @@ const void	*RB_DrawBuffer( const void *data ) {
 
 	cmd = (const drawBufferCommand_t *)data;
 
+	// finish any 2D drawing if needed
+	if(tess.numIndexes)
+		RB_EndSurface();
+
 	qglDrawBuffer( cmd->buffer );
 
 	// clear screen for debugging
@@ -1100,6 +1104,25 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 /*
 ====================
+RB_SwitchEye
+====================
+*/
+const void* RB_SwitchEye( const void* data ) {
+	const switchEyeCommand_t *cmd = data;
+
+	// finish any 2D drawing if needed
+	if(tess.numIndexes)
+		RB_EndSurface();
+
+	GLimp_BindFramebuffer(cmd->eye);
+
+	tr.refdef.stereoFrame = cmd->stereoFrame;
+
+	return (const void*)(cmd + 1);
+}
+
+/*
+====================
 RB_ExecuteRenderCommands
 ====================
 */
@@ -1139,8 +1162,15 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		case RC_CLEARDEPTH:
 			data = RB_ClearDepth(data);
 			break;
+		case RC_SWITCH_EYE:
+			data = RB_SwitchEye(data);
+			break;
 		case RC_END_OF_LIST:
 		default:
+			// finish any 2D drawing if needed
+			if(tess.numIndexes)
+				RB_EndSurface();
+
 			// stop rendering
 			t2 = ri.Milliseconds ();
 			backEnd.pc.msec = t2 - t1;

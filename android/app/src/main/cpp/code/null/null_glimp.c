@@ -35,6 +35,10 @@ void ( * qglUnlockArraysEXT) ( void );
 void		GLimp_EndFrame( void ) {
 }
 
+void 		GLimp_BindFramebuffer(int buffer) {
+
+}
+
 void 		GLimp_Init( void ) {
 }
 

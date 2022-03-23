@@ -62,11 +62,12 @@ static ovrJava engine_get_ovrJava() {
 }
 
 int main(int argc, char* argv[]) {
+
 	ovrJava java = engine_get_ovrJava();
 	engine_t* engine = nullptr;
 	engine = VR_Init(java);
 
-	//sleep(30);
+	sleep(30);
 
 	//First set up resolution cached values
 	int width, height;

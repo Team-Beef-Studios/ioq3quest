@@ -159,6 +159,8 @@ IMPLEMENTATION SPECIFIC FUNCTIONS
 void		GLimp_Init( qboolean fixedFunction );
 void		GLimp_Shutdown( void );
 void		GLimp_EndFrame( void );
+void		GLimp_BindFramebuffer(int buffer);
+
 
 void		GLimp_LogComment( char *comment );
 void		GLimp_Minimize(void);

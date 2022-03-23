@@ -2,10 +2,12 @@
 
 setlocal
 
-set BUILD_TYPE=release
-set KEYSTORE=
-set KEYSTORE_PASS=
-set VERSION=0.21.1
+set BUILD_TYPE=debug
+set VERSION=0.27.1
+
+@REM Define the following environment variables to sign a release build
+@REM set KEYSTORE=
+@REM set KEYSTORE_PASS=
 
 set ANDROID_SDK_ROOT=%AppData%\..\Local\Android\Sdk
 set adb="%ANDROID_SDK_ROOT%\platform-tools\adb.exe"

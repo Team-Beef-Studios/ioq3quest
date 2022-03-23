@@ -446,62 +446,38 @@ static void R_SetFarClip( void )
 =================
 R_SetupFrustum
 
-Set up the culling frustum planes for the current view using the results we got from computing the first two rows of
-the projection matrix.
+Setup that culling frustum planes for the current view
 =================
 */
-void R_SetupFrustum (viewParms_t *dest, float xmin, float xmax, float ymax, float zProj, float stereoSep)
-{
-	vec3_t ofsorigin;
-	float oppleg, adjleg, length;
+void R_SetupFrustum( void ) {
 	int i;
+	float xs, xc;
+	float ang;
 	
-	if(stereoSep == 0 && xmin == -xmax)
-	{
-		// symmetric case can be simplified
-		VectorCopy(dest->or.origin, ofsorigin);
+	ang = tr.viewParms.fovX / 180 * M_PI * 0.5f;
+	xs = sinf( ang );
+	xc = cosf( ang );
 
-		length = sqrt(xmax * xmax + zProj * zProj);
-		oppleg = xmax / length;
-		adjleg = zProj / length;
+	VectorScale( tr.viewParms.or.axis[0], xs, tr.viewParms.frustum[0].normal );
+	VectorMA( tr.viewParms.frustum[0].normal, xc, tr.viewParms.or.axis[1], tr.viewParms.frustum[0].normal );
 
-		VectorScale(dest->or.axis[0], oppleg, dest->frustum[0].normal);
-		VectorMA(dest->frustum[0].normal, adjleg, dest->or.axis[1], dest->frustum[0].normal);
+	VectorScale( tr.viewParms.or.axis[0], xs, tr.viewParms.frustum[1].normal );
+	VectorMA( tr.viewParms.frustum[1].normal, -xc, tr.viewParms.or.axis[1], tr.viewParms.frustum[1].normal );
 
-		VectorScale(dest->or.axis[0], oppleg, dest->frustum[1].normal);
-		VectorMA(dest->frustum[1].normal, -adjleg, dest->or.axis[1], dest->frustum[1].normal);
-	}
-	else
-	{
-		// In stereo rendering, due to the modification of the projection matrix, dest->or.origin is not the
-		// actual origin that we're rendering so offset the tip of the view pyramid.
-		VectorMA(dest->or.origin, stereoSep, dest->or.axis[1], ofsorigin);
-	
-		oppleg = xmax + stereoSep;
-		length = sqrt(oppleg * oppleg + zProj * zProj);
-		VectorScale(dest->or.axis[0], oppleg / length, dest->frustum[0].normal);
-		VectorMA(dest->frustum[0].normal, zProj / length, dest->or.axis[1], dest->frustum[0].normal);
+	ang = tr.viewParms.fovY / 180 * M_PI * 0.5f;
+	xs = sin( ang );
+	xc = cos( ang );
 
-		oppleg = xmin + stereoSep;
-		length = sqrt(oppleg * oppleg + zProj * zProj);
-		VectorScale(dest->or.axis[0], -oppleg / length, dest->frustum[1].normal);
-		VectorMA(dest->frustum[1].normal, -zProj / length, dest->or.axis[1], dest->frustum[1].normal);
-	}
+	VectorScale( tr.viewParms.or.axis[0], xs, tr.viewParms.frustum[2].normal );
+	VectorMA( tr.viewParms.frustum[2].normal, xc, tr.viewParms.or.axis[2], tr.viewParms.frustum[2].normal );
 
-	length = sqrt(ymax * ymax + zProj * zProj);
-	oppleg = ymax / length;
-	adjleg = zProj / length;
-
-	VectorScale(dest->or.axis[0], oppleg, dest->frustum[2].normal);
-	VectorMA(dest->frustum[2].normal, adjleg, dest->or.axis[2], dest->frustum[2].normal);
-
-	VectorScale(dest->or.axis[0], oppleg, dest->frustum[3].normal);
-	VectorMA(dest->frustum[3].normal, -adjleg, dest->or.axis[2], dest->frustum[3].normal);
+	VectorScale( tr.viewParms.or.axis[0], xs, tr.viewParms.frustum[3].normal );
+	VectorMA( tr.viewParms.frustum[3].normal, -xc, tr.viewParms.or.axis[2], tr.viewParms.frustum[3].normal );
 	
 	for (i=0 ; i<4 ; i++) {
-		dest->frustum[i].type = PLANE_NON_AXIAL;
-		dest->frustum[i].dist = DotProduct (ofsorigin, dest->frustum[i].normal);
-		SetPlaneSignbits( &dest->frustum[i] );
+		tr.viewParms.frustum[i].type = PLANE_NON_AXIAL;
+		tr.viewParms.frustum[i].dist = DotProduct( tr.viewParms.or.origin, tr.viewParms.frustum[i].normal );
+		SetPlaneSignbits( &tr.viewParms.frustum[i] );
 	}
 }
 
@@ -515,21 +491,6 @@ void R_SetupProjection(viewParms_t *dest, float zProj, qboolean computeFrustum)
 	float	xmin, xmax, ymin, ymax;
 	float	width, height, stereoSep = r_stereoSeparation->value;
 
-	/*
-	 * offset the view origin of the viewer for stereo rendering 
-	 * by setting the projection matrix appropriately.
-	 */
-
-	if(stereoSep != 0)
-	{
-		if(dest->stereoFrame == STEREO_LEFT)
-			stereoSep = zProj / stereoSep;
-		else if(dest->stereoFrame == STEREO_RIGHT)
-			stereoSep = zProj / -stereoSep;
-		else
-			stereoSep = 0;
-	}
-
 	ymax = zProj * tan(dest->fovY * M_PI / 360.0f);
 	ymin = -ymax;
 
@@ -538,25 +499,49 @@ void R_SetupProjection(viewParms_t *dest, float zProj, qboolean computeFrustum)
 
 	width = xmax - xmin;
 	height = ymax - ymin;
-	
-	dest->projectionMatrix[0] = 2 * zProj / width;
-	dest->projectionMatrix[4] = 0;
-	dest->projectionMatrix[8] = (xmax + xmin + 2 * stereoSep) / width;
-	dest->projectionMatrix[12] = 2 * zProj * stereoSep / width;
 
-	dest->projectionMatrix[1] = 0;
-	dest->projectionMatrix[5] = 2 * zProj / height;
-	dest->projectionMatrix[9] = ( ymax + ymin ) / height;	// normally 0
-	dest->projectionMatrix[13] = 0;
+	if (tr.vrParms.valid) {
+/*		if (dest->stereoFrame == STEREO_LEFT) {
+			memcpy(&dest->projectionMatrix, &tr.vrParms.projectionL, sizeof(dest->projectionMatrix));
+		}
+		else */
+		{
+			memcpy(&dest->projectionMatrix, &tr.vrParms.projection, sizeof(dest->projectionMatrix));
+		}
+	} else {
+		/*
+		 * offset the view origin of the viewer for stereo rendering
+		 * by setting the projection matrix appropriately.
+		 */
+		if(stereoSep != 0)
+		{
+			if(dest->stereoFrame == STEREO_LEFT)
+				stereoSep = zProj / stereoSep;
+			else if(dest->stereoFrame == STEREO_RIGHT)
+				stereoSep = zProj / -stereoSep;
+			else
+				stereoSep = 0;
+		}
 
-	dest->projectionMatrix[3] = 0;
-	dest->projectionMatrix[7] = 0;
-	dest->projectionMatrix[11] = -1;
-	dest->projectionMatrix[15] = 0;
+		dest->projectionMatrix[0] = 2 * zProj / width;
+		dest->projectionMatrix[4] = 0;
+		dest->projectionMatrix[8] = (xmax + xmin + 2 * stereoSep) / width;
+		dest->projectionMatrix[12] = 2 * zProj * stereoSep / width;
+
+		dest->projectionMatrix[1] = 0;
+		dest->projectionMatrix[5] = 2 * zProj / height;
+		dest->projectionMatrix[9] = ( ymax + ymin ) / height;	// normally 0
+		dest->projectionMatrix[13] = 0;
+
+		dest->projectionMatrix[3] = 0;
+		dest->projectionMatrix[7] = 0;
+		dest->projectionMatrix[11] = -1;
+		dest->projectionMatrix[15] = 0;
+	}
 	
 	// Now that we have all the data for the projection matrix we can also setup the view frustum.
 	if(computeFrustum)
-		R_SetupFrustum(dest, xmin, xmax, ymax, zProj, stereoSep);
+		R_SetupFrustum( );//dest, xmin, xmax, ymax, zProj, zFar, stereoSep);
 }
 
 /*
@@ -569,15 +554,19 @@ Sets the z-component transformation part in the projection matrix
 void R_SetupProjectionZ(viewParms_t *dest)
 {
 	float zNear, zFar, depth;
-	
-	zNear	= r_znear->value;
-	zFar	= dest->zFar;	
-	depth	= zFar - zNear;
 
-	dest->projectionMatrix[2] = 0;
-	dest->projectionMatrix[6] = 0;
-	dest->projectionMatrix[10] = -( zFar + zNear ) / depth;
-	dest->projectionMatrix[14] = -2 * zFar * zNear / depth;
+	zNear = r_znear->value;
+	zFar = dest->zFar;
+
+	depth = zFar - zNear;
+
+	if (!tr.vrParms.valid)
+	{
+		dest->projectionMatrix[2] = 0;
+		dest->projectionMatrix[6] = 0;
+		dest->projectionMatrix[10] = -(zFar + zNear) / depth;
+		dest->projectionMatrix[14] = -2 * zFar * zNear / depth;
+	}
 }
 
 /*
