@@ -1,11 +1,14 @@
 package com.drbeef.ioq3quest;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.util.Log;
+import android.view.Surface;
+import android.view.SurfaceHolder;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -29,12 +32,13 @@ import java.util.zip.ZipInputStream;
 
 import static android.system.Os.setenv;
 
-public class MainActivity extends SDLActivity // implements KeyEvent.Callback
+public class MainActivity extends Activity implements SurfaceHolder.Callback
 {
 	private int permissionCount = 0;
 	private static final int READ_EXTERNAL_STORAGE_PERMISSION_ID = 1;
 	private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_ID = 2;
 	private static final String TAG = "ioquake3Quest";
+	private long mNativeHandle;
 
 	private boolean hapticsEnabled = false;
 
@@ -80,11 +84,6 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 			finish();
 			System.exit(0);
 		}
-	}
-
-	@Override
-	public void onWindowFocusChanged(boolean hasFocus) {
-		nativeFocusChanged(hasFocus);
 	}
 
 	public void create() throws IOException {
@@ -192,8 +191,21 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		}
 	}
 
-	public static native void nativeCreate(MainActivity thisObject);
+	public static native long nativeCreate(MainActivity thisObject);
 	public static native void nativeFocusChanged(boolean focus);
+
+	// Activity lifecycle
+	public static native void nativeStart( long handle, Object obj );
+	public static native void nativeResume( long handle );
+	public static native void nativePause( long handle );
+	public static native void nativeStop( long handle );
+	public static native void nativeDestroy( long handle );
+
+	// Surface lifecycle
+	public static native void nativeSurfaceCreated( long handle, Surface s );
+	public static native void nativeSurfaceChanged( long handle, Surface s );
+	public static native void nativeSurfaceDestroyed( long handle );
+
 
 	static {
 		System.loadLibrary("main");
@@ -232,4 +244,105 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		}
 	}
 
+
+	@Override
+	public void onWindowFocusChanged(boolean hasFocus) {
+		nativeFocusChanged(hasFocus);
+	}
+
+	@Override protected void onStart()
+	{
+		Log.v(TAG, "onStart()" );
+		super.onStart();
+
+		if ( mNativeHandle != 0 )
+		{
+			nativeStart(mNativeHandle, this);
+		}
+	}
+
+	@Override protected void onResume()
+	{
+		Log.v(TAG, "onResume()" );
+		super.onResume();
+
+		if ( mNativeHandle != 0 )
+		{
+			nativeResume(mNativeHandle);
+		}
+	}
+
+	@Override protected void onPause()
+	{
+		Log.v(TAG, "onPause()" );
+		if ( mNativeHandle != 0 )
+		{
+			nativePause(mNativeHandle);
+		}
+		super.onPause();
+	}
+
+	@Override protected void onStop()
+	{
+		Log.v(TAG, "onStop()" );
+		if ( mNativeHandle != 0 )
+		{
+			nativeStop(mNativeHandle);
+		}
+
+
+		super.onStop();
+	}
+
+	@Override protected void onDestroy()
+	{
+		Log.v(TAG, "onDestroy()" );
+
+		if ( mSurfaceHolder != null )
+		{
+			nativeSurfaceDestroyed( mNativeHandle );
+		}
+
+		if ( mNativeHandle != 0 )
+		{
+			nativeDestroy(mNativeHandle);
+		}
+
+		for (HapticServiceClient externalHapticsServiceClient : externalHapticsServiceClients) {
+			externalHapticsServiceClient.stopBinding();
+		}
+
+		super.onDestroy();
+		mNativeHandle = 0;
+	}
+
+	@Override public void surfaceCreated( SurfaceHolder holder )
+	{
+		Log.v(TAG, "surfaceCreated()" );
+		if ( mNativeHandle != 0 )
+		{
+			nativeSurfaceCreated( mNativeHandle, holder.getSurface() );
+			mSurfaceHolder = holder;
+		}
+	}
+
+	@Override public void surfaceChanged( SurfaceHolder holder, int format, int width, int height )
+	{
+		Log.v(TAG, "surfaceChanged()" );
+		if ( mNativeHandle != 0 )
+		{
+			nativeSurfaceChanged( mNativeHandle, holder.getSurface() );
+			mSurfaceHolder = holder;
+		}
+	}
+
+	@Override public void surfaceDestroyed( SurfaceHolder holder )
+	{
+		Log.v(TAG, "surfaceDestroyed()" );
+		if ( mNativeHandle != 0 )
+		{
+			nativeSurfaceDestroyed( mNativeHandle );
+			mSurfaceHolder = null;
+		}
+	}
 }
