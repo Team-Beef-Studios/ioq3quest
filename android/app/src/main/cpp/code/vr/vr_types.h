@@ -1,13 +1,11 @@
 #ifndef __VR_TYPES
 #define __VR_TYPES
 
-#ifdef USE_LOCAL_HEADERS
-#	include "SDL_opengl.h"
-#	include "SDL_opengles2.h"
-#else
-#	include <SDL_opengl.h>
-#	include <SDL_opengles2.h>
-#endif
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wstrict-prototypes"

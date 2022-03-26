@@ -32,9 +32,6 @@ endif
 ifndef BUILD_MISSIONPACK
   BUILD_MISSIONPACK=
 endif
-ifndef BUILD_RENDERER_OPENGL2
-  BUILD_RENDERER_OPENGL2=
-endif
 ifndef BUILD_AUTOUPDATER  # DON'T build unless you mean to!
   BUILD_AUTOUPDATER=0
 endif
@@ -227,10 +224,6 @@ ifndef USE_LOCAL_HEADERS
 USE_LOCAL_HEADERS=$(USE_INTERNAL_LIBS)
 endif
 
-ifndef USE_RENDERER_DLOPEN
-USE_RENDERER_DLOPEN=1
-endif
-
 ifndef USE_YACC
 USE_YACC=0
 endif
@@ -250,7 +243,6 @@ BR=$(BUILD_DIR)/release-$(PLATFORM)-$(ARCH)
 CDIR=$(MOUNT_DIR)/client
 SDIR=$(MOUNT_DIR)/server
 RCOMMONDIR=$(MOUNT_DIR)/renderercommon
-RGL1DIR=$(MOUNT_DIR)/renderergl1
 RGL2DIR=$(MOUNT_DIR)/renderergl2
 CMDIR=$(MOUNT_DIR)/qcommon
 SDLDIR=$(MOUNT_DIR)/sdl
@@ -459,12 +451,6 @@ ifeq ($(PLATFORM),android)
 
   CLIENT_LIBS = -lGLESv3 -lOpenSLES
   RENDERER_LIBS = -lGLESv3 -lEGL
-  
-  # SDL
-  BASE_CFLAGS += -I$(SDLHDIR)/include
-  CLIENT_LIBS += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
-  RENDERER_LIBS += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
-  CLIENT_EXTRA_FILES += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
 
   # VrApi
   BASE_CFLAGS += -I$(VRAPIDIR)/Include
@@ -1042,17 +1028,7 @@ ifneq ($(BUILD_SERVER),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-  ifneq ($(USE_RENDERER_DLOPEN),0)
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT) $(B)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME)
-    ifneq ($(BUILD_RENDERER_OPENGL2),0)
-      TARGETS += $(B)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME)
-    endif
-  else
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
-    ifneq ($(BUILD_RENDERER_OPENGL2),0)
-      TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
-    endif
-  endif
+    TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
 endif
 
 ifneq ($(BUILD_GAME_SO),0)
@@ -1156,10 +1132,6 @@ ifeq ($(NEED_OGG),1)
   endif
   CLIENT_CFLAGS += $(OGG_CFLAGS)
   CLIENT_LIBS += $(OGG_LIBS)
-endif
-
-ifeq ($(USE_RENDERER_DLOPEN),1)
-  CLIENT_CFLAGS += -DUSE_RENDERER_DLOPEN
 endif
 
 ifeq ($(USE_MUMBLE),1)
@@ -1475,7 +1447,6 @@ makedirs:
 	@$(MKDIR) $(B)/autoupdater
 	@$(MKDIR) $(B)/client/opus
 	@$(MKDIR) $(B)/client/vorbis
-	@$(MKDIR) $(B)/renderergl1
 	@$(MKDIR) $(B)/renderergl2
 	@$(MKDIR) $(B)/renderergl2/glsl
 	@$(MKDIR) $(B)/ded
@@ -1809,7 +1780,6 @@ Q3OBJ = \
   $(B)/client/l_script.o \
   $(B)/client/l_struct.o \
   \
-  $(B)/client/sdl_input.o \
   $(B)/client/android_snd.o \
   \
   $(B)/client/vr_base.o \
@@ -1866,9 +1836,7 @@ Q3R2OBJ = \
   $(B)/renderergl2/tr_surface.o \
   $(B)/renderergl2/tr_vbo.o \
   $(B)/renderergl2/tr_world.o \
-  \
-  $(B)/renderergl1/sdl_gamma.o \
-  $(B)/renderergl1/sdl_glimp.o
+  $(B)/client/android_glimp.o
 
 Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/bokeh_fp.o \
@@ -1900,103 +1868,54 @@ Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/tonemap_fp.o \
   $(B)/renderergl2/glsl/tonemap_vp.o
 
-Q3ROBJ = \
-  $(B)/renderergl1/tr_altivec.o \
-  $(B)/renderergl1/tr_animation.o \
-  $(B)/renderergl1/tr_backend.o \
-  $(B)/renderergl1/tr_bsp.o \
-  $(B)/renderergl1/tr_cmds.o \
-  $(B)/renderergl1/tr_curve.o \
-  $(B)/renderergl1/tr_flares.o \
-  $(B)/renderergl1/tr_font.o \
-  $(B)/renderergl1/tr_image.o \
-  $(B)/renderergl1/tr_image_bmp.o \
-  $(B)/renderergl1/tr_image_jpg.o \
-  $(B)/renderergl1/tr_image_pcx.o \
-  $(B)/renderergl1/tr_image_png.o \
-  $(B)/renderergl1/tr_image_tga.o \
-  $(B)/renderergl1/tr_init.o \
-  $(B)/renderergl1/tr_light.o \
-  $(B)/renderergl1/tr_main.o \
-  $(B)/renderergl1/tr_marks.o \
-  $(B)/renderergl1/tr_mesh.o \
-  $(B)/renderergl1/tr_model.o \
-  $(B)/renderergl1/tr_model_iqm.o \
-  $(B)/renderergl1/tr_noise.o \
-  $(B)/renderergl1/tr_scene.o \
-  $(B)/renderergl1/tr_shade.o \
-  $(B)/renderergl1/tr_shade_calc.o \
-  $(B)/renderergl1/tr_shader.o \
-  $(B)/renderergl1/tr_shadows.o \
-  $(B)/renderergl1/tr_sky.o \
-  $(B)/renderergl1/tr_surface.o \
-  $(B)/renderergl1/tr_world.o \
-  \
-  $(B)/renderergl1/sdl_gamma.o \
-  $(B)/renderergl1/sdl_glimp.o
-
-ifneq ($(USE_RENDERER_DLOPEN), 0)
-  Q3ROBJ += \
-    $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
-    $(B)/renderergl1/q_math.o \
-    $(B)/renderergl1/tr_subs.o
-
-  Q3R2OBJ += \
-    $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
-    $(B)/renderergl1/q_math.o \
-    $(B)/renderergl1/tr_subs.o
-endif
-
 ifneq ($(USE_INTERNAL_JPEG),0)
   JPGOBJ = \
-    $(B)/renderergl1/jaricom.o \
-    $(B)/renderergl1/jcapimin.o \
-    $(B)/renderergl1/jcapistd.o \
-    $(B)/renderergl1/jcarith.o \
-    $(B)/renderergl1/jccoefct.o  \
-    $(B)/renderergl1/jccolor.o \
-    $(B)/renderergl1/jcdctmgr.o \
-    $(B)/renderergl1/jchuff.o   \
-    $(B)/renderergl1/jcinit.o \
-    $(B)/renderergl1/jcmainct.o \
-    $(B)/renderergl1/jcmarker.o \
-    $(B)/renderergl1/jcmaster.o \
-    $(B)/renderergl1/jcomapi.o \
-    $(B)/renderergl1/jcparam.o \
-    $(B)/renderergl1/jcprepct.o \
-    $(B)/renderergl1/jcsample.o \
-    $(B)/renderergl1/jctrans.o \
-    $(B)/renderergl1/jdapimin.o \
-    $(B)/renderergl1/jdapistd.o \
-    $(B)/renderergl1/jdarith.o \
-    $(B)/renderergl1/jdatadst.o \
-    $(B)/renderergl1/jdatasrc.o \
-    $(B)/renderergl1/jdcoefct.o \
-    $(B)/renderergl1/jdcolor.o \
-    $(B)/renderergl1/jddctmgr.o \
-    $(B)/renderergl1/jdhuff.o \
-    $(B)/renderergl1/jdinput.o \
-    $(B)/renderergl1/jdmainct.o \
-    $(B)/renderergl1/jdmarker.o \
-    $(B)/renderergl1/jdmaster.o \
-    $(B)/renderergl1/jdmerge.o \
-    $(B)/renderergl1/jdpostct.o \
-    $(B)/renderergl1/jdsample.o \
-    $(B)/renderergl1/jdtrans.o \
-    $(B)/renderergl1/jerror.o \
-    $(B)/renderergl1/jfdctflt.o \
-    $(B)/renderergl1/jfdctfst.o \
-    $(B)/renderergl1/jfdctint.o \
-    $(B)/renderergl1/jidctflt.o \
-    $(B)/renderergl1/jidctfst.o \
-    $(B)/renderergl1/jidctint.o \
-    $(B)/renderergl1/jmemmgr.o \
-    $(B)/renderergl1/jmemnobs.o \
-    $(B)/renderergl1/jquant1.o \
-    $(B)/renderergl1/jquant2.o \
-    $(B)/renderergl1/jutils.o
+    $(B)/renderergl2/jaricom.o \
+    $(B)/renderergl2/jcapimin.o \
+    $(B)/renderergl2/jcapistd.o \
+    $(B)/renderergl2/jcarith.o \
+    $(B)/renderergl2/jccoefct.o  \
+    $(B)/renderergl2/jccolor.o \
+    $(B)/renderergl2/jcdctmgr.o \
+    $(B)/renderergl2/jchuff.o   \
+    $(B)/renderergl2/jcinit.o \
+    $(B)/renderergl2/jcmainct.o \
+    $(B)/renderergl2/jcmarker.o \
+    $(B)/renderergl2/jcmaster.o \
+    $(B)/renderergl2/jcomapi.o \
+    $(B)/renderergl2/jcparam.o \
+    $(B)/renderergl2/jcprepct.o \
+    $(B)/renderergl2/jcsample.o \
+    $(B)/renderergl2/jctrans.o \
+    $(B)/renderergl2/jdapimin.o \
+    $(B)/renderergl2/jdapistd.o \
+    $(B)/renderergl2/jdarith.o \
+    $(B)/renderergl2/jdatadst.o \
+    $(B)/renderergl2/jdatasrc.o \
+    $(B)/renderergl2/jdcoefct.o \
+    $(B)/renderergl2/jdcolor.o \
+    $(B)/renderergl2/jddctmgr.o \
+    $(B)/renderergl2/jdhuff.o \
+    $(B)/renderergl2/jdinput.o \
+    $(B)/renderergl2/jdmainct.o \
+    $(B)/renderergl2/jdmarker.o \
+    $(B)/renderergl2/jdmaster.o \
+    $(B)/renderergl2/jdmerge.o \
+    $(B)/renderergl2/jdpostct.o \
+    $(B)/renderergl2/jdsample.o \
+    $(B)/renderergl2/jdtrans.o \
+    $(B)/renderergl2/jerror.o \
+    $(B)/renderergl2/jfdctflt.o \
+    $(B)/renderergl2/jfdctfst.o \
+    $(B)/renderergl2/jfdctint.o \
+    $(B)/renderergl2/jidctflt.o \
+    $(B)/renderergl2/jidctfst.o \
+    $(B)/renderergl2/jidctint.o \
+    $(B)/renderergl2/jmemmgr.o \
+    $(B)/renderergl2/jmemnobs.o \
+    $(B)/renderergl2/jquant1.o \
+    $(B)/renderergl2/jquant2.o \
+    $(B)/renderergl2/jutils.o
 endif
 
 ifeq ($(ARCH),x86)
@@ -2241,35 +2160,11 @@ ifeq ($(USE_MUMBLE),1)
     $(B)/client/libmumblelink.o
 endif
 
-ifneq ($(USE_RENDERER_DLOPEN),0)
-$(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(LIBSDLMAIN)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) \
-		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS)
-
-$(B)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ) $(JPGOBJ)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3ROBJ) $(JPGOBJ) \
-		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
-
-$(B)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME): $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
-		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
-else
-$(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) $(LIBSDLMAIN)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) \
-		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
-
 $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT): $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
 		-o $@ $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
-endif
 
 ifneq ($(strip $(LIBSDLMAIN)),)
 ifneq ($(strip $(LIBSDLMAINSRC)),)
@@ -2772,24 +2667,8 @@ $(B)/client/%.o: $(SYSDIR)/%.m
 $(B)/client/win_resource.o: $(SYSDIR)/win_resource.rc $(SYSDIR)/win_manifest.xml
 	$(DO_WINDRES)
 
-
-$(B)/renderergl1/%.o: $(CMDIR)/%.c
+$(B)/renderergl2/%.o: $(JPDIR)/%.c
 	$(DO_REF_CC)
-
-$(B)/renderergl1/%.o: $(SDLDIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl1/%.o: $(JPDIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl1/%.o: $(RCOMMONDIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl1/%.o: $(RGL1DIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl1/tr_altivec.o: $(RGL1DIR)/tr_altivec.c
-	$(DO_REF_CC_ALTIVEC)
 
 $(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl
 	$(DO_REF_STR)
@@ -2927,7 +2806,7 @@ $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 # MISC
 #############################################################################
 
-OBJ = $(Q3OBJ) $(Q3ROBJ) $(Q3R2OBJ) $(Q3DOBJ) $(JPGOBJ) \
+OBJ = $(Q3OBJ) $(Q3R2OBJ) $(Q3DOBJ) $(JPGOBJ) \
   $(MPGOBJ) $(Q3GOBJ) $(Q3CGOBJ) $(MPCGOBJ) $(Q3UIOBJ) $(MPUIOBJ) \
   $(MPGVMOBJ) $(Q3GVMOBJ) $(Q3CGVMOBJ) $(MPCGVMOBJ) $(Q3UIVMOBJ) $(MPUIVMOBJ)
 TOOLSOBJ = $(LBURGOBJ) $(Q3CPPOBJ) $(Q3RCCOBJ) $(Q3LCCOBJ) $(Q3ASMOBJ)
@@ -2946,17 +2825,7 @@ ifneq ($(BUILD_GAME_SO),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
-  ifneq ($(USE_RENDERER_DLOPEN),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME)
-    ifneq ($(BUILD_RENDERER_OPENGL2),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME)
-    endif
-  else
-    ifneq ($(BUILD_RENDERER_OPENGL2),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)_opengl2$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
-    endif
-  endif
 endif
 
 ifneq ($(BUILD_SERVER),0)
@@ -3025,7 +2894,6 @@ installer: release
 ifdef MINGW
 	@$(MAKE) VERSION=$(VERSION) -C $(NSISDIR) V=$(V) \
 		SDLDLL=$(SDLDLL) \
-		USE_RENDERER_DLOPEN=$(USE_RENDERER_DLOPEN) \
 		USE_OPENAL_DLOPEN=$(USE_OPENAL_DLOPEN) \
 		USE_CURL_DLOPEN=$(USE_CURL_DLOPEN) \
 		USE_INTERNAL_OPUS=$(USE_INTERNAL_OPUS) \

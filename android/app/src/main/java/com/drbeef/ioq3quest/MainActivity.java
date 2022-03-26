@@ -9,26 +9,21 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.drbeef.externalhapticsservice.HapticServiceClient;
 
-import org.libsdl.app.SDLActivity;
-
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static android.system.Os.setenv;
 
@@ -38,6 +33,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback
 	private static final int READ_EXTERNAL_STORAGE_PERMISSION_ID = 1;
 	private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_ID = 2;
 	private static final String TAG = "ioquake3Quest";
+
+	private SurfaceView mView;
+	private SurfaceHolder mSurfaceHolder;
 	private long mNativeHandle;
 
 	private boolean hapticsEnabled = false;
@@ -308,9 +306,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback
 			nativeDestroy(mNativeHandle);
 		}
 
-		for (HapticServiceClient externalHapticsServiceClient : externalHapticsServiceClients) {
-			externalHapticsServiceClient.stopBinding();
-		}
+		externalHapticsServiceClient.stopBinding();
 
 		super.onDestroy();
 		mNativeHandle = 0;

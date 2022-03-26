@@ -306,24 +306,30 @@ static void GLSL_GetShaderHeader( GLenum shaderType, const GLchar *extra, char *
 #ifdef __ANDROID__
 	Q_strcat(dest, size, "#version 300 es\n");
 
-	//Enable multiview
-	Q_strcat(dest, size, "#define NUM_VIEWS 2\n");
-	Q_strcat(dest, size, "#extension GL_OVR_multiview2 : enable\n");
-	Q_strcat(dest, size, "layout(num_views=NUM_VIEWS) in;\n");
-
-	// HACK: use in main menu medium float precision (to prevent issue with missing models textures)
-	if (Cvar_Get("r_uiFullScreen", "1", 0)->integer)
-		Q_strcat(dest, size, "precision mediump float;\n");
-	else
-		Q_strcat(dest, size, "precision highp float;\n");
-
 	if(shaderType == GL_VERTEX_SHADER)
 	{
+		//Enable multiview
+		Q_strcat(dest, size, "#define NUM_VIEWS 2\n");
+		Q_strcat(dest, size, "#extension GL_OVR_multiview2 : enable\n");
+		Q_strcat(dest, size, "layout(num_views=NUM_VIEWS) in;\n");
+
+		// HACK: use in main menu medium float precision (to prevent issue with missing models textures)
+		if (Cvar_Get("r_uiFullScreen", "1", 0)->integer)
+			Q_strcat(dest, size, "precision mediump float;\n");
+		else
+			Q_strcat(dest, size, "precision highp float;\n");
+
 		Q_strcat(dest, size, "#define attribute in\n");
 		Q_strcat(dest, size, "#define varying out\n");
 	}
 	else
 	{
+		// HACK: use in main menu medium float precision (to prevent issue with missing models textures)
+		if (Cvar_Get("r_uiFullScreen", "1", 0)->integer)
+			Q_strcat(dest, size, "precision mediump float;\n");
+		else
+			Q_strcat(dest, size, "precision highp float;\n");
+
 		Q_strcat(dest, size, "#define varying in\n");
 
 		Q_strcat(dest, size, "out vec4 out_Color;\n");

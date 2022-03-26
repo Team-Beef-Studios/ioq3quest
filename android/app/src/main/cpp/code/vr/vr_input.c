@@ -14,12 +14,6 @@
 #include <unistd.h>
 #include <jni.h>
 
-#ifdef USE_LOCAL_HEADERS
-#	include "SDL.h"
-#else
-#	include <SDL.h>
-#endif
-
 enum {
 	VR_TOUCH_AXIS_UP = 1 << 0,
 	VR_TOUCH_AXIS_UPRIGHT = 1 << 1,

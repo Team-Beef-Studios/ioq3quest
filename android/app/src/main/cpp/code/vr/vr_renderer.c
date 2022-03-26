@@ -11,6 +11,7 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <GLES3/gl32.h>
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
 
@@ -26,15 +27,13 @@
 
 #define ENABLE_GL_DEBUG 0
 #define ENABLE_GL_DEBUG_VERBOSE 0
-#if ENABLE_GL_DEBUG
-#include <GLES3/gl32.h>
-#endif
 
 #define SUPER_SAMPLE  1.15f
 
 extern vr_clientinfo_t vr;
 
-void APIENTRY VR_GLDebugLog(GLenum source, GLenum type, GLuint id,
+
+void VR_GLDebugLog(GLenum source, GLenum type, GLuint id,
 	GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
 	if (type == GL_DEBUG_TYPE_ERROR || type == GL_DEBUG_TYPE_PERFORMANCE || ENABLE_GL_DEBUG_VERBOSE)

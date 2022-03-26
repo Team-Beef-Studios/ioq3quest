@@ -21,12 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // tr_extensions.c - extensions needed by the renderer not in sdl_glimp.c
 
-#ifdef USE_LOCAL_HEADERS
-#	include "SDL.h"
-#else
-#	include <SDL.h>
-#endif
-
 #include "tr_local.h"
 #include "tr_dsa.h"
 
@@ -51,13 +45,15 @@ void GLimp_InitExtraExtensions(void)
 #undef GLE
 
 	// GL function loader, based on https://gist.github.com/rygorous/16796a0c876cf8a5f542caddb55bce8a
-#define GLE(ret, name, ...) qgl##name = (name##proc *) SDL_GL_GetProcAddress("gl" #name);
+#define GLE(ret, name, ...) qgl##name = (name##proc *) eglGetProcAddress("gl" #name);
 
 	// OpenGL 1.5 - GL_ARB_occlusion_query
 	glRefConfig.occlusionQuery = qtrue;
 	QGL_ARB_occlusion_query_PROCS;
 
-	// OpenGL 3.0 - GL_ARB_framebuffer_object
+    const char * allExtensions = (const char *)qglGetString( GL_EXTENSIONS );
+
+    // OpenGL 3.0 - GL_ARB_framebuffer_object
 #ifdef __ANDROID__
 	extension = "GL_OES_framebuffer_object";
 #else
@@ -66,7 +62,7 @@ void GLimp_InitExtraExtensions(void)
 	glRefConfig.framebufferObject = qfalse;
 	glRefConfig.framebufferBlit = qfalse;
 	glRefConfig.framebufferMultisample = qfalse;
-	if (q_gl_version_at_least_3_0 || SDL_GL_ExtensionSupported(extension))
+	if (q_gl_version_at_least_3_0 || strstr(allExtensions, extension))
 	{
 		glRefConfig.framebufferObject = !!r_ext_framebuffer_object->integer;
 		glRefConfig.framebufferBlit = qtrue;
@@ -91,7 +87,7 @@ void GLimp_InitExtraExtensions(void)
 	extension = "GL_ARB_vertex_array_object";
 #endif
 	glRefConfig.vertexArrayObject = qfalse;
-	if (q_gl_version_at_least_3_0 || SDL_GL_ExtensionSupported(extension))
+	if (q_gl_version_at_least_3_0 || strstr(allExtensions, extension))
 	{
 		if (q_gl_version_at_least_3_0)
 		{
@@ -119,7 +115,7 @@ void GLimp_InitExtraExtensions(void)
 	extension = "GL_ARB_texture_float";
 #endif
 	glRefConfig.textureFloat = qfalse;
-	if (q_gl_version_at_least_3_0 || SDL_GL_ExtensionSupported(extension))
+	if (q_gl_version_at_least_3_0 || strstr(allExtensions, extension))
 	{
 		glRefConfig.textureFloat = !!r_ext_texture_float->integer;
 
@@ -133,7 +129,7 @@ void GLimp_InitExtraExtensions(void)
 	// OpenGL 3.2 - GL_ARB_depth_clamp
 	extension = "GL_ARB_depth_clamp";
 	glRefConfig.depthClamp = qfalse;
-	if (q_gl_version_at_least_3_2 || SDL_GL_ExtensionSupported(extension))
+	if (q_gl_version_at_least_3_2 || strstr(allExtensions, extension))
 	{
 		glRefConfig.depthClamp = qtrue;
 
@@ -147,7 +143,7 @@ void GLimp_InitExtraExtensions(void)
 	// OpenGL 3.2 - GL_ARB_seamless_cube_map
 	extension = "GL_ARB_seamless_cube_map";
 	glRefConfig.seamlessCubeMap = qfalse;
-	if (q_gl_version_at_least_3_2 || SDL_GL_ExtensionSupported(extension))
+	if (q_gl_version_at_least_3_2 || strstr(allExtensions, extension))
 	{
 		glRefConfig.seamlessCubeMap = !!r_arb_seamless_cube_map->integer;
 
@@ -174,7 +170,7 @@ void GLimp_InitExtraExtensions(void)
 
 	// GL_NVX_gpu_memory_info
 	extension = "GL_NVX_gpu_memory_info";
-	if( SDL_GL_ExtensionSupported( extension ) )
+	if( strstr(allExtensions,  extension ) )
 	{
 		glRefConfig.memInfo = MI_NVX;
 
@@ -187,7 +183,7 @@ void GLimp_InitExtraExtensions(void)
 
 	// GL_ATI_meminfo
 	extension = "GL_ATI_meminfo";
-	if( SDL_GL_ExtensionSupported( extension ) )
+	if( strstr(allExtensions,  extension ) )
 	{
 		if (glRefConfig.memInfo == MI_NONE)
 		{
@@ -209,7 +205,7 @@ void GLimp_InitExtraExtensions(void)
 
 	// GL_ARB_texture_compression_rgtc
 	extension = "GL_ARB_texture_compression_rgtc";
-	if (SDL_GL_ExtensionSupported(extension))
+	if (strstr(allExtensions, extension))
 	{
 		qboolean useRgtc = r_ext_compressed_textures->integer >= 1;
 
@@ -227,7 +223,7 @@ void GLimp_InitExtraExtensions(void)
 
 	// GL_ARB_texture_compression_bptc
 	extension = "GL_ARB_texture_compression_bptc";
-	if (SDL_GL_ExtensionSupported(extension))
+	if (strstr(allExtensions, extension))
 	{
 		qboolean useBptc = r_ext_compressed_textures->integer >= 2;
 
@@ -244,7 +240,7 @@ void GLimp_InitExtraExtensions(void)
 	// GL_EXT_direct_state_access
 	extension = "GL_EXT_direct_state_access";
 	glRefConfig.directStateAccess = qfalse;
-	if (SDL_GL_ExtensionSupported(extension))
+	if (strstr(allExtensions, extension))
 	{
 		glRefConfig.directStateAccess = !!r_ext_direct_state_access->integer;
 

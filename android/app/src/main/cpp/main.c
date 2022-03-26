@@ -17,11 +17,10 @@
 #include <pthread.h>
 #include <sys/prctl.h>					// for prctl( PR_SET_NAME )
 
-#include <SDL.h>
-
 extern void CON_LogcatFn( void (*LogcatFn)( const char* message ) );
 
 
+#define ALOGV(...) ((void)__android_log_print(ANDROID_LOG_VERBOSE, "Quake3", __VA_ARGS__))
 #define ALOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "Quake3", __VA_ARGS__))
 #define ALOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "Quake3", __VA_ARGS__))
 #define ALOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "Quake3", __VA_ARGS__))
@@ -234,20 +233,15 @@ enum
 
 typedef struct
 {
-    JavaVM *		JavaVm;
-    jobject			ActivityObject;
-    jclass          ActivityClass;
     pthread_t		Thread;
     ovrMessageQueue	MessageQueue;
     ANativeWindow * NativeWindow;
 } ovrAppThread;
 
+static ovrAppThread * gAppThread = NULL;
 
-static void ovrAppThread_Create( ovrAppThread * appThread, JNIEnv * env, jobject activityObject, jclass activityClass )
+static void ovrAppThread_Create( ovrAppThread * appThread)
 {
-    (*env)->GetJavaVM( env, &appThread->JavaVm );
-    appThread->ActivityObject = (*env)->NewGlobalRef( env, activityObject );
-    appThread->ActivityClass = (*env)->NewGlobalRef( env, activityClass );
     appThread->Thread = 0;
     appThread->NativeWindow = NULL;
     ovrMessageQueue_Create( &appThread->MessageQueue );
@@ -262,8 +256,6 @@ static void ovrAppThread_Create( ovrAppThread * appThread, JNIEnv * env, jobject
 static void ovrAppThread_Destroy( ovrAppThread * appThread, JNIEnv * env )
 {
     pthread_join( appThread->Thread, NULL );
-    (*env)->DeleteGlobalRef( env, appThread->ActivityObject );
-    (*env)->DeleteGlobalRef( env, appThread->ActivityClass );
     ovrMessageQueue_Destroy( &appThread->MessageQueue );
 }
 
@@ -272,7 +264,7 @@ JNIEXPORT jlong JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeCreate(JNIE
     g_ActivityObject = (*env)->NewGlobalRef(env, thisObject);
 
     ovrAppThread * appThread = (ovrAppThread *) malloc( sizeof( ovrAppThread ) );
-    ovrAppThread_Create( appThread, env, thisObject, cls );
+    ovrAppThread_Create( appThread );
 
     ovrMessageQueue_Enable( &appThread->MessageQueue, true );
     ovrMessage message;
@@ -287,6 +279,117 @@ JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeFocusChanged
     g_HasFocus = focus;
 }
 
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeStart( JNIEnv * env, jobject obj, jlong handle, jobject obj1)
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_START, MQ_WAIT_PROCESSED );
+
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeResume( JNIEnv * env, jobject obj, jlong handle )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_RESUME, MQ_WAIT_PROCESSED );
+
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativePause( JNIEnv * env, jobject obj, jlong handle )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_PAUSE, MQ_WAIT_PROCESSED );
+
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeStop( JNIEnv * env, jobject obj, jlong handle )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_STOP, MQ_WAIT_PROCESSED );
+
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeDestroy( JNIEnv * env, jobject obj, jlong handle )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_DESTROY, MQ_WAIT_PROCESSED );
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+    ovrMessageQueue_Enable( &appThread->MessageQueue, false );
+
+    ovrAppThread_Destroy( appThread, env );
+
+    free( appThread );
+}
+
+/*
+================================================================================
+
+Surface lifecycle
+
+================================================================================
+*/
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeSurfaceCreated( JNIEnv * env, jobject obj, jlong handle, jobject surface )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+
+    ANativeWindow * newNativeWindow = ANativeWindow_fromSurface( env, surface );
+
+    appThread->NativeWindow = newNativeWindow;
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_SURFACE_CREATED, MQ_WAIT_PROCESSED );
+    ovrMessage_SetPointerParm( &message, 0, appThread->NativeWindow );
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeSurfaceChanged( JNIEnv * env, jobject obj, jlong handle, jobject surface )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+
+    ANativeWindow * newNativeWindow = ANativeWindow_fromSurface( env, surface );
+
+    if ( newNativeWindow != appThread->NativeWindow )
+    {
+        if ( appThread->NativeWindow != NULL )
+        {
+            ovrMessage message;
+            ovrMessage_Init( &message, MESSAGE_ON_SURFACE_DESTROYED, MQ_WAIT_PROCESSED );
+            ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+            ANativeWindow_release( appThread->NativeWindow );
+            appThread->NativeWindow = NULL;
+        }
+        if ( newNativeWindow != NULL )
+        {
+            appThread->NativeWindow = newNativeWindow;
+            ovrMessage message;
+            ovrMessage_Init( &message, MESSAGE_ON_SURFACE_CREATED, MQ_WAIT_PROCESSED );
+            ovrMessage_SetPointerParm( &message, 0, appThread->NativeWindow );
+            ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+        }
+    }
+    else if ( newNativeWindow != NULL )
+    {
+        ANativeWindow_release( newNativeWindow );
+    }
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeSurfaceDestroyed( JNIEnv * env, jobject obj, jlong handle )
+{
+    ovrAppThread * appThread = (ovrAppThread *)((size_t)handle);
+    ovrMessage message;
+    ovrMessage_Init( &message, MESSAGE_ON_SURFACE_DESTROYED, MQ_WAIT_PROCESSED );
+    ovrMessageQueue_PostMessage( &appThread->MessageQueue, &message );
+    ANativeWindow_release( appThread->NativeWindow );
+    appThread->NativeWindow = NULL;
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 {
     g_JavaVM = vm;
@@ -299,7 +402,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 
 static void ioq3_logfn(const char* msg)
 {
-	LOGI("%s", msg);
+	ALOGI("%s", msg);
 }
 
 static ovrJava engine_get_ovrJava() {
@@ -310,12 +413,376 @@ static ovrJava engine_get_ovrJava() {
 	return java;
 }
 
+/*
+================================================================================
+
+OpenGL-ES Utility Functions
+
+================================================================================
+*/
+
+typedef struct
+{
+    bool multi_view;						// GL_OVR_multiview, GL_OVR_multiview2
+    bool EXT_texture_border_clamp;			// GL_EXT_texture_border_clamp, GL_OES_texture_border_clamp
+} OpenGLExtensions_t;
+
+OpenGLExtensions_t glExtensions;
+
+static void EglInitExtensions()
+{
+#if defined EGL_SYNC
+    eglCreateSyncKHR		= (PFNEGLCREATESYNCKHRPROC)			eglGetProcAddress( "eglCreateSyncKHR" );
+	eglDestroySyncKHR		= (PFNEGLDESTROYSYNCKHRPROC)		eglGetProcAddress( "eglDestroySyncKHR" );
+	eglClientWaitSyncKHR	= (PFNEGLCLIENTWAITSYNCKHRPROC)		eglGetProcAddress( "eglClientWaitSyncKHR" );
+	eglSignalSyncKHR		= (PFNEGLSIGNALSYNCKHRPROC)			eglGetProcAddress( "eglSignalSyncKHR" );
+	eglGetSyncAttribKHR		= (PFNEGLGETSYNCATTRIBKHRPROC)		eglGetProcAddress( "eglGetSyncAttribKHR" );
+#endif
+
+    const char * allExtensions = (const char *)glGetString( GL_EXTENSIONS );
+    if ( allExtensions != NULL )
+    {
+        glExtensions.multi_view = strstr( allExtensions, "GL_OVR_multiview2" ) &&
+                                  strstr( allExtensions, "GL_OVR_multiview_multisampled_render_to_texture" );
+
+        glExtensions.EXT_texture_border_clamp = strstr( allExtensions, "GL_EXT_texture_border_clamp" ) ||
+                                                strstr( allExtensions, "GL_OES_texture_border_clamp" );
+    }
+}
+
+static const char * EglErrorString( const EGLint error )
+{
+    switch ( error )
+    {
+        case EGL_SUCCESS:				return "EGL_SUCCESS";
+        case EGL_NOT_INITIALIZED:		return "EGL_NOT_INITIALIZED";
+        case EGL_BAD_ACCESS:			return "EGL_BAD_ACCESS";
+        case EGL_BAD_ALLOC:				return "EGL_BAD_ALLOC";
+        case EGL_BAD_ATTRIBUTE:			return "EGL_BAD_ATTRIBUTE";
+        case EGL_BAD_CONTEXT:			return "EGL_BAD_CONTEXT";
+        case EGL_BAD_CONFIG:			return "EGL_BAD_CONFIG";
+        case EGL_BAD_CURRENT_SURFACE:	return "EGL_BAD_CURRENT_SURFACE";
+        case EGL_BAD_DISPLAY:			return "EGL_BAD_DISPLAY";
+        case EGL_BAD_SURFACE:			return "EGL_BAD_SURFACE";
+        case EGL_BAD_MATCH:				return "EGL_BAD_MATCH";
+        case EGL_BAD_PARAMETER:			return "EGL_BAD_PARAMETER";
+        case EGL_BAD_NATIVE_PIXMAP:		return "EGL_BAD_NATIVE_PIXMAP";
+        case EGL_BAD_NATIVE_WINDOW:		return "EGL_BAD_NATIVE_WINDOW";
+        case EGL_CONTEXT_LOST:			return "EGL_CONTEXT_LOST";
+        default:						return "unknown";
+    }
+}
+
+static const char * GlFrameBufferStatusString( GLenum status )
+{
+    switch ( status )
+    {
+        case GL_FRAMEBUFFER_UNDEFINED:						return "GL_FRAMEBUFFER_UNDEFINED";
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:			return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:	return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+        case GL_FRAMEBUFFER_UNSUPPORTED:					return "GL_FRAMEBUFFER_UNSUPPORTED";
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:			return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+        default:											return "unknown";
+    }
+}
+
+
+/*
+================================================================================
+
+ovrEgl
+
+================================================================================
+*/
+
+typedef struct
+{
+    EGLint		MajorVersion;
+    EGLint		MinorVersion;
+    EGLDisplay	Display;
+    EGLConfig	Config;
+    EGLSurface	TinySurface;
+    EGLSurface	MainSurface;
+    EGLContext	Context;
+} ovrEgl;
+
+static void ovrEgl_Clear( ovrEgl * egl )
+{
+    egl->MajorVersion = 0;
+    egl->MinorVersion = 0;
+    egl->Display = 0;
+    egl->Config = 0;
+    egl->TinySurface = EGL_NO_SURFACE;
+    egl->MainSurface = EGL_NO_SURFACE;
+    egl->Context = EGL_NO_CONTEXT;
+}
+
+static void ovrEgl_CreateContext( ovrEgl * egl, const ovrEgl * shareEgl )
+{
+    if ( egl->Display != 0 )
+    {
+        return;
+    }
+
+    egl->Display = eglGetDisplay( EGL_DEFAULT_DISPLAY );
+    eglInitialize( egl->Display, &egl->MajorVersion, &egl->MinorVersion );
+    // Do NOT use eglChooseConfig, because the Android EGL code pushes in multisample
+    // flags in eglChooseConfig if the user has selected the "force 4x MSAA" option in
+    // settings, and that is completely wasted for our warp target.
+    const int MAX_CONFIGS = 1024;
+    EGLConfig configs[MAX_CONFIGS];
+    EGLint numConfigs = 0;
+    if ( eglGetConfigs( egl->Display, configs, MAX_CONFIGS, &numConfigs ) == EGL_FALSE )
+    {
+        ALOGE( "        eglGetConfigs() failed: %s", EglErrorString( eglGetError() ) );
+        return;
+    }
+    const EGLint configAttribs[] =
+            {
+                    EGL_RED_SIZE,		8,
+                    EGL_GREEN_SIZE,		8,
+                    EGL_BLUE_SIZE,		8,
+                    EGL_ALPHA_SIZE,		8, // need alpha for the multi-pass timewarp compositor
+                    EGL_DEPTH_SIZE,		24,
+                    EGL_STENCIL_SIZE,	8,
+                    EGL_SAMPLES,		0,
+                    EGL_NONE
+            };
+    egl->Config = 0;
+    for ( int i = 0; i < numConfigs; i++ )
+    {
+        EGLint value = 0;
+
+        eglGetConfigAttrib( egl->Display, configs[i], EGL_RENDERABLE_TYPE, &value );
+        if ( ( value & EGL_OPENGL_ES3_BIT_KHR ) != EGL_OPENGL_ES3_BIT_KHR )
+        {
+            continue;
+        }
+
+        // The pbuffer config also needs to be compatible with normal window rendering
+        // so it can share textures with the window context.
+        eglGetConfigAttrib( egl->Display, configs[i], EGL_SURFACE_TYPE, &value );
+        if ( ( value & ( EGL_WINDOW_BIT | EGL_PBUFFER_BIT ) ) != ( EGL_WINDOW_BIT | EGL_PBUFFER_BIT ) )
+        {
+            continue;
+        }
+
+        int	j = 0;
+        for ( ; configAttribs[j] != EGL_NONE; j += 2 )
+        {
+            eglGetConfigAttrib( egl->Display, configs[i], configAttribs[j], &value );
+            if ( value != configAttribs[j + 1] )
+            {
+                break;
+            }
+        }
+        if ( configAttribs[j] == EGL_NONE )
+        {
+            egl->Config = configs[i];
+            break;
+        }
+    }
+    if ( egl->Config == 0 )
+    {
+        ALOGE( "        eglChooseConfig() failed: %s", EglErrorString( eglGetError() ) );
+        return;
+    }
+    EGLint contextAttribs[] =
+            {
+                    EGL_CONTEXT_CLIENT_VERSION, 3,
+                    EGL_NONE
+            };
+    ALOGV( "        Context = eglCreateContext( Display, Config, EGL_NO_CONTEXT, contextAttribs )" );
+    egl->Context = eglCreateContext( egl->Display, egl->Config, ( shareEgl != NULL ) ? shareEgl->Context : EGL_NO_CONTEXT, contextAttribs );
+    if ( egl->Context == EGL_NO_CONTEXT )
+    {
+        ALOGE( "        eglCreateContext() failed: %s", EglErrorString( eglGetError() ) );
+        return;
+    }
+    const EGLint surfaceAttribs[] =
+            {
+                    EGL_WIDTH, 16,
+                    EGL_HEIGHT, 16,
+                    EGL_NONE
+            };
+    ALOGV( "        TinySurface = eglCreatePbufferSurface( Display, Config, surfaceAttribs )" );
+    egl->TinySurface = eglCreatePbufferSurface( egl->Display, egl->Config, surfaceAttribs );
+    if ( egl->TinySurface == EGL_NO_SURFACE )
+    {
+        ALOGE( "        eglCreatePbufferSurface() failed: %s", EglErrorString( eglGetError() ) );
+        eglDestroyContext( egl->Display, egl->Context );
+        egl->Context = EGL_NO_CONTEXT;
+        return;
+    }
+    ALOGV( "        eglMakeCurrent( Display, TinySurface, TinySurface, Context )" );
+    if ( eglMakeCurrent( egl->Display, egl->TinySurface, egl->TinySurface, egl->Context ) == EGL_FALSE )
+    {
+        ALOGE( "        eglMakeCurrent() failed: %s", EglErrorString( eglGetError() ) );
+        eglDestroySurface( egl->Display, egl->TinySurface );
+        eglDestroyContext( egl->Display, egl->Context );
+        egl->Context = EGL_NO_CONTEXT;
+        return;
+    }
+}
+
+static void ovrEgl_DestroyContext( ovrEgl * egl )
+{
+    if ( egl->Display != 0 )
+    {
+        ALOGE( "        eglMakeCurrent( Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT )" );
+        if ( eglMakeCurrent( egl->Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT ) == EGL_FALSE )
+        {
+            ALOGE( "        eglMakeCurrent() failed: %s", EglErrorString( eglGetError() ) );
+        }
+    }
+    if ( egl->Context != EGL_NO_CONTEXT )
+    {
+        ALOGE( "        eglDestroyContext( Display, Context )" );
+        if ( eglDestroyContext( egl->Display, egl->Context ) == EGL_FALSE )
+        {
+            ALOGE( "        eglDestroyContext() failed: %s", EglErrorString( eglGetError() ) );
+        }
+        egl->Context = EGL_NO_CONTEXT;
+    }
+    if ( egl->TinySurface != EGL_NO_SURFACE )
+    {
+        ALOGE( "        eglDestroySurface( Display, TinySurface )" );
+        if ( eglDestroySurface( egl->Display, egl->TinySurface ) == EGL_FALSE )
+        {
+            ALOGE( "        eglDestroySurface() failed: %s", EglErrorString( eglGetError() ) );
+        }
+        egl->TinySurface = EGL_NO_SURFACE;
+    }
+    if ( egl->Display != 0 )
+    {
+        ALOGE( "        eglTerminate( Display )" );
+        if ( eglTerminate( egl->Display ) == EGL_FALSE )
+        {
+            ALOGE( "        eglTerminate() failed: %s", EglErrorString( eglGetError() ) );
+        }
+        egl->Display = 0;
+    }
+}
+
+
+/*
+================================================================================
+
+ovrApp
+
+================================================================================
+*/
+
+#define MAX_TRACKING_SAMPLES 4
+
+typedef struct
+{
+    ovrJava				Java;
+    ovrEgl				Egl;
+    ANativeWindow *		NativeWindow;
+    bool				Resumed;
+    ovrMobile *			Ovr;
+    long long			RenderThreadFrameIndex;
+    long long			MainThreadFrameIndex;
+    double 				DisplayTime[MAX_TRACKING_SAMPLES];
+    ovrTracking2        Tracking[MAX_TRACKING_SAMPLES];
+    int					SwapInterval;
+    int					CpuLevel;
+    int					GpuLevel;
+    int					MainThreadTid;
+    int					RenderThreadTid;
+    ovrLayer_Union2		Layers[ovrMaxLayerCount];
+    int					LayerCount;
+} ovrApp;
+
+static void ovrApp_Clear( ovrApp * app )
+{
+    app->Java.Vm = NULL;
+    app->Java.Env = NULL;
+    app->Java.ActivityObject = NULL;
+    app->Ovr = NULL;
+    app->RenderThreadFrameIndex = 1;
+    app->MainThreadFrameIndex = 1;
+    memset(app->DisplayTime, 0, MAX_TRACKING_SAMPLES * sizeof(double));
+    memset(app->Tracking, 0, MAX_TRACKING_SAMPLES * sizeof(ovrTracking2));
+    app->SwapInterval = 1;
+    app->CpuLevel = 4;
+    app->GpuLevel = 4;
+    app->MainThreadTid = 0;
+    app->RenderThreadTid = 0;
+
+    ovrEgl_Clear( &app->Egl );
+}
+
+
+static ovrApp gAppState;
+
+bool ioquake3quest_processMessageQueue() {
+    for ( ; ; )
+    {
+        ovrMessage message;
+        const bool waitForMessages = ( gAppState.Ovr == NULL );
+        if ( !ovrMessageQueue_GetNextMessage( &gAppThread->MessageQueue, &message, waitForMessages ) )
+        {
+            break;
+        }
+
+        switch ( message.Id )
+        {
+            case MESSAGE_ON_CREATE:
+            {
+                break;
+            }
+            case MESSAGE_ON_START:
+            {
+                break;
+            }
+            case MESSAGE_ON_RESUME:
+            {
+                //If we get here, then user has opted not to quit
+                gAppState.Resumed = true;
+                VR_LeaveVR(VR_GetEngine());
+                break;
+            }
+            case MESSAGE_ON_PAUSE:
+            {
+                gAppState.Resumed = false;
+                VR_EnterVR(VR_GetEngine(), engine_get_ovrJava());
+                break;
+            }
+            case MESSAGE_ON_STOP:
+            {
+                break;
+            }
+            case MESSAGE_ON_DESTROY:
+            {
+                gAppState.NativeWindow = NULL;
+                break;
+            }
+            case MESSAGE_ON_SURFACE_CREATED:	{ gAppState.NativeWindow = (ANativeWindow *)ovrMessage_GetPointerParm( &message, 0 ); break; }
+            case MESSAGE_ON_SURFACE_DESTROYED:	{ gAppState.NativeWindow = NULL; break; }
+        }
+    }
+
+    return true;
+}
+
 void * AppThreadFunction(void * parm ) {
-	ovrJava java = engine_get_ovrJava();
+    gAppThread = (ovrAppThread *) parm;
+
+    gAppState.CpuLevel = 4;
+    gAppState.GpuLevel = 4;
+    gAppState.MainThreadTid = gettid();
+
+    sleep(30);
+
+    ovrEgl_CreateContext(&gAppState.Egl, NULL);
+
+    EglInitExtensions();
+
+    ovrJava java = engine_get_ovrJava();
 	engine_t* engine = NULL;
 	engine = VR_Init(java);
-
-	sleep(30);
 
 	//First set up resolution cached values
 	int width, height;
@@ -348,20 +815,7 @@ void * AppThreadFunction(void * parm ) {
 			}
 		}
 
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			LOGI("Received SDL Event: %d", event.type);
-			switch (event.type)
-			{
-				case SDL_WINDOWEVENT_FOCUS_GAINED:
-					VR_EnterVR(engine, engine_get_ovrJava());
-					break;
-
-				case SDL_WINDOWEVENT_FOCUS_LOST:
-					VR_LeaveVR(engine);
-					break;
-			}
-		}
+		ioquake3quest_processMessageQueue();
 
 		VR_DrawFrame(engine);
 	}

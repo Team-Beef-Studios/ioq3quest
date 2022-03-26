@@ -31,16 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <ctype.h>
 #include <errno.h>
 
-#ifndef DEDICATED
-#ifdef USE_LOCAL_HEADERS
-#	include "SDL.h"
-#	include "SDL_cpuinfo.h"
-#else
-#	include <SDL.h>
-#	include <SDL_cpuinfo.h>
-#endif
-#endif
-
 #include "sys_local.h"
 #include "sys_loadlib.h"
 
@@ -112,14 +102,6 @@ Restart the input subsystem
 */
 void Sys_In_Restart_f( void )
 {
-#ifndef DEDICATED
-	if( !SDL_WasInit( SDL_INIT_VIDEO ) )
-	{
-		Com_Printf( "in_restart: Cannot restart input while video is shutdown\n" );
-		return;
-	}
-#endif
-
 	IN_Restart( );
 }
 
@@ -142,26 +124,7 @@ Sys_GetClipboardData
 */
 char *Sys_GetClipboardData(void)
 {
-#ifdef DEDICATED
 	return NULL;
-#else
-	char *data = NULL;
-	char *cliptext;
-
-	if ( ( cliptext = SDL_GetClipboardText() ) != NULL ) {
-		if ( cliptext[0] != '\0' ) {
-			size_t bufsize = strlen( cliptext ) + 1;
-
-			data = Z_Malloc( bufsize );
-			Q_strncpyz( data, cliptext, bufsize );
-
-			// find first listed char and set to '\0'
-			strtok( data, "\n\r\b" );
-		}
-		SDL_free( cliptext );
-	}
-	return data;
-#endif
 }
 
 #ifdef DEDICATED
@@ -284,10 +247,6 @@ static __attribute__ ((noreturn)) void Sys_Exit( int exitCode )
 {
 	CON_Shutdown( );
 
-#ifndef DEDICATED
-	SDL_Quit( );
-#endif
-
 	if( exitCode < 2 && com_fullyInitialized )
 	{
 		// Normal exit
@@ -320,6 +279,7 @@ cpuFeatures_t Sys_GetProcessorFeatures( void )
 {
 	cpuFeatures_t features = 0;
 
+	/*
 #ifndef DEDICATED
 	if( SDL_HasRDTSC( ) )      features |= CF_RDTSC;
 	if( SDL_Has3DNow( ) )      features |= CF_3DNOW;
@@ -328,6 +288,7 @@ cpuFeatures_t Sys_GetProcessorFeatures( void )
 	if( SDL_HasSSE2( ) )       features |= CF_SSE2;
 	if( SDL_HasAltiVec( ) )    features |= CF_ALTIVEC;
 #endif
+*/
 
 	return features;
 }
@@ -680,93 +641,3 @@ void Sys_SigHandler( int signal )
 	else
 		Sys_Exit( 2 );
 }
-
-/*
-=================
-main
-=================
-*/
-int main( int argc, char **argv )
-{
-	int   i;
-	char  commandLine[ MAX_STRING_CHARS ] = { 0 };
-
-	extern void Sys_LaunchAutoupdater(int argc, char **argv);
-	Sys_LaunchAutoupdater(argc, argv);
-
-#ifndef DEDICATED
-	// SDL version check
-
-	// Compile time
-#	if !SDL_VERSION_ATLEAST(MINSDL_MAJOR,MINSDL_MINOR,MINSDL_PATCH)
-#		error A more recent version of SDL is required
-#	endif
-
-	// Run time
-	SDL_version ver;
-	SDL_GetVersion( &ver );
-
-#define MINSDL_VERSION \
-	XSTRING(MINSDL_MAJOR) "." \
-	XSTRING(MINSDL_MINOR) "." \
-	XSTRING(MINSDL_PATCH)
-
-	if( SDL_VERSIONNUM( ver.major, ver.minor, ver.patch ) <
-			SDL_VERSIONNUM( MINSDL_MAJOR, MINSDL_MINOR, MINSDL_PATCH ) )
-	{
-		Sys_Dialog( DT_ERROR, va( "SDL version " MINSDL_VERSION " or greater is required, "
-			"but only version %d.%d.%d was found. You may be able to obtain a more recent copy "
-			"from http://www.libsdl.org/.", ver.major, ver.minor, ver.patch ), "SDL Library Too Old" );
-
-		Sys_Exit( 1 );
-	}
-#endif
-
-	Sys_PlatformInit( );
-
-	// Set the initial time base
-	Sys_Milliseconds( );
-
-#ifdef __APPLE__
-	// This is passed if we are launched by double-clicking
-	if ( argc >= 2 && Q_strncmp ( argv[1], "-psn", 4 ) == 0 )
-		argc = 1;
-#endif
-
-	Sys_ParseArgs( argc, argv );
-	Sys_SetBinaryPath( Sys_Dirname( argv[ 0 ] ) );
-	Sys_SetDefaultInstallPath( DEFAULT_BASEDIR );
-
-	// Concatenate the command line for passing to Com_Init
-	for( i = 1; i < argc; i++ )
-	{
-		const qboolean containsSpaces = strchr(argv[i], ' ') != NULL;
-		if (containsSpaces)
-			Q_strcat( commandLine, sizeof( commandLine ), "\"" );
-
-		Q_strcat( commandLine, sizeof( commandLine ), argv[ i ] );
-
-		if (containsSpaces)
-			Q_strcat( commandLine, sizeof( commandLine ), "\"" );
-
-		Q_strcat( commandLine, sizeof( commandLine ), " " );
-	}
-
-	CON_Init( );
-	Com_Init( commandLine );
-	NET_Init( );
-
-	signal( SIGILL, Sys_SigHandler );
-	signal( SIGFPE, Sys_SigHandler );
-	signal( SIGSEGV, Sys_SigHandler );
-	signal( SIGTERM, Sys_SigHandler );
-	signal( SIGINT, Sys_SigHandler );
-
-	while( 1 )
-	{
-		Com_Frame( );
-	}
-
-	return 0;
-}
-

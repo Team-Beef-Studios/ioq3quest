@@ -14,7 +14,6 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 add_custom_target(copy_libs
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libioquake3_opengl2.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libioquake3_opengl2.so
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libSDL2.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libSDL2.so
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/libvrapi.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libvrapi.so
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/baseq3/cgameaarch64.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libcgameaarch64_baseq3.so
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/../../../../../build/${BUILD_FOLDER}/baseq3/qagameaarch64.so ${CMAKE_SOURCE_DIR}/../jniLibs/arm64-v8a/libqagameaarch64_baseq3.so
@@ -28,17 +27,18 @@ add_dependencies(main copy_libs)
 
 target_include_directories(main PRIVATE
 	${CMAKE_SOURCE_DIR}/code/VrApi/Include
-	${CMAKE_SOURCE_DIR}/code/SDL2/include
 	${CMAKE_SOURCE_DIR}/code)
 
 target_compile_definitions(main PRIVATE
 	ARCH_STRING=android)
 
-find_library(log-lib log)
+find_library(log-lib log EGL GLESv3)
 
 target_link_libraries(main
 	android
 	ioquake3_opengl2
-	SDL2
 	vrapi
-	${log-lib})
+	${log-lib}
+	EGL
+	GLESv3)
+

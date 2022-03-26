@@ -26,26 +26,52 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef __QGL_H__
 #define __QGL_H__
 
-#ifdef USE_LOCAL_HEADERS
-#	include "SDL_opengl.h"
-#	include "SDL_opengles2.h"
-#else
-#	include <SDL_opengl.h>
-#	include <SDL_opengles2.h>
-#endif
+#define APIENTRY
+#define GL_APIENTRY
 
-extern void (APIENTRYP qglActiveTextureARB) (GLenum texture);
-extern void (APIENTRYP qglClientActiveTextureARB) (GLenum texture);
-extern void (APIENTRYP qglMultiTexCoord2fARB) (GLenum target, GLfloat s, GLfloat t);
 
-extern void (APIENTRYP qglLockArraysEXT) (GLint first, GLsizei count);
-extern void (APIENTRYP qglUnlockArraysEXT) (void);
+/*
+ * Datatypes
+ */
+typedef unsigned int	GLenum;
+typedef unsigned char	GLboolean;
+typedef unsigned int	GLbitfield;
+typedef void		GLvoid;
+typedef signed char	GLbyte;		/* 1-byte signed */
+typedef short		GLshort;	/* 2-byte signed */
+typedef int		GLint;		/* 4-byte signed */
+typedef unsigned char	GLubyte;	/* 1-byte unsigned */
+typedef unsigned short	GLushort;	/* 2-byte unsigned */
+typedef unsigned int	GLuint;		/* 4-byte unsigned */
+typedef int		GLsizei;	/* 4-byte signed */
+typedef float		GLfloat;	/* single precision float */
+typedef float		GLclampf;	/* single precision float in [0,1] */
+typedef double		GLdouble;	/* double precision float */
+typedef double		GLclampd;	/* double precision float in [0,1] */
+typedef GLint GLfixed;
+
+#include "../sdl/SDL_opengl.h" // borrowed
+#include "../sdl/SDL_opengl_glext.h" // borrowed
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#include <GLES/glext.h>
+
+#include <GLES3/gl32.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
+
+
+extern void (*qglActiveTextureARB) (GLenum texture);
+extern void (*qglClientActiveTextureARB) (GLenum texture);
+extern void (*qglMultiTexCoord2fARB) (GLenum target, GLfloat s, GLfloat t);
+
+extern void (*qglLockArraysEXT) (GLint first, GLsizei count);
+extern void (*qglUnlockArraysEXT) (void);
 
 
 //===========================================================================
-
-// GL function loader, based on https://gist.github.com/rygorous/16796a0c876cf8a5f542caddb55bce8a
-// get missing functions from code/SDL2/include/SDL_opengl.h
 
 // OpenGL 1.0/1.1, OpenGL ES 1.0, and OpenGL 3.2 core profile
 #define QGL_1_1_PROCS \
@@ -320,7 +346,8 @@ extern void (APIENTRYP qglUnlockArraysEXT) (void);
 	GLE(GLvoid, NamedFramebufferTexture2DEXT, GLuint framebuffer, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
 	GLE(GLvoid, NamedFramebufferRenderbufferEXT, GLuint framebuffer, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer) \
 
-#define GLE(ret, name, ...) typedef ret APIENTRY name##proc(__VA_ARGS__);
+
+#define GLE(ret, name, ...) typedef ret name##proc(__VA_ARGS__);
 QGL_1_1_PROCS;
 QGL_1_1_FIXED_FUNCTION_PROCS;
 QGL_DESKTOP_1_1_PROCS;
