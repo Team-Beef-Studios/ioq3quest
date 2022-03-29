@@ -5,7 +5,7 @@
 ### Prerequisites
 1. Install your copy of Quake III Arena from Steam.
 2. Android Studio with NDK version 21.1.6352462.
-3. Download the Oculus VR SDK from https://developer.oculus.com/downloads/package/oculus-mobile-sdk/
+3. Download the Oculus OpenXR SDK from https://developer.oculus.com/downloads/package/oculus-openxr-mobile-sdk/
 4. Extract the OpenXR folder to ./android/app/src/main/cpp/code/OpenXR/
 5. Extract the 3rdParty/khronos/openxr/OpenXR-SDK folder to ./android/app/src/main/cpp/code/OpenXR-SDK/
 

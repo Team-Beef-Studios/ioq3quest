@@ -27,7 +27,7 @@ add_custom_target(copy_libs
 add_dependencies(main copy_libs)
 
 target_include_directories(main PRIVATE
-	${CMAKE_SOURCE_DIR}/code/OpenXR/Include
+	${CMAKE_SOURCE_DIR}/code/OpenXR-SDK/include
 	${CMAKE_SOURCE_DIR}/code/SDL2/include
 	${CMAKE_SOURCE_DIR}/code)
 

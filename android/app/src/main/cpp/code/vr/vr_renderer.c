@@ -75,6 +75,10 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 		*pWidth = width;
 		*pHeight = height;
 	}
+
+	//TODO:remove hardcoded values
+	*pWidth = 3664 / 2;
+	*pHeight = 1920;
 }
 
 void VR_InitRenderer( engine_t* engine ) {

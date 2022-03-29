@@ -468,7 +468,7 @@ ifeq ($(PLATFORM),android)
   CLIENT_EXTRA_FILES += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
 
   # OpenXR
-  BASE_CFLAGS += -I$(OPENXRDIR)/Include -I$(OPENXRSDKDIR)/Include
+  BASE_CFLAGS += -I$(OPENXRDIR)/Include -I$(OPENXRSDKDIR)/include
   CLIENT_LIBS += $(OPENXRDIR)/Libs/Android/arm64-v8a/Release/libopenxr_loader.so
   RENDERER_LIBS += $(OPENXRDIR)/Libs/Android/arm64-v8a/Release/libopenxr_loader.so
   CLIENT_EXTRA_FILES += $(OPENXRDIR)/Libs/Android/arm64-v8a/Release/libopenxr_loader.so

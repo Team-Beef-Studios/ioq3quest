@@ -9,7 +9,14 @@
 #	include <SDL_opengles2.h>
 #endif
 
+//OpenXR
+#define XR_USE_GRAPHICS_API_OPENGL_ES 1
+#define XR_USE_PLATFORM_ANDROID 1
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <jni.h>
+#include <openxr/openxr.h>
+#include <openxr/openxr_platform.h>
 
 typedef struct {
 	JavaVM* Vm;
@@ -27,11 +34,12 @@ typedef struct {
 
 typedef struct {
 	uint64_t frameIndex;
-	//TODO:ovrMobile* ovr;
 	ovrJava java;
 	double predictedDisplayTime;
 	//TODO:ovrTracking2 tracking;
 	framebuffer_t framebuffers[2];
+	XrInstance Instance;
+	XrSession Session;
 } engine_t;
 
 typedef enum {
