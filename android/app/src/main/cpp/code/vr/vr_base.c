@@ -1,7 +1,4 @@
 #include "vr_base.h"
-#include "../VrApi/Include/VrApi.h"
-#include "../VrApi/Include/VrApi_Helpers.h"
-#include "../VrApi/Include/VrApi_Types.h"
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/client.h"
@@ -42,6 +39,8 @@ cvar_t *vr_weaponSelectorWithHud = NULL;
 
 engine_t* VR_Init( ovrJava java )
 {
+	//TODO:
+	/*
 	ovrInitParms initParams;
 	ovrResult initResult;
 
@@ -50,7 +49,7 @@ engine_t* VR_Init( ovrJava java )
 	initParams = vrapi_DefaultInitParms(&java);
 	initResult = vrapi_Initialize(&initParams);
 	assert(initResult == VRAPI_INITIALIZE_SUCCESS);
-	
+	*/
 	vr_engine.java = java;
 
 	return &vr_engine;
@@ -176,11 +175,13 @@ void VR_InitCvars( void )
 void VR_Destroy( engine_t* engine )
 {
 	if (engine == &vr_engine) {
-		vrapi_Shutdown();
+		//TODO:vrapi_Shutdown();
 	}
 }
 
 void VR_EnterVR( engine_t* engine, ovrJava java ) {
+	//TODO:
+	/*
 	if (!engine->ovr) {
 		ovrModeParms modeParams = vrapi_DefaultModeParms(&java);
 		modeParams.Display = (size_t)eglGetCurrentDisplay();
@@ -194,29 +195,33 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
 
         vrapi_SetClockLevels(engine->ovr, 4, 4);
 	}
+	 */
 }
 
 void VR_LeaveVR( engine_t* engine ) {
+	//TODO:
+	/*
 	if (engine->ovr) {
 		vrapi_LeaveVrMode(engine->ovr);
 		engine->ovr = NULL;
 	}
+	 */
 }
 
 engine_t* VR_GetEngine( void ) {
 	return &vr_engine;
 }
 
-bool VR_useScreenLayer( void )
+int VR_useScreenLayer( void )
 {
 	//intermission is never full screen
     if ( cl.snap.ps.pm_type == PM_INTERMISSION )
     {
-        return qfalse;
+        return 0;
     }
 
     int keyCatcher = Key_GetCatcher( );
-	return (bool)( clc.state == CA_CINEMATIC ||
+	return ( clc.state == CA_CINEMATIC ||
 			( keyCatcher & (KEYCATCH_UI | KEYCATCH_CONSOLE) ));
 }
 //#endif

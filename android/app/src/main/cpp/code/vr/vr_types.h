@@ -9,26 +9,29 @@
 #	include <SDL_opengles2.h>
 #endif
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wstrict-prototypes"
-#include <VrApi.h>
-#pragma clang diagnostic pop
+#include <jni.h>
+
+typedef struct {
+	JavaVM* Vm;
+	jobject ActivityObject;
+	JNIEnv* Env;
+} ovrJava;
 
 typedef struct {
 	int swapchainLength;
 	int swapchainIndex;
-	ovrTextureSwapChain* colorTexture;
+	//TODO:ovrTextureSwapChain* colorTexture;
 	GLuint* depthBuffers;
 	GLuint* framebuffers;
 } framebuffer_t;
 
 typedef struct {
 	uint64_t frameIndex;
-	ovrMobile* ovr;
+	//TODO:ovrMobile* ovr;
 	ovrJava java;
 	double predictedDisplayTime;
-	ovrTracking2 tracking;
-	framebuffer_t framebuffers[VRAPI_FRAME_LAYER_EYE_MAX];
+	//TODO:ovrTracking2 tracking;
+	framebuffer_t framebuffers[2];
 } engine_t;
 
 typedef enum {

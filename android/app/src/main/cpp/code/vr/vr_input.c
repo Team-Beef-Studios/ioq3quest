@@ -7,8 +7,6 @@
 #include "../client/keycodes.h"
 #include "../client/client.h"
 #include "vr_base.h"
-#include "../VrApi/Include/VrApi_Input.h"
-#include "../VrApi/Include/VrApi_Helpers.h"
 #include "vr_clientinfo.h"
 
 #include <unistd.h>
@@ -89,6 +87,8 @@ void rotateAboutOrigin(float x, float y, float rotation, vec2_t out)
 	out[1] = cosf(DEG2RAD(-rotation)) * y  -  sinf(DEG2RAD(-rotation)) * x;
 }
 
+//TODO:
+/*
 static ovrVector3f normalizeVec(ovrVector3f vec) {
     //NOTE: leave w-component untouched
     //@@const float EPSILON = 0.000001f;
@@ -104,6 +104,7 @@ static ovrVector3f normalizeVec(ovrVector3f vec) {
     result.z = vec.z * invLength;
     return result;
 }
+*/
 
 void NormalizeAngles(vec3_t angles)
 {
@@ -115,6 +116,8 @@ void NormalizeAngles(vec3_t angles)
     while (angles[2] < -180) angles[2] += 360;
 }
 
+//TODO:
+/*
 void GetAnglesFromVectors(const ovrVector3f forward, const ovrVector3f right, const ovrVector3f up, vec3_t angles)
 {
     float sr, sp, sy, cr, cp, cy;
@@ -192,11 +195,12 @@ void QuatToYawPitchRoll(ovrQuatf q, vec3_t rotation, vec3_t out) {
 
     GetAnglesFromVectors(forwardNormal, rightNormal, upNormal, out);
 }
+*/
 
 //0 = left, 1 = right
 float vibration_channel_duration[2] = {0.0f, 0.0f};
 float vibration_channel_intensity[2] = {0.0f, 0.0f};
-ovrDeviceID controllerIDs[2];
+//TODO:ovrDeviceID controllerIDs[2];
 
 void VR_Vibrate( int duration, int chan, float intensity )
 {
@@ -224,7 +228,8 @@ static void VR_processHaptics() {
     float frametime = timestamp - lastFrameTime;
     lastFrameTime = timestamp;
 
-    for (int i = 0; i < 2; ++i) {
+    //TODO:
+    /*for (int i = 0; i < 2; ++i) {
         if (vibration_channel_duration[i] > 0.0f ||
             vibration_channel_duration[i] == -1.0f) {
             vrapi_SetHapticVibrationSimple(VR_GetEngine()->ovr, controllerIDs[i],
@@ -241,7 +246,7 @@ static void VR_processHaptics() {
         } else {
             vrapi_SetHapticVibrationSimple(VR_GetEngine()->ovr, controllerIDs[i], 0.0f);
         }
-    }
+    }*/
 }
 
 // Returns true in case button press should be auto-repeated when holding (now only applicable for smooth-turn)
@@ -428,6 +433,8 @@ void IN_VRInit( void )
     android_haptic_event = (*engine->java.Env)->GetMethodID(engine->java.Env, callbackClass, "haptic_event","(Ljava/lang/String;IIIFF)V");
 }
 
+//TODO:
+/*
 static void IN_VRController( qboolean isRightController, ovrTracking remoteTracking )
 {
     if (isRightController == (vr_righthanded->integer != 0))
@@ -515,6 +522,7 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
         }
     }
 }
+*/
 
 static void IN_VRJoystick( qboolean isRightController, float joystickX, float joystickY )
 {
@@ -545,7 +553,8 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
             else
             {
 				//Positional movement speed correction for when we are not hitting target framerate
-				int refresh = vrapi_GetSystemPropertyInt(&(VR_GetEngine()->java), VRAPI_SYS_PROP_DISPLAY_REFRESH_RATE);
+				//TODO:int refresh = vrapi_GetSystemPropertyInt(&(VR_GetEngine()->java), VRAPI_SYS_PROP_DISPLAY_REFRESH_RATE);
+				int refresh = 72;
 				float multiplier = (float)((1000.0 / refresh) / (in_vrEventTime - lastframetime));
 
 				float factor = (refresh / 72.0F) * 10.0f; // adjust positional factor based on refresh rate
@@ -908,6 +917,8 @@ static void IN_VRButtons( qboolean isRightController, uint32_t buttons )
 
 	vrController_t* controller = isRightController == qtrue ? &rightController : &leftController;
 
+	//TODO:
+	/*
 	{
         if ((buttons & ovrButton_Enter) && !(controller->buttons & ovrButton_Enter)) {
             controller->buttons |= ovrButton_Enter;
@@ -1117,6 +1128,7 @@ static void IN_VRButtons( qboolean isRightController, uint32_t buttons )
             IN_SendButtonAction(action, qfalse, qfalse, 0);
         }
     }
+    */
 }
 
 void IN_VRInputFrame( void )
@@ -1127,6 +1139,8 @@ void IN_VRInputFrame( void )
 		controllerInit = qtrue;
 	}
 
+	//TODO:
+	/*
 	ovrMobile* ovr = VR_GetEngine()->ovr;
 	if (!ovr) {
 		return;
@@ -1240,6 +1254,7 @@ void IN_VRInputFrame( void )
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
+	 */
 }
 
 //#endif

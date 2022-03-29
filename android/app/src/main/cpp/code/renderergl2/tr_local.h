@@ -2507,7 +2507,7 @@ void RE_StretchPic ( float x, float y, float w, float h,
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
 #if __ANDROID__
-void RE_SetVRHeadsetParms( const ovrMatrix4f *projectionMatrix,
+void RE_SetVRHeadsetParms( const float matrix[4][4],
         int renderBufferL, int renderBufferR );
 #endif
 void RE_SaveJPG(char * filename, int quality, int image_width, int image_height,

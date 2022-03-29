@@ -4,8 +4,6 @@
 
 #include <android/log.h>
 
-#include <VrApi.h>
-#include <VrApi_Helpers.h>
 #include <string>
 
 extern "C" {

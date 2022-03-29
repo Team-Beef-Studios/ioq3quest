@@ -24,13 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_types.h"
 
-#if __ANDROID__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wstrict-prototypes"
-#include <VrApi.h>
-#pragma clang diagnostic pop
-#endif
-
 #define	REF_API_VERSION		8
 
 //
@@ -90,7 +83,7 @@ typedef struct {
 	void	(*EndFrame)( int *frontEndMsec, int *backEndMsec );
 
 #if __ANDROID__
-	void	(*SetVRHeadsetParms)( const ovrMatrix4f *projectionMatrix,
+	void	(*SetVRHeadsetParms)( const float projectionMatrix[4][4],
 			int renderBufferL, int renderBufferR );
 #endif
 

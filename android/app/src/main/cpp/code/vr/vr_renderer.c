@@ -4,17 +4,10 @@
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/client.h"
-#include "../VrApi/Include/VrApi_Types.h"
 
 #include "vr_clientinfo.h"
 #include "vr_types.h"
 //#include "../SDL2/include/SDL_opengles2_gl2.h"
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wstrict-prototypes"
-#include <VrApi.h>
-#include <VrApi_Helpers.h>
-#pragma clang diagnostic pop
 
 #include <assert.h>
 #include <stdlib.h>
@@ -67,11 +60,14 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 	
 	if (engine)
 	{
+		//TODO:
+		/*
 		*pWidth = width = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * SUPER_SAMPLE;
 		*pHeight = height = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * SUPER_SAMPLE;
 
 		vr.fov_x = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
 		vr.fov_y = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
+		 */
 	}
 	else
 	{
@@ -87,6 +83,8 @@ void VR_InitRenderer( engine_t* engine ) {
 	glDebugMessageCallback(VR_GLDebugLog, 0);
 #endif
 
+	//TODO:
+	/*
 	int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
 	
@@ -123,9 +121,12 @@ void VR_InitRenderer( engine_t* engine ) {
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		}
 	}
+	*/
 }
 
 void VR_DestroyRenderer( engine_t* engine ) {
+	//TODO:
+	/*
 	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye)
 	{
 		if (engine->framebuffers[eye].swapchainLength > 0) {
@@ -139,7 +140,7 @@ void VR_DestroyRenderer( engine_t* engine ) {
 			memset(&engine->framebuffers[eye], 0, sizeof(engine->framebuffers[eye]));
 		}
 	}
-
+    */
 }
 
 
@@ -150,6 +151,8 @@ void VR_ReInitRenderer()
 }
 
 
+//TODO:
+/*
 // Assumes landscape cylinder shape.
 static ovrMatrix4f CylinderModelMatrix( const int texWidth, const int texHeight,
 										const ovrVector3f translation,
@@ -229,6 +232,7 @@ ovrLayerCylinder2 BuildCylinderLayer(engine_t* engine, const int textureWidth, c
 
 	return layer;
 }
+*/
 
 void VR_ClearFrameBuffer( GLuint frameBuffer, int width, int height)
 {
@@ -259,6 +263,8 @@ void VR_ClearFrameBuffer( GLuint frameBuffer, int width, int height)
 
 void VR_DrawFrame( engine_t* engine ) {
 
+	//TODO
+	/*
 	if (!engine->ovr)
 	{
 		return;
@@ -314,7 +320,7 @@ void VR_DrawFrame( engine_t* engine ) {
 
 		const framebuffer_t* framebuffers = engine->framebuffers;
 
-        re.SetVRHeadsetParms(&projectionMatrix,
+        re.SetVRHeadsetParms(projectionMatrix->M,
 			framebuffers[0].framebuffers[framebuffers[0].swapchainIndex],
 			framebuffers[1].framebuffers[framebuffers[1].swapchainIndex]);
 
@@ -351,7 +357,7 @@ void VR_DrawFrame( engine_t* engine ) {
         VR_ClearFrameBuffer(framebuffers[0].framebuffers[framebuffers[0].swapchainIndex], eyeW, eyeH);
         VR_ClearFrameBuffer(framebuffers[1].framebuffers[framebuffers[1].swapchainIndex], eyeW, eyeH);
 
-		re.SetVRHeadsetParms(&projectionMatrix,
+		re.SetVRHeadsetParms(projectionMatrix->M,
 			framebuffers[0].framebuffers[framebuffers[0].swapchainIndex],
 			framebuffers[1].framebuffers[framebuffers[1].swapchainIndex]);
 
@@ -375,6 +381,6 @@ void VR_DrawFrame( engine_t* engine ) {
 		frameDesc.Layers = layers;
 
 		vrapi_SubmitFrame2(engine->ovr, &frameDesc);
-	}
+	}*/
 
 }

@@ -673,7 +673,7 @@ void	RB_SetGL2D (void) {
 	Mat4Ortho(0, width, height, 0, 0, 1, matrix);
 	GL_SetProjectionMatrix(matrix);
 	Mat4Identity(matrix);
-	GL_SetModelviewMatrix(matrix, false);
+	GL_SetModelviewMatrix(matrix, qfalse);
 
 	GL_State( GLS_DEPTHTEST_DISABLE |
 			  GLS_SRCBLEND_SRC_ALPHA |
