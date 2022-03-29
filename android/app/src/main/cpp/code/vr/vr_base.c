@@ -49,6 +49,8 @@ cvar_t *vr_weaponSelectorWithHud = NULL;
 
 engine_t* VR_Init( ovrJava java )
 {
+    memset(&vr_engine, 0, sizeof(vr_engine));
+
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
     xrGetInstanceProcAddr(
             XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)&xrInitializeLoaderKHR);
@@ -81,11 +83,21 @@ engine_t* VR_Init( ovrJava java )
     instanceCreateInfo.enabledApiLayerNames = NULL;
     instanceCreateInfo.enabledExtensionCount = numRequiredExtensions;
     instanceCreateInfo.enabledExtensionNames = requiredExtensionNames;
-    if (xrCreateInstance(&instanceCreateInfo, &vr_engine.Instance) != XR_SUCCESS) {
+    if (xrCreateInstance(&instanceCreateInfo, &vr_engine.instance) != XR_SUCCESS) {
+        Com_Printf("xrCreateInstance failed");
         exit(1);
     }
 
-    memset(&vr_engine, 0, sizeof(vr_engine));
+    XrSystemGetInfo systemGetInfo;
+    memset(&systemGetInfo, 0, sizeof(systemGetInfo));
+    systemGetInfo.type = XR_TYPE_SYSTEM_GET_INFO;
+    systemGetInfo.next = NULL;
+    systemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+    if (xrGetSystem(vr_engine.instance, &systemGetInfo, &vr_engine.systemId) != XR_SUCCESS) {
+        Com_Printf("xrGetSystem failed");
+        exit(1);
+    }
+
     vr_engine.java = java;
     return &vr_engine;
 }
@@ -210,31 +222,26 @@ void VR_InitCvars( void )
 void VR_Destroy( engine_t* engine )
 {
     if (engine == &vr_engine) {
-        xrDestroyInstance(engine->Instance);
+        xrDestroyInstance(engine->instance);
     }
 }
 
 void VR_EnterVR( engine_t* engine, ovrJava java ) {
 
-    XrSystemId systemId;
-    XrSystemGetInfo systemGetInfo;
-    memset(&systemGetInfo, 0, sizeof(systemGetInfo));
-    systemGetInfo.type = XR_TYPE_SYSTEM_GET_INFO;
-    systemGetInfo.next = NULL;
-    systemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-    if (xrGetSystem(engine->Instance, &systemGetInfo, &systemId) != XR_SUCCESS) {
-        exit(1);
+    if (engine->session) {
+        Com_Printf("VR_EnterVR called with existing session");
+        return;
     }
 
     // Get the graphics requirements.
     PFN_xrGetOpenGLESGraphicsRequirementsKHR pfnGetOpenGLESGraphicsRequirementsKHR = NULL;
     xrGetInstanceProcAddr(
-            engine->Instance,
+            engine->instance,
             "xrGetOpenGLESGraphicsRequirementsKHR",
             (PFN_xrVoidFunction*)(&pfnGetOpenGLESGraphicsRequirementsKHR));
     XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {};
     graphicsRequirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR;
-    pfnGetOpenGLESGraphicsRequirementsKHR(engine->Instance, systemId, &graphicsRequirements);
+    pfnGetOpenGLESGraphicsRequirementsKHR(engine->instance, engine->systemId, &graphicsRequirements);
 
     // Create the OpenXR Session.
     XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {};
@@ -249,15 +256,19 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
     sessionCreateInfo.type = XR_TYPE_SESSION_CREATE_INFO;
     sessionCreateInfo.next = &graphicsBindingAndroidGLES;
     sessionCreateInfo.createFlags = 0;
-    sessionCreateInfo.systemId = systemId;
+    sessionCreateInfo.systemId = engine->systemId;
 
-    if (xrCreateSession(engine->Instance, &sessionCreateInfo, &engine->Session) != XR_SUCCESS) {
+    if (xrCreateSession(engine->instance, &sessionCreateInfo, &engine->session) != XR_SUCCESS) {
+        Com_Printf("xrCreateSession failed");
         exit(1);
     }
 }
 
 void VR_LeaveVR( engine_t* engine ) {
-    xrDestroySession(engine->Session);
+    if (engine->session) {
+        xrDestroySession(engine->session);
+        engine->session = NULL;
+    }
 }
 
 engine_t* VR_GetEngine( void ) {

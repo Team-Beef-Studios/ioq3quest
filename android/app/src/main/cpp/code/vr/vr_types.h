@@ -38,8 +38,9 @@ typedef struct {
 	double predictedDisplayTime;
 	//TODO:ovrTracking2 tracking;
 	framebuffer_t framebuffers[2];
-	XrInstance Instance;
-	XrSession Session;
+	XrInstance instance;
+	XrSession session;
+	XrSystemId systemId;
 } engine_t;
 
 typedef enum {
