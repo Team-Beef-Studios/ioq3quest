@@ -409,53 +409,22 @@ itemDef {
       		visible 1
 	}
 
-itemDef {
-      		name options				
+	itemDef {
+      		name options
 		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Blood:"
-		cvar "com_blood"
-		rect 50 309 200 20
+		text "Gore:"
+		type ITEM_TYPE_MULTI
+		cvar "vr_goreLevel"
+		cvarFloatList { "None" 0 "Blood Only" 1 "Blood & Gibs (Default)" 2 "Extra Gore (Performance Hit)" 3 }
+		rect 50 329 200 20
       		textalign ITEM_ALIGN_RIGHT
-      		textalignx 143
+      		textalignx 80
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
+      		action { uiScript update "vr_goreLevel" }
     		}
-
-itemDef {
-      		name options				
-		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Gibs:"
-		cvar "cg_gibs"
-		rect 50 326 200 20
-      		textalign ITEM_ALIGN_RIGHT
-      		textalignx 143
-      		textaligny 17
-		textscale .25        
-      		forecolor 1 1 1 1
-      		visible 1 
-		action { exec "loadhud" }
-    		}
-
-itemDef {
-      		name options				
-		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Extra Gibs (Performance Hit):"
-		cvar "cg_megagibs"
-		rect 50 343 200 20
-      		textalign ITEM_ALIGN_RIGHT
-      		textalignx 143
-      		textaligny 17
-		textscale .25        
-      		forecolor 1 1 1 1
-      		visible 1 
-    		}
-
-
 
 }
 

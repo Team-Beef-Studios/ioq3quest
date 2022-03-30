@@ -933,9 +933,6 @@ void UI_MouseEvent( int dx, int dy )
 	else if (uis.cursory > SCREEN_HEIGHT+16)
 		uis.cursory = SCREEN_HEIGHT+16;
 
-	vr->menuCursorX = &uis.cursorx;
-	vr->menuCursorY = &uis.cursory;
-
 	// region test the active menu items
 	for (i=0; i<uis.activemenu->nitems; i++)
 	{

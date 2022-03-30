@@ -22,8 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_vbo.c
 #include "tr_local.h"
 
-//#define GL_BUFFER_RECYCLING
-
 
 void R_VaoPackTangent(int16_t *out, vec4_t v)
 {
@@ -393,17 +391,18 @@ void R_BindNullVao(void)
 
 	if(glState.currentVao)
 	{
-#ifdef GL_BUFFER_RECYCLING
 		if (glRefConfig.vertexArrayObject)
 		{
 			qglBindVertexArray(0);
+
+			// why you no save GL_ELEMENT_ARRAY_BUFFER binding, Intel?
+			if (1) qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		}
 		else
 		{
 			qglBindBuffer(GL_ARRAY_BUFFER, 0);
 			qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		}
-#endif
 		glState.currentVao = NULL;
 	}
 
@@ -606,6 +605,9 @@ void RB_UpdateTessVao(unsigned int attribBits)
 
 		R_BindVao(tess.vao);
 
+		// orphan old vertex buffer so we don't stall on it
+		qglBufferData(GL_ARRAY_BUFFER, tess.vao->vertexesSize, NULL, GL_DYNAMIC_DRAW);
+
 		// if nothing to set, set everything
 		if(!(attribBits & ATTR_BITS))
 			attribBits = ATTR_BITS;
@@ -651,8 +653,10 @@ void RB_UpdateTessVao(unsigned int attribBits)
 	}
 }
 
-#define VAOCACHE_QUEUE_MAX_SURFACES MAX_POLYS
-#define VAOCACHE_QUEUE_MAX_VERTEXES MAX_POLYVERTS
+// FIXME: This sets a limit of 65536 verts/262144 indexes per static surface
+// This is higher than the old vq3 limits but is worth noting
+#define VAOCACHE_QUEUE_MAX_SURFACES (1 << 10)
+#define VAOCACHE_QUEUE_MAX_VERTEXES (1 << 16)
 #define VAOCACHE_QUEUE_MAX_INDEXES (VAOCACHE_QUEUE_MAX_VERTEXES * 4)
 
 typedef struct queuedSurface_s
@@ -929,19 +933,15 @@ void VaoCache_CheckAdd(qboolean *endSurface, qboolean *recycleVertexBuffer, qboo
 
 void VaoCache_RecycleVertexBuffer(void)
 {
-#ifdef GL_BUFFER_RECYCLING
 	qglBindBuffer(GL_ARRAY_BUFFER, vc.vao->vertexesVBO);
 	qglBufferData(GL_ARRAY_BUFFER, vc.vao->vertexesSize, NULL, GL_DYNAMIC_DRAW);
-#endif
 	vc.vertexOffset = 0;
 }
 
 void VaoCache_RecycleIndexBuffer(void)
 {
-#ifdef GL_BUFFER_RECYCLING
 	qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vc.vao->indexesIBO);
 	qglBufferData(GL_ELEMENT_ARRAY_BUFFER, vc.vao->indexesSize, NULL, GL_DYNAMIC_DRAW);
-#endif
 	vc.indexOffset = 0;
 	vc.numSurfaces = 0;
 	vc.numBatches = 0;

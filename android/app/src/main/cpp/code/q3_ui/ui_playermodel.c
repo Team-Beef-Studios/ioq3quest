@@ -378,6 +378,8 @@ static void PlayerModel_DrawPlayer( void *self )
 	}
 
 	UI_DrawPlayer( b->generic.x, b->generic.y, b->width, b->height, &s_playermodel.playerinfo, uis.realtime/2 );
+
+	UI_DrawString( 320, 460, "To change player name use the companion app.", UI_CENTER|UI_SMALLFONT, text_color_normal );
 }
 
 /*
@@ -606,7 +608,7 @@ static void PlayerModel_MenuInit( void )
 	s_playermodel.playername.generic.type  = MTYPE_PTEXT;
 	s_playermodel.playername.generic.flags = QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_playermodel.playername.generic.x	   = 320;
-	s_playermodel.playername.generic.y	   = 440;
+	s_playermodel.playername.generic.y	   = 430;
 	s_playermodel.playername.string	       = playername;
 	s_playermodel.playername.style		   = UI_CENTER;
 	s_playermodel.playername.color         = text_color_normal;

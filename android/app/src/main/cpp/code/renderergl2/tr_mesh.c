@@ -164,6 +164,19 @@ R_ComputeLOD
 =================
 */
 int R_ComputeLOD( trRefEntity_t *ent ) {
+
+	//HACK: force specific LOD (for VR it fits better)
+	if (1)
+	{
+	    //high -> 0, medium -> 2, low -> 4
+	    int lod = r_lodbias->integer + r_lodbias->integer;
+	    if (lod >= tr.currentModel->numLods)
+	        lod = tr.currentModel->numLods - 1;
+	    if (lod < 0)
+	        lod = 0;
+	    return lod;
+	}
+
 	float radius;
 	float flod, lodscale;
 	float projectedRadius;

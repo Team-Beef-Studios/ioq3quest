@@ -1105,10 +1105,10 @@ Responsible for doing a swapbuffers
 */
 void GLimp_EndFrame( void )
 {
-	// don't flip if drawing to front buffer
+	//swap window is implemented in VR API, no need to do it here
 	if ( Q_stricmp( r_drawBuffer->string, "GL_FRONT" ) != 0 )
 	{
-		SDL_GL_SwapWindow( SDL_window );
+		//SDL_GL_SwapWindow( SDL_window );
 	}
 
 	if( r_fullscreen->modified )

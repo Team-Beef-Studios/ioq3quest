@@ -50,13 +50,17 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 	case UI_INIT: {
 			int ptr[2] = {arg1, arg2};
 			vr = (vr_clientinfo_t *) (*(long *) (ptr));
-
 			UI_Init();
+			vr->menuCursorX = &uis.cursorx;
+			vr->menuCursorY = &uis.cursory;
 		}
 		return 0;
 
-	case UI_SHUTDOWN:
-		UI_Shutdown();
+	case UI_SHUTDOWN: {
+			vr->menuCursorX = NULL;
+			vr->menuCursorY = NULL;
+			UI_Shutdown();
+		}
 		return 0;
 
 	case UI_KEY_EVENT:

@@ -443,8 +443,11 @@ ifeq ($(PLATFORM),android)
     -fno-builtin-cos -fno-builtin-sin -fPIC -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS) -DSDL_DISABLE_IMMINTRIN_H -fno-builtin-cos -fno-builtin-sin
 
+  # Flag -ffast-math replacement: https://pspdfkit.com/blog/2021/understanding-fast-math/
+  # Flags -ffp-contract=fast -fno-trapping-math are unused because they are causing lightmap issues
+  OPTIMIZEFASTMATH = -ffinite-math-only -fno-math-errno -fassociative-math -freciprocal-math -fno-signed-zeros
   OPTIMIZEVM = -O3 -funroll-loops -fomit-frame-pointer
-  OPTIMIZE = $(OPTIMIZEVM)
+  OPTIMIZE = $(OPTIMIZEVM) $(OPTIMIZEFASTMATH)
 
   HAVE_VM_COMPILED = false
 

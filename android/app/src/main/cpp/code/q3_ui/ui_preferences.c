@@ -126,14 +126,7 @@ static void Preferences_SetMenuItems( void ) {
     s_preferences.drawhud.curvalue			= trap_Cvar_VariableValue( "cg_drawStatus" ) != 0;
 //	s_preferences.allowdownload.curvalue	= trap_Cvar_VariableValue( "cl_allowDownload" ) != 0;
 	s_preferences.holster2d.curvalue		= trap_Cvar_VariableValue( "cg_weaponSelectorSimple2DIcons" ) != 0;
-    //GORE
-    {
-        int level = trap_Cvar_VariableValue( "com_blood" ) +
-					trap_Cvar_VariableValue( "cg_gibs" ) +
-					trap_Cvar_VariableValue( "cg_megagibs" );
-
-		s_preferences.gore.curvalue		    = level % NUM_GORE;
-    }
+	s_preferences.gore.curvalue				= trap_Cvar_VariableValue( "vr_goreLevel" );
 	s_preferences.showinhand.curvalue		= trap_Cvar_VariableValue( "vr_showItemInHand" ) != 0;
 	s_preferences.selectorwithhud.curvalue	= trap_Cvar_VariableValue( "vr_weaponSelectorWithHud" ) != 0;
 }

@@ -290,51 +290,22 @@ itemDef {
       		visible 1
 	}
 
-		itemDef {
+	itemDef {
       		name options
 		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Blood:"
-		cvar "com_blood"
-		rect 99 365 256 20
+		text "Gore:"
+		type ITEM_TYPE_MULTI
+		cvar "vr_goreLevel"
+		cvarFloatList { "None" 0 "Blood Only" 1 "Blood & Gibs (Default)" 2 "Extra Gore (Performance Hit)" 3 }
+		rect 99 375 256 20
       		textalign ITEM_ALIGN_RIGHT
-      		textalignx 128
+      		textalignx 70
       		textaligny 20
-		textscale .3       
+		textscale .3
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
+      		action { uiScript update "vr_goreLevel" }
     		}
-
-		itemDef {
-      		name options
-		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Gibs:"
-		cvar "cg_gibs"
-		rect 99 385 256 20
-      		textalign ITEM_ALIGN_RIGHT
-      		textalignx 128
-      		textaligny 20
-		textscale .3       
-      		forecolor 1 1 1 1
-      		visible 1 
-    		}
-
-		itemDef {
-      		name options
-		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Extra Gibs (Performance Hit):"
-		cvar "cg_megagibs"
-		rect 99 405 256 20
-      		textalign ITEM_ALIGN_RIGHT
-      		textalignx 128
-      		textaligny 20
-		textscale .3       
-      		forecolor 1 1 1 1
-      		visible 1 
-    		}
-
 
 itemDef {
       	name fadebox

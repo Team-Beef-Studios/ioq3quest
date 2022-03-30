@@ -42,7 +42,7 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Autoswitch Weapons:"
 		cvar "cg_autoswitch"
-		rect 99 125 256 20
+		rect 99 75 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -57,7 +57,7 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Railgun Scope:"
 		cvar "vr_weaponScope"
-		rect 99 150 256 20
+		rect 99 100 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -72,7 +72,7 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Two-Handed Weapons:"
 		cvar "vr_twoHandedWeapons"
-		rect 99 175 256 20
+		rect 99 125 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -88,13 +88,29 @@ itemDef {
 		text "Direction Mode:"
 		cvar "vr_directionMode"
 		cvarFloatList { "HMD (Default)" 0 "Off-hand Controller" 1 }
-		rect 99 200 256 20
+		rect 99 150 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
 		textscale .333
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
+    		}
+
+	itemDef {
+      		name controls3
+		group grpControls3
+      		type ITEM_TYPE_YESNO
+		text "Quick U-Turn:"
+		cvar "vr_uturn"
+		rect 99 175 256 20
+      		textalign ITEM_ALIGN_RIGHT
+      		textalignx 128
+      		textaligny 20
+		textscale .333
+      		forecolor 1 1 1 1
+      		visible 1
+			action { uiScript update "vr_uturn" }
     		}
 
 	itemDef {
@@ -104,7 +120,7 @@ itemDef {
 		text "Turning Mode:"
 		cvar "vr_snapturn"
 		cvarFloatList { "Smooth Turning" 0 "45 Degrees" 45 "90 Degrees" 90 }
-		rect 99 225 256 20
+		rect 99 200 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -119,7 +135,7 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Right-Handed:"
 		cvar "vr_righthanded"
-		rect 99 250 256 20
+		rect 99 225 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -134,7 +150,7 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Switch Thumbsticks:"
 		cvar "vr_switchThumbsticks"
-		rect 99 275 256 20
+		rect 99 250 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -149,7 +165,7 @@ itemDef {
       		type ITEM_TYPE_SLIDER
 		text "Weapon Pitch:"
 		cvarfloat "vr_weaponPitch" 5 -25 5
-		rect 99 300 256 20
+		rect 99 275 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -165,7 +181,7 @@ itemDef {
 		text "Weapon Wheel Mode:"
 		cvar "vr_weaponSelectorMode"
 		cvarFloatList { "Controller Based" 0 "HMD/Thumbstick Based" 1 }
-		rect 99 325 256 20
+		rect 99 300 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -174,6 +190,22 @@ itemDef {
       		visible 1 
     		}
 
+	itemDef {
+      		name controls3
+		group grpControls3
+      		type ITEM_TYPE_MULTI
+		text "Control Schema:"
+		cvar "vr_controlSchema"
+		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 }
+		rect 99 325 256 20
+      		textalign ITEM_ALIGN_RIGHT
+      		textalignx 100
+      		textaligny 20
+		textscale .333
+      		forecolor 1 1 1 1
+      		visible 1
+			action { uiScript update "vr_controlSchema" }
+    		}
 
 itemDef {
       	name fadebox

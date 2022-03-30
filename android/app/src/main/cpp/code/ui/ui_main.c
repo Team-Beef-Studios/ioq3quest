@@ -163,15 +163,20 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 		  return UI_API_VERSION;
 
 	  case UI_INIT: {
-			  int ptr[2] = {arg1, arg2};
-			  vr = (vr_clientinfo_t *) (*(long *) (ptr));
-			  _UI_Init(arg0);
-		  }
-		  return 0;
+			int ptr[2] = {arg1, arg2};
+			vr = (vr_clientinfo_t *) (*(long *) (ptr));
+			_UI_Init(arg0);
+			vr->menuCursorX = &uiInfo.uiDC.cursorx;
+			vr->menuCursorY = &uiInfo.uiDC.cursory;
+		}
+		return 0;
 
-	  case UI_SHUTDOWN:
-		  _UI_Shutdown();
-		  return 0;
+	  case UI_SHUTDOWN: {
+			vr->menuCursorX = NULL;
+			vr->menuCursorY = NULL;
+			_UI_Shutdown();
+		}
+		return 0;
 
 	  case UI_KEY_EVENT:
 		  _UI_KeyEvent( arg0, arg1 );
@@ -3070,14 +3075,14 @@ static void UI_Update(const char *name) {
 		}
 	} else if (Q_stricmp(name, "r_lodbias") == 0) {
 		switch (val) {
-			case 0:
+			case -1:
 				trap_Cvar_SetValue( "r_subdivisions", 4 );
 			break;
 			case 1:
 				trap_Cvar_SetValue( "r_subdivisions", 12 );
 			break;
 			case 2:
-				trap_Cvar_SetValue( "r_subdivisions", 20 );
+				trap_Cvar_SetValue( "r_subdivisions", 80 );
 			break;
 		}
 	} else if (Q_stricmp(name, "ui_glCustom") == 0) {
@@ -3160,6 +3165,98 @@ static void UI_Update(const char *name) {
 			trap_Cvar_SetValue( "m_pitch", 0.022f );
 		} else {
 			trap_Cvar_SetValue( "m_pitch", -0.022f );
+		}
+	} else if (Q_stricmp(name, "vr_controlSchema") == 0) {
+		qboolean uturn = trap_Cvar_VariableValue( "vr_uturn" ) != 0;
+		switch (val)
+		{
+			case 0: // Default schema
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
+				if (uturn) {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn"); // u-turn
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
+				}
+				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+weapon_select"); // weapon selector
+				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", ""); // unmapped
+				break;
+			default: // Now we have only two schemas
+				// All directions as weapon select (useful for HMD wheel)
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBBACK", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", "turnleft"); // turn left
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", "turnright"); // turn right
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "weapnext");
+				if (uturn) {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
+				}
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", "blank"); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", "blank"); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", "blank"); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", "blank"); // unmapped
+				break;
+		}
+	} else if (Q_stricmp(name, "vr_uturn") == 0) {
+		int controlSchema = (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 2;
+		if (val) {
+        	if (controlSchema == 0) {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
+        	} else {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
+        	}
+        } else {
+        	if (controlSchema == 0) {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "");
+        	} else {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "");
+        	}
+        }
+	} else if (Q_stricmp(name, "vr_goreLevel") == 0) {
+		switch (val) {
+			case 0:
+				trap_Cvar_SetValue( "com_blood", 0);
+				trap_Cvar_SetValue( "cg_gibs", 0);
+				trap_Cvar_SetValue( "cg_megagibs", 0);
+				break;
+			case 1:
+				trap_Cvar_SetValue( "com_blood", 1);
+				trap_Cvar_SetValue( "cg_gibs", 0);
+				trap_Cvar_SetValue( "cg_megagibs", 0);
+				break;
+			case 2:
+				trap_Cvar_SetValue( "com_blood", 1);
+				trap_Cvar_SetValue( "cg_gibs", 1);
+				trap_Cvar_SetValue( "cg_megagibs", 0);
+				break;
+			case 3:
+				trap_Cvar_SetValue( "com_blood", 1);
+				trap_Cvar_SetValue( "cg_gibs", 1);
+				trap_Cvar_SetValue( "cg_megagibs", 1);
+				break;
 		}
 	}
 }
@@ -5271,9 +5368,6 @@ void _UI_MouseEvent( int dx, int dy )
 		uiInfo.uiDC.cursory = -16;
 	else if (uiInfo.uiDC.cursory > SCREEN_HEIGHT+16)
 		uiInfo.uiDC.cursory = SCREEN_HEIGHT+16;
-
-	vr->menuCursorX = &uiInfo.uiDC.cursorx;
-	vr->menuCursorY = &uiInfo.uiDC.cursory;
 
   if (Menu_Count() > 0) {
     //menuDef_t *menu = Menu_GetFocused();

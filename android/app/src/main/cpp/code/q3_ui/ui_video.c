@@ -251,8 +251,10 @@ GRAPHICS OPTIONS MENU
 #define ID_REFRESHRATE		111
 #define ID_DYNAMICLIGHTS	112
 #define ID_SYNCEVERYFRAME	113
+#define ID_SHADOWS		114
 
 #define	NUM_REFRESHRATE	4
+#define NUM_SHADOWS 2
 
 typedef struct {
 	menuframework_s	menu;
@@ -282,6 +284,7 @@ typedef struct {
     menulist_s		refreshrate;
 	menuradiobutton_s	dynamiclights;
 	menuradiobutton_s	synceveryframe;
+	menulist_s		shadows;
 
 	menubitmap_s	apply;
 	menubitmap_s	back;
@@ -302,6 +305,7 @@ typedef struct
 	int refreshrate;
 	qboolean dynamiclights;
 	qboolean synceveryframe;
+	int shadows;
 } InitialVideoOptions_s;
 
 static InitialVideoOptions_s	s_ivo;
@@ -379,99 +383,99 @@ static qboolean resolutionsDetected = qfalse;
 GraphicsOptions_FindBuiltinResolution
 =================
 */
-static int GraphicsOptions_FindBuiltinResolution( int mode )
-{
-	int i;
-
-	if( !resolutionsDetected )
-		return mode;
-
-	if( mode < 0 )
-		return -1;
-
-	for( i = 0; builtinResolutions[ i ]; i++ )
-	{
-		if( !Q_stricmp( builtinResolutions[ i ], detectedResolutions[ mode ] ) )
-			return i;
-	}
-
-	return -1;
-}
+// static int GraphicsOptions_FindBuiltinResolution( int mode )
+// {
+// 	int i;
+//
+// 	if( !resolutionsDetected )
+// 		return mode;
+//
+// 	if( mode < 0 )
+// 		return -1;
+//
+// 	for( i = 0; builtinResolutions[ i ]; i++ )
+// 	{
+// 		if( !Q_stricmp( builtinResolutions[ i ], detectedResolutions[ mode ] ) )
+// 			return i;
+// 	}
+//
+// 	return -1;
+// }
 
 /*
 =================
 GraphicsOptions_FindDetectedResolution
 =================
 */
-static int GraphicsOptions_FindDetectedResolution( int mode )
-{
-	int i;
-
-	if( !resolutionsDetected )
-		return mode;
-
-	if( mode < 0 )
-		return -1;
-
-	for( i = 0; detectedResolutions[ i ]; i++ )
-	{
-		if( !Q_stricmp( builtinResolutions[ mode ], detectedResolutions[ i ] ) )
-			return i;
-	}
-
-	return -1;
-}
+// static int GraphicsOptions_FindDetectedResolution( int mode )
+// {
+// 	int i;
+//
+// 	if( !resolutionsDetected )
+// 		return mode;
+//
+// 	if( mode < 0 )
+// 		return -1;
+//
+// 	for( i = 0; detectedResolutions[ i ]; i++ )
+// 	{
+// 		if( !Q_stricmp( builtinResolutions[ mode ], detectedResolutions[ i ] ) )
+// 			return i;
+// 	}
+//
+// 	return -1;
+// }
 
 /*
 =================
 GraphicsOptions_GetAspectRatios
 =================
 */
-static void GraphicsOptions_GetAspectRatios( void )
-{
-	int i, r;
-
-	// build ratio list from resolutions
-	for( r = 0; resolutions[r]; r++ )
-	{
-		int w, h;
-		char *x;
-		char str[ sizeof(ratioBuf[0]) ];
-
-		// calculate resolution's aspect ratio
-		x = strchr( resolutions[r], 'x' ) + 1;
-		Q_strncpyz( str, resolutions[r], x-resolutions[r] );
-		w = atoi( str );
-		h = atoi( x );
-		Com_sprintf( str, sizeof(str), "%.2f:1", (float)w / (float)h );
-
-		// rename common ratios ("1.33:1" -> "4:3")
-		for( i = 0; knownRatios[i][0]; i++ ) {
-			if( !Q_stricmp( str, knownRatios[i][0] ) ) {
-				Q_strncpyz( str, knownRatios[i][1], sizeof( str ) );
-				break;
-			}
-		}
-
-		// add ratio to list if it is new
-		// establish res/ratio relationship
-		for( i = 0; ratioBuf[i][0]; i++ )
-		{
-			if( !Q_stricmp( str, ratioBuf[i] ) )
-				break;
-		}
-		if( !ratioBuf[i][0] )
-		{
-			Q_strncpyz( ratioBuf[i], str, sizeof(ratioBuf[i]) );
-			ratioToRes[i] = r;
-		}
-
-		ratios[r] = ratioBuf[r];
-		resToRatio[r] = i;
-	}
-
-	ratios[r] = NULL;
-}
+// static void GraphicsOptions_GetAspectRatios( void )
+// {
+// 	int i, r;
+//
+// 	// build ratio list from resolutions
+// 	for( r = 0; resolutions[r]; r++ )
+// 	{
+// 		int w, h;
+// 		char *x;
+// 		char str[ sizeof(ratioBuf[0]) ];
+//
+// 		// calculate resolution's aspect ratio
+// 		x = strchr( resolutions[r], 'x' ) + 1;
+// 		Q_strncpyz( str, resolutions[r], x-resolutions[r] );
+// 		w = atoi( str );
+// 		h = atoi( x );
+// 		Com_sprintf( str, sizeof(str), "%.2f:1", (float)w / (float)h );
+//
+// 		// rename common ratios ("1.33:1" -> "4:3")
+// 		for( i = 0; knownRatios[i][0]; i++ ) {
+// 			if( !Q_stricmp( str, knownRatios[i][0] ) ) {
+// 				Q_strncpyz( str, knownRatios[i][1], sizeof( str ) );
+// 				break;
+// 			}
+// 		}
+//
+// 		// add ratio to list if it is new
+// 		// establish res/ratio relationship
+// 		for( i = 0; ratioBuf[i][0]; i++ )
+// 		{
+// 			if( !Q_stricmp( str, ratioBuf[i] ) )
+// 				break;
+// 		}
+// 		if( !ratioBuf[i][0] )
+// 		{
+// 			Q_strncpyz( ratioBuf[i], str, sizeof(ratioBuf[i]) );
+// 			ratioToRes[i] = r;
+// 		}
+//
+// 		ratios[r] = ratioBuf[r];
+// 		resToRatio[r] = i;
+// 	}
+//
+// 	ratios[r] = NULL;
+// }
 
 /*
 =================
@@ -481,10 +485,10 @@ GraphicsOptions_GetInitialVideo
 static void GraphicsOptions_GetInitialVideo( void )
 {
 	s_ivo.colordepth  = s_graphicsoptions.colordepth.curvalue;
-	s_ivo.driver      = s_graphicsoptions.driver.curvalue;
-	s_ivo.mode        = s_graphicsoptions.mode.curvalue;
-	s_ivo.fullscreen  = s_graphicsoptions.fs.curvalue;
-	s_ivo.extensions  = s_graphicsoptions.allow_extensions.curvalue;
+	// s_ivo.driver      = s_graphicsoptions.driver.curvalue;
+	// s_ivo.mode        = s_graphicsoptions.mode.curvalue;
+	// s_ivo.fullscreen  = s_graphicsoptions.fs.curvalue;
+	// s_ivo.extensions  = s_graphicsoptions.allow_extensions.curvalue;
 	s_ivo.tq          = s_graphicsoptions.tq.curvalue;
 	s_ivo.lighting    = s_graphicsoptions.lighting.curvalue;
 	s_ivo.geometry    = s_graphicsoptions.geometry.curvalue;
@@ -493,6 +497,7 @@ static void GraphicsOptions_GetInitialVideo( void )
 	s_ivo.refreshrate = s_graphicsoptions.refreshrate.curvalue;
 	s_ivo.dynamiclights = s_graphicsoptions.dynamiclights.curvalue;
 	s_ivo.synceveryframe = s_graphicsoptions.synceveryframe.curvalue;
+	s_ivo.shadows     = s_graphicsoptions.refreshrate.curvalue;
 }
 
 /*
@@ -500,81 +505,81 @@ static void GraphicsOptions_GetInitialVideo( void )
 GraphicsOptions_GetResolutions
 =================
 */
-static void GraphicsOptions_GetResolutions( void )
-{
-	trap_Cvar_VariableStringBuffer("r_availableModes", resbuf, sizeof(resbuf));
-	if(*resbuf)
-	{
-		char* s = resbuf;
-		unsigned int i = 0;
-		while( s && i < ARRAY_LEN(detectedResolutions)-1 )
-		{
-			detectedResolutions[i++] = s;
-			s = strchr(s, ' ');
-			if( s )
-				*s++ = '\0';
-		}
-		detectedResolutions[ i ] = NULL;
-
-		// add custom resolution if not in mode list
-		if ( i < ARRAY_LEN(detectedResolutions)-1 )
-		{
-			Com_sprintf( currentResolution, sizeof ( currentResolution ), "%dx%d", uis.glconfig.vidWidth, uis.glconfig.vidHeight );
-
-			for( i = 0; detectedResolutions[ i ]; i++ )
-			{
-				if ( strcmp( detectedResolutions[ i ], currentResolution ) == 0 )
-					break;
-			}
-
-			if ( detectedResolutions[ i ] == NULL )
-			{
-				detectedResolutions[ i++ ] = currentResolution;
-				detectedResolutions[ i ] = NULL;
-			}
-		}
-
-		resolutions = detectedResolutions;
-		resolutionsDetected = qtrue;
-	}
-}
+// static void GraphicsOptions_GetResolutions( void )
+// {
+// 	trap_Cvar_VariableStringBuffer("r_availableModes", resbuf, sizeof(resbuf));
+// 	if(*resbuf)
+// 	{
+// 		char* s = resbuf;
+// 		unsigned int i = 0;
+// 		while( s && i < ARRAY_LEN(detectedResolutions)-1 )
+// 		{
+// 			detectedResolutions[i++] = s;
+// 			s = strchr(s, ' ');
+// 			if( s )
+// 				*s++ = '\0';
+// 		}
+// 		detectedResolutions[ i ] = NULL;
+//
+// 		// add custom resolution if not in mode list
+// 		if ( i < ARRAY_LEN(detectedResolutions)-1 )
+// 		{
+// 			Com_sprintf( currentResolution, sizeof ( currentResolution ), "%dx%d", uis.glconfig.vidWidth, uis.glconfig.vidHeight );
+//
+// 			for( i = 0; detectedResolutions[ i ]; i++ )
+// 			{
+// 				if ( strcmp( detectedResolutions[ i ], currentResolution ) == 0 )
+// 					break;
+// 			}
+//
+// 			if ( detectedResolutions[ i ] == NULL )
+// 			{
+// 				detectedResolutions[ i++ ] = currentResolution;
+// 				detectedResolutions[ i ] = NULL;
+// 			}
+// 		}
+//
+// 		resolutions = detectedResolutions;
+// 		resolutionsDetected = qtrue;
+// 	}
+// }
 
 /*
 =================
 GraphicsOptions_CheckConfig
 =================
 */
-static void GraphicsOptions_CheckConfig( void )
-{
-	int i;
-
-	for ( i = 0; i < NUM_IVO_TEMPLATES-1; i++ )
-	{
-		if ( s_ivo_templates[i].colordepth != s_graphicsoptions.colordepth.curvalue )
-			continue;
-		if ( s_ivo_templates[i].driver != s_graphicsoptions.driver.curvalue )
-			continue;
-		if ( GraphicsOptions_FindDetectedResolution(s_ivo_templates[i].mode) != s_graphicsoptions.mode.curvalue )
-			continue;
-		if ( s_ivo_templates[i].fullscreen != s_graphicsoptions.fs.curvalue )
-			continue;
-		if ( s_ivo_templates[i].tq != s_graphicsoptions.tq.curvalue )
-			continue;
-		if ( s_ivo_templates[i].lighting != s_graphicsoptions.lighting.curvalue )
-			continue;
-		if ( s_ivo_templates[i].geometry != s_graphicsoptions.geometry.curvalue )
-			continue;
-		if ( s_ivo_templates[i].filter != s_graphicsoptions.filter.curvalue )
-			continue;
+// static void GraphicsOptions_CheckConfig( void )
+// {
+// 	int i;
+//
+// 	for ( i = 0; i < NUM_IVO_TEMPLATES-1; i++ )
+// 	{
+// 		if ( s_ivo_templates[i].colordepth != s_graphicsoptions.colordepth.curvalue )
+// 			continue;
+// 		if ( s_ivo_templates[i].driver != s_graphicsoptions.driver.curvalue )
+// 			continue;
+// 		if ( GraphicsOptions_FindDetectedResolution(s_ivo_templates[i].mode) != s_graphicsoptions.mode.curvalue )
+// 			continue;
+// 		if ( s_ivo_templates[i].fullscreen != s_graphicsoptions.fs.curvalue )
+// 			continue;
+// 		if ( s_ivo_templates[i].tq != s_graphicsoptions.tq.curvalue )
+// 			continue;
+// 		if ( s_ivo_templates[i].lighting != s_graphicsoptions.lighting.curvalue )
+// 			continue;
+// 		if ( s_ivo_templates[i].geometry != s_graphicsoptions.geometry.curvalue )
+// 			continue;
+// 		if ( s_ivo_templates[i].filter != s_graphicsoptions.filter.curvalue )
+// 			continue;
 //		if ( s_ivo_templates[i].texturebits != s_graphicsoptions.texturebits.curvalue )
 //			continue;
-		s_graphicsoptions.list.curvalue = i;
-		return;
-	}
-
-	// return 'Custom' ivo template
-	s_graphicsoptions.list.curvalue = NUM_IVO_TEMPLATES - 1;
-}
+// 		s_graphicsoptions.list.curvalue = i;
+// 		return;
+// 	}
+//
+// 	// return 'Custom' ivo template
+// 	s_graphicsoptions.list.curvalue = NUM_IVO_TEMPLATES - 1;
+// }
 
 /*
 =================
@@ -583,49 +588,49 @@ GraphicsOptions_UpdateMenuItems
 */
 static void GraphicsOptions_UpdateMenuItems( void )
 {
-	if ( s_graphicsoptions.driver.curvalue == 1 )
-	{
-		s_graphicsoptions.fs.curvalue = 1;
-		s_graphicsoptions.fs.generic.flags |= QMF_GRAYED;
-		s_graphicsoptions.colordepth.curvalue = 1;
-	}
-	else
-	{
-		s_graphicsoptions.fs.generic.flags &= ~QMF_GRAYED;
-	}
+	// if ( s_graphicsoptions.driver.curvalue == 1 )
+	// {
+	// 	s_graphicsoptions.fs.curvalue = 1;
+	// 	s_graphicsoptions.fs.generic.flags |= QMF_GRAYED;
+	// 	s_graphicsoptions.colordepth.curvalue = 1;
+	// }
+	// else
+	// {
+	// 	s_graphicsoptions.fs.generic.flags &= ~QMF_GRAYED;
+	// }
 
-	if ( s_graphicsoptions.fs.curvalue == 0 || s_graphicsoptions.driver.curvalue == 1 )
-	{
-		s_graphicsoptions.colordepth.curvalue = 0;
-		s_graphicsoptions.colordepth.generic.flags |= QMF_GRAYED;
-	}
-	else
-	{
-		s_graphicsoptions.colordepth.generic.flags &= ~QMF_GRAYED;
-	}
+	// if ( s_graphicsoptions.fs.curvalue == 0 || s_graphicsoptions.driver.curvalue == 1 )
+	// {
+	// 	s_graphicsoptions.colordepth.curvalue = 0;
+	// 	s_graphicsoptions.colordepth.generic.flags |= QMF_GRAYED;
+	// }
+	// else
+	// {
+	// 	s_graphicsoptions.colordepth.generic.flags &= ~QMF_GRAYED;
+	// }
 
-	if ( s_graphicsoptions.allow_extensions.curvalue == 0 )
-	{
-		if ( s_graphicsoptions.texturebits.curvalue == 0 )
-		{
-			s_graphicsoptions.texturebits.curvalue = 1;
-		}
-	}
+	// if ( s_graphicsoptions.allow_extensions.curvalue == 0 )
+	// {
+	// 	if ( s_graphicsoptions.texturebits.curvalue == 0 )
+	// 	{
+	// 		s_graphicsoptions.texturebits.curvalue = 1;
+	// 	}
+	// }
 
 	s_graphicsoptions.apply.generic.flags |= QMF_HIDDEN|QMF_INACTIVE;
 
-	if ( s_ivo.mode != s_graphicsoptions.mode.curvalue )
-	{
-		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
-	}
-	if ( s_ivo.fullscreen != s_graphicsoptions.fs.curvalue )
-	{
-		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
-	}
-	if ( s_ivo.extensions != s_graphicsoptions.allow_extensions.curvalue )
-	{
-		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
-	}
+	// if ( s_ivo.mode != s_graphicsoptions.mode.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
+	// if ( s_ivo.fullscreen != s_graphicsoptions.fs.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
+	// if ( s_ivo.extensions != s_graphicsoptions.allow_extensions.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
 	if ( s_ivo.tq != s_graphicsoptions.tq.curvalue )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
@@ -638,10 +643,10 @@ static void GraphicsOptions_UpdateMenuItems( void )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
-	if ( s_ivo.driver != s_graphicsoptions.driver.curvalue )
-	{
-		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
-	}
+	// if ( s_ivo.driver != s_graphicsoptions.driver.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
 	if ( s_ivo.texturebits != s_graphicsoptions.texturebits.curvalue )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
@@ -655,8 +660,8 @@ static void GraphicsOptions_UpdateMenuItems( void )
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
 
-	GraphicsOptions_CheckConfig();
-}	
+	// GraphicsOptions_CheckConfig();
+}
 
 /*
 =================
@@ -681,34 +686,36 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 		break;
 	}
 	trap_Cvar_SetValue( "r_picmip", 3 - s_graphicsoptions.tq.curvalue );
-	trap_Cvar_SetValue( "r_allowExtensions", s_graphicsoptions.allow_extensions.curvalue );
 
-	if( resolutionsDetected )
-	{
-		// search for builtin mode that matches the detected mode
-		int mode;
-		if ( s_graphicsoptions.mode.curvalue == -1
-			|| s_graphicsoptions.mode.curvalue >= ARRAY_LEN( detectedResolutions ) )
-			s_graphicsoptions.mode.curvalue = 0;
+	// trap_Cvar_SetValue( "r_allowExtensions", s_graphicsoptions.allow_extensions.curvalue );
 
-		mode = GraphicsOptions_FindBuiltinResolution( s_graphicsoptions.mode.curvalue );
-		if( mode == -1 )
-		{
-			char w[ 16 ], h[ 16 ];
-			Q_strncpyz( w, detectedResolutions[ s_graphicsoptions.mode.curvalue ], sizeof( w ) );
-			*strchr( w, 'x' ) = 0;
-			Q_strncpyz( h,
-					strchr( detectedResolutions[ s_graphicsoptions.mode.curvalue ], 'x' ) + 1, sizeof( h ) );
-			trap_Cvar_Set( "r_customwidth", w );
-			trap_Cvar_Set( "r_customheight", h );
-		}
+	// if( resolutionsDetected )
+	// {
+	// 	// search for builtin mode that matches the detected mode
+	// 	int mode;
+	// 	if ( s_graphicsoptions.mode.curvalue == -1
+	// 		|| s_graphicsoptions.mode.curvalue >= ARRAY_LEN( detectedResolutions ) )
+	// 		s_graphicsoptions.mode.curvalue = 0;
+	//
+	// 	mode = GraphicsOptions_FindBuiltinResolution( s_graphicsoptions.mode.curvalue );
+	// 	if( mode == -1 )
+	// 	{
+	// 		char w[ 16 ], h[ 16 ];
+	// 		Q_strncpyz( w, detectedResolutions[ s_graphicsoptions.mode.curvalue ], sizeof( w ) );
+	// 		*strchr( w, 'x' ) = 0;
+	// 		Q_strncpyz( h,
+	// 				strchr( detectedResolutions[ s_graphicsoptions.mode.curvalue ], 'x' ) + 1, sizeof( h ) );
+	// 		trap_Cvar_Set( "r_customwidth", w );
+	// 		trap_Cvar_Set( "r_customheight", h );
+	// 	}
+	//
+	// 	trap_Cvar_SetValue( "r_mode", mode );
+	// }
+	// else
+	// 	trap_Cvar_SetValue( "r_mode", s_graphicsoptions.mode.curvalue );
 
-		trap_Cvar_SetValue( "r_mode", mode );
-	}
-	else
-		trap_Cvar_SetValue( "r_mode", s_graphicsoptions.mode.curvalue );
+	// trap_Cvar_SetValue( "r_fullscreen", s_graphicsoptions.fs.curvalue );
 
-	trap_Cvar_SetValue( "r_fullscreen", s_graphicsoptions.fs.curvalue );
 	switch ( s_graphicsoptions.colordepth.curvalue )
 	{
 	case 0:
@@ -727,11 +734,12 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 		trap_Cvar_SetValue( "r_stencilbits", 8 );
 		break;
 	}
+
 	trap_Cvar_SetValue( "r_vertexLight", s_graphicsoptions.lighting.curvalue );
 
 	if ( s_graphicsoptions.geometry.curvalue == 2 )
 	{
-		trap_Cvar_SetValue( "r_lodBias", 0 );
+		trap_Cvar_SetValue( "r_lodBias", -1 );
 		trap_Cvar_SetValue( "r_subdivisions", 4 );
 	}
 	else if ( s_graphicsoptions.geometry.curvalue == 1 )
@@ -741,8 +749,8 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 	}
 	else
 	{
-		trap_Cvar_SetValue( "r_lodBias", 1 );
-		trap_Cvar_SetValue( "r_subdivisions", 20 );
+		trap_Cvar_SetValue( "r_lodBias", 2 );
+		trap_Cvar_SetValue( "r_subdivisions", 80 );
 	}
 
 	if ( s_graphicsoptions.filter.curvalue )
@@ -816,21 +824,35 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "r_finish", s_graphicsoptions.synceveryframe.curvalue );
 		break;
 
-	case ID_LIST:
-		ivo = &s_ivo_templates[s_graphicsoptions.list.curvalue];
-
-		s_graphicsoptions.mode.curvalue        = GraphicsOptions_FindDetectedResolution(ivo->mode);
-		s_graphicsoptions.ratio.curvalue =
-			resToRatio[ s_graphicsoptions.mode.curvalue ];
-		s_graphicsoptions.tq.curvalue          = ivo->tq;
-		s_graphicsoptions.lighting.curvalue    = ivo->lighting;
-		s_graphicsoptions.colordepth.curvalue  = ivo->colordepth;
-		s_graphicsoptions.texturebits.curvalue = ivo->texturebits;
-		s_graphicsoptions.geometry.curvalue    = ivo->geometry;
-		s_graphicsoptions.filter.curvalue      = ivo->filter;
-		s_graphicsoptions.fs.curvalue          = ivo->fullscreen;
-		s_graphicsoptions.refreshrate.curvalue = ivo->refreshrate;
+	case ID_SHADOWS: {
+			int shadows;
+			switch (s_graphicsoptions.shadows.curvalue) {
+				case 0:
+					shadows = 1;
+					break;
+				default:
+					shadows = 3;
+					break;
+				}
+			trap_Cvar_SetValue("cg_shadows", shadows);
+		}
 		break;
+
+//	case ID_LIST:
+//		ivo = &s_ivo_templates[s_graphicsoptions.list.curvalue];
+//
+//		s_graphicsoptions.mode.curvalue        = GraphicsOptions_FindDetectedResolution(ivo->mode);
+//		s_graphicsoptions.ratio.curvalue =
+//			resToRatio[ s_graphicsoptions.mode.curvalue ];
+//		s_graphicsoptions.tq.curvalue          = ivo->tq;
+//		s_graphicsoptions.lighting.curvalue    = ivo->lighting;
+//		s_graphicsoptions.colordepth.curvalue  = ivo->colordepth;
+//		s_graphicsoptions.texturebits.curvalue = ivo->texturebits;
+//		s_graphicsoptions.geometry.curvalue    = ivo->geometry;
+//		s_graphicsoptions.filter.curvalue      = ivo->filter;
+//		s_graphicsoptions.fs.curvalue          = ivo->fullscreen;
+//		s_graphicsoptions.refreshrate.curvalue = ivo->refreshrate;
+//		break;
 
 	case ID_DRIVERINFO:
 		UI_DriverInfo_Menu();
@@ -894,40 +916,40 @@ GraphicsOptions_SetMenuItems
 */
 static void GraphicsOptions_SetMenuItems( void )
 {
-	s_graphicsoptions.mode.curvalue =
-		GraphicsOptions_FindDetectedResolution( trap_Cvar_VariableValue( "r_mode" ) );
-
-	if ( s_graphicsoptions.mode.curvalue < 0 )
-	{
-		if( resolutionsDetected )
-		{
-			int i;
-			char buf[MAX_STRING_CHARS];
-			trap_Cvar_VariableStringBuffer("r_customwidth", buf, sizeof(buf)-2);
-			buf[strlen(buf)+1] = 0;
-			buf[strlen(buf)] = 'x';
-			trap_Cvar_VariableStringBuffer("r_customheight", buf+strlen(buf), sizeof(buf)-strlen(buf));
-
-			for(i = 0; detectedResolutions[i]; ++i)
-			{
-				if(!Q_stricmp(buf, detectedResolutions[i]))
-				{
-					s_graphicsoptions.mode.curvalue = i;
-					break;
-				}
-			}
-			if ( s_graphicsoptions.mode.curvalue < 0 )
-				s_graphicsoptions.mode.curvalue = 0;
-		}
-		else
-		{
-			s_graphicsoptions.mode.curvalue = 3;
-		}
-	}
-	s_graphicsoptions.ratio.curvalue =
-		resToRatio[ s_graphicsoptions.mode.curvalue ];
-	s_graphicsoptions.fs.curvalue = trap_Cvar_VariableValue("r_fullscreen");
-	s_graphicsoptions.allow_extensions.curvalue = trap_Cvar_VariableValue("r_allowExtensions");
+	// s_graphicsoptions.mode.curvalue =
+	// 	GraphicsOptions_FindDetectedResolution( trap_Cvar_VariableValue( "r_mode" ) );
+	//
+	// if ( s_graphicsoptions.mode.curvalue < 0 )
+	// {
+	// 	if( resolutionsDetected )
+	// 	{
+	// 		int i;
+	// 		char buf[MAX_STRING_CHARS];
+	// 		trap_Cvar_VariableStringBuffer("r_customwidth", buf, sizeof(buf)-2);
+	// 		buf[strlen(buf)+1] = 0;
+	// 		buf[strlen(buf)] = 'x';
+	// 		trap_Cvar_VariableStringBuffer("r_customheight", buf+strlen(buf), sizeof(buf)-strlen(buf));
+	//
+	// 		for(i = 0; detectedResolutions[i]; ++i)
+	// 		{
+	// 			if(!Q_stricmp(buf, detectedResolutions[i]))
+	// 			{
+	// 				s_graphicsoptions.mode.curvalue = i;
+	// 				break;
+	// 			}
+	// 		}
+	// 		if ( s_graphicsoptions.mode.curvalue < 0 )
+	// 			s_graphicsoptions.mode.curvalue = 0;
+	// 	}
+	// 	else
+	// 	{
+	// 		s_graphicsoptions.mode.curvalue = 3;
+	// 	}
+	// }
+	// s_graphicsoptions.ratio.curvalue =
+	// 	resToRatio[ s_graphicsoptions.mode.curvalue ];
+	// s_graphicsoptions.fs.curvalue = trap_Cvar_VariableValue("r_fullscreen");
+	// s_graphicsoptions.allow_extensions.curvalue = trap_Cvar_VariableValue("r_allowExtensions");
 	s_graphicsoptions.tq.curvalue = 3-trap_Cvar_VariableValue( "r_picmip");
 	if ( s_graphicsoptions.tq.curvalue < 0 )
 	{
@@ -962,20 +984,13 @@ static void GraphicsOptions_SetMenuItems( void )
 		s_graphicsoptions.filter.curvalue = 1;
 	}
 
-	if ( trap_Cvar_VariableValue( "r_lodBias" ) > 0 )
-	{
-		if ( trap_Cvar_VariableValue( "r_subdivisions" ) >= 20 )
-		{
-			s_graphicsoptions.geometry.curvalue = 0;
-		}
-		else
-		{
-			s_graphicsoptions.geometry.curvalue = 1;
-		}
-	}
-	else
-	{
+	int lodbias = trap_Cvar_VariableValue( "r_lodBias" );
+	if (lodbias == -1) {
 		s_graphicsoptions.geometry.curvalue = 2;
+	} else if (lodbias == 1) {
+		s_graphicsoptions.geometry.curvalue = 1;
+	} else {
+		s_graphicsoptions.geometry.curvalue = 0;
 	}
 
 	switch ( ( int ) trap_Cvar_VariableValue( "r_colorbits" ) )
@@ -992,14 +1007,14 @@ static void GraphicsOptions_SetMenuItems( void )
 		break;
 	}
 
-	if ( s_graphicsoptions.fs.curvalue == 0 )
-	{
-		s_graphicsoptions.colordepth.curvalue = 0;
-	}
-	if ( s_graphicsoptions.driver.curvalue == 1 )
-	{
-		s_graphicsoptions.colordepth.curvalue = 1;
-	}
+	// if ( s_graphicsoptions.fs.curvalue == 0 )
+	//	{
+	//	s_graphicsoptions.colordepth.curvalue = 0;
+	//}
+	//if ( s_graphicsoptions.driver.curvalue == 1 )
+	//{
+	//	s_graphicsoptions.colordepth.curvalue = 1;
+	//	}
 
 	switch ( (int) trap_Cvar_VariableValue( "vr_refreshrate" ) )
 	{
@@ -1016,6 +1031,17 @@ static void GraphicsOptions_SetMenuItems( void )
 			s_graphicsoptions.refreshrate.curvalue = 3;
 			break;
 	}
+
+	switch ( (int) trap_Cvar_VariableValue( "cg_shadows" ) )
+	{
+		case 1:
+			s_graphicsoptions.shadows.curvalue = 0;
+			break;
+		default:
+			s_graphicsoptions.shadows.curvalue = 1;
+			break;
+	}
+
 	s_graphicsoptions.dynamiclights.curvalue	= trap_Cvar_VariableValue( "r_dynamiclight" ) != 0;
 	s_graphicsoptions.synceveryframe.curvalue	= trap_Cvar_VariableValue( "r_finish" ) != 0;
 }
@@ -1087,12 +1113,19 @@ void GraphicsOptions_MenuInit( void )
 		"On",
 		NULL
 	};
-*/	static const char *s_refreshrate[] =
+*/
+	static const char *s_refreshrate[] =
 	{
 		"60",
 		"72 (Recommended)",
 		"80",
 		"90",
+		NULL
+	};
+	static const char *s_shadows[] =
+	{
+		"Low",
+		"High",
 		NULL
 	};
 
@@ -1101,8 +1134,8 @@ void GraphicsOptions_MenuInit( void )
 	// zero set all our globals
 	memset( &s_graphicsoptions, 0 ,sizeof(graphicsoptions_t) );
 
-	GraphicsOptions_GetResolutions();
-	GraphicsOptions_GetAspectRatios();
+	//GraphicsOptions_GetResolutions();
+	//GraphicsOptions_GetAspectRatios();
 	
 	GraphicsOptions_Cache();
 
@@ -1173,16 +1206,16 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.network.style				= UI_RIGHT;
 	s_graphicsoptions.network.color				= color_red;
 
-	y = 272 - 7 * (BIGCHAR_HEIGHT + 2);
-	s_graphicsoptions.list.generic.type     = MTYPE_SPINCONTROL;
-	s_graphicsoptions.list.generic.name     = "Graphics Settings:";
-	s_graphicsoptions.list.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.list.generic.x        = 400;
-	s_graphicsoptions.list.generic.y        = y;
-	s_graphicsoptions.list.generic.callback = GraphicsOptions_Event;
-	s_graphicsoptions.list.generic.id       = ID_LIST;
-	s_graphicsoptions.list.itemnames        = s_graphics_options_names;
-	y += 2 * ( BIGCHAR_HEIGHT + 2 );
+	y = 254 - 6 * (BIGCHAR_HEIGHT + 2);
+//	s_graphicsoptions.list.generic.type     = MTYPE_SPINCONTROL;
+//	s_graphicsoptions.list.generic.name     = "Graphics Settings:";
+//	s_graphicsoptions.list.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+//	s_graphicsoptions.list.generic.x        = 400;
+//	s_graphicsoptions.list.generic.y        = y;
+//	s_graphicsoptions.list.generic.callback = GraphicsOptions_Event;
+//	s_graphicsoptions.list.generic.id       = ID_LIST;
+//	s_graphicsoptions.list.itemnames        = s_graphics_options_names;
+//	y += 2 * ( BIGCHAR_HEIGHT + 2 );
 
 //	s_graphicsoptions.driver.generic.type  = MTYPE_SPINCONTROL;
 //	s_graphicsoptions.driver.generic.name  = "GL Driver:";
@@ -1282,6 +1315,18 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.dynamiclights.generic.id        = ID_DYNAMICLIGHTS;
 	y += BIGCHAR_HEIGHT+2;
 
+	// references "cg_shadows"
+	s_graphicsoptions.shadows.generic.type		= MTYPE_SPINCONTROL;
+	s_graphicsoptions.shadows.generic.name		= "Shadow Detail:";
+	s_graphicsoptions.shadows.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.shadows.generic.x			= 400;
+	s_graphicsoptions.shadows.generic.y			= y;
+	s_graphicsoptions.shadows.itemnames	        = s_shadows;
+	s_graphicsoptions.shadows.generic.callback	= GraphicsOptions_Event;
+	s_graphicsoptions.shadows.generic.id		= ID_SHADOWS;
+	s_graphicsoptions.shadows.numitems			= NUM_SHADOWS;
+	y += BIGCHAR_HEIGHT+2;
+
 	// references/modifies "r_lodBias" & "subdivisions"
 	s_graphicsoptions.geometry.generic.type  = MTYPE_SPINCONTROL;
 	s_graphicsoptions.geometry.generic.name	 = "Geometric Detail:";
@@ -1360,7 +1405,7 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sound );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
 
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.list );
+//	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.list );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driver );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.allow_extensions );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.ratio );
@@ -1371,6 +1416,7 @@ void GraphicsOptions_MenuInit( void )
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.fs );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.dynamiclights );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.shadows );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.geometry );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.tq );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.texturebits );
