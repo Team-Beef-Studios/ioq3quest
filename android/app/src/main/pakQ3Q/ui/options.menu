@@ -263,7 +263,7 @@ itemDef {
       		name options
 		group grpOptions
       		type ITEM_TYPE_MULTI	
-		text "Statusbar:"
+		text "HUD Type:"
 		cvar "cg_hudfiles"
 		cvarStrList { Normal "ui/hud.txt" Small "ui/hud2.txt" }
 		rect 99 315 256 20
@@ -279,9 +279,24 @@ itemDef {
       		name options
 		group grpOptions
       		type ITEM_TYPE_YESNO
-		text "Statusbar On Weapon Wheel:"
-		cvar "vr_weaponSelectorWithHud"
+		text "Draw HUD:"
+		cvar "cg_drawStatus"
 		rect 99 335 256 20
+      		textalign ITEM_ALIGN_RIGHT
+      		textalignx 128
+      		textaligny 20
+		textscale .3
+      		forecolor 1 1 1 1
+      		visible 1
+	}
+
+itemDef {
+      		name options
+		group grpOptions
+      		type ITEM_TYPE_YESNO
+		text "Draw HUD On Weapon Wheel:"
+		cvar "vr_weaponSelectorWithHud"
+		rect 99 355 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
       		textaligny 20
@@ -297,7 +312,7 @@ itemDef {
 		type ITEM_TYPE_MULTI
 		cvar "vr_goreLevel"
 		cvarFloatList { "None" 0 "Blood Only" 1 "Blood & Gibs (Default)" 2 "Extra Gore (Performance Hit)" 3 }
-		rect 99 375 256 20
+		rect 99 385 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 70
       		textaligny 20

@@ -250,8 +250,7 @@ BR=$(BUILD_DIR)/release-$(PLATFORM)-$(ARCH)
 CDIR=$(MOUNT_DIR)/client
 SDIR=$(MOUNT_DIR)/server
 RCOMMONDIR=$(MOUNT_DIR)/renderercommon
-RGL1DIR=$(MOUNT_DIR)/renderergl1
-RGL2DIR=$(MOUNT_DIR)/renderergl2
+RGL2DIR=$(MOUNT_DIR)/renderergles3
 CMDIR=$(MOUNT_DIR)/qcommon
 SDLDIR=$(MOUNT_DIR)/sdl
 ANDROIDDIR=$(MOUNT_DIR)/android
@@ -443,11 +442,8 @@ ifeq ($(PLATFORM),android)
     -fno-builtin-cos -fno-builtin-sin -fPIC -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS) -DSDL_DISABLE_IMMINTRIN_H -fno-builtin-cos -fno-builtin-sin
 
-  # Flag -ffast-math replacement: https://pspdfkit.com/blog/2021/understanding-fast-math/
-  # Flags -ffp-contract=fast -fno-trapping-math are unused because they are causing lightmap issues
-  OPTIMIZEFASTMATH = -ffinite-math-only -fno-math-errno -fassociative-math -freciprocal-math -fno-signed-zeros
   OPTIMIZEVM = -O3 -funroll-loops -fomit-frame-pointer
-  OPTIMIZE = $(OPTIMIZEVM) $(OPTIMIZEFASTMATH)
+  OPTIMIZE = $(OPTIMIZEVM) -ffast-math
 
   HAVE_VM_COMPILED = false
 
@@ -1047,12 +1043,10 @@ endif
 
 ifneq ($(BUILD_CLIENT),0)
   ifneq ($(USE_RENDERER_DLOPEN),0)
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT) $(B)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME)
     endif
   else
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
       TARGETS += $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT)
     endif
@@ -1479,9 +1473,8 @@ makedirs:
 	@$(MKDIR) $(B)/autoupdater
 	@$(MKDIR) $(B)/client/opus
 	@$(MKDIR) $(B)/client/vorbis
-	@$(MKDIR) $(B)/renderergl1
-	@$(MKDIR) $(B)/renderergl2
-	@$(MKDIR) $(B)/renderergl2/glsl
+	@$(MKDIR) $(B)/renderergles3
+	@$(MKDIR) $(B)/renderergles3/glsl
 	@$(MKDIR) $(B)/ded
 	@$(MKDIR) $(B)/$(BASEGAME)/android
 	@$(MKDIR) $(B)/$(BASEGAME)/cgame
@@ -1833,174 +1826,133 @@ else
 endif
 
 Q3R2OBJ = \
-  $(B)/renderergl2/tr_animation.o \
-  $(B)/renderergl2/tr_backend.o \
-  $(B)/renderergl2/tr_bsp.o \
-  $(B)/renderergl2/tr_cmds.o \
-  $(B)/renderergl2/tr_curve.o \
-  $(B)/renderergl2/tr_dsa.o \
-  $(B)/renderergl2/tr_extramath.o \
-  $(B)/renderergl2/tr_extensions.o \
-  $(B)/renderergl2/tr_fbo.o \
-  $(B)/renderergl2/tr_flares.o \
-  $(B)/renderergl2/tr_font.o \
-  $(B)/renderergl2/tr_glsl.o \
-  $(B)/renderergl2/tr_image.o \
-  $(B)/renderergl2/tr_image_bmp.o \
-  $(B)/renderergl2/tr_image_jpg.o \
-  $(B)/renderergl2/tr_image_pcx.o \
-  $(B)/renderergl2/tr_image_png.o \
-  $(B)/renderergl2/tr_image_tga.o \
-  $(B)/renderergl2/tr_image_dds.o \
-  $(B)/renderergl2/tr_init.o \
-  $(B)/renderergl2/tr_light.o \
-  $(B)/renderergl2/tr_main.o \
-  $(B)/renderergl2/tr_marks.o \
-  $(B)/renderergl2/tr_mesh.o \
-  $(B)/renderergl2/tr_model.o \
-  $(B)/renderergl2/tr_model_iqm.o \
-  $(B)/renderergl2/tr_noise.o \
-  $(B)/renderergl2/tr_postprocess.o \
-  $(B)/renderergl2/tr_scene.o \
-  $(B)/renderergl2/tr_shade.o \
-  $(B)/renderergl2/tr_shade_calc.o \
-  $(B)/renderergl2/tr_shader.o \
-  $(B)/renderergl2/tr_shadows.o \
-  $(B)/renderergl2/tr_sky.o \
-  $(B)/renderergl2/tr_surface.o \
-  $(B)/renderergl2/tr_vbo.o \
-  $(B)/renderergl2/tr_world.o \
-  \
-  $(B)/renderergl1/sdl_gamma.o \
-  $(B)/renderergl1/sdl_glimp.o
-
+  $(B)/renderergles3/tr_animation.o \
+  $(B)/renderergles3/tr_backend.o \
+  $(B)/renderergles3/tr_bsp.o \
+  $(B)/renderergles3/tr_cmds.o \
+  $(B)/renderergles3/tr_curve.o \
+  $(B)/renderergles3/tr_dsa.o \
+  $(B)/renderergles3/tr_extramath.o \
+  $(B)/renderergles3/tr_extensions.o \
+  $(B)/renderergles3/tr_fbo.o \
+  $(B)/renderergles3/tr_flares.o \
+  $(B)/renderergles3/tr_font.o \
+  $(B)/renderergles3/tr_glsl.o \
+  $(B)/renderergles3/tr_image.o \
+  $(B)/renderergles3/tr_image_bmp.o \
+  $(B)/renderergles3/tr_image_jpg.o \
+  $(B)/renderergles3/tr_image_pcx.o \
+  $(B)/renderergles3/tr_image_png.o \
+  $(B)/renderergles3/tr_image_tga.o \
+  $(B)/renderergles3/tr_image_dds.o \
+  $(B)/renderergles3/tr_init.o \
+  $(B)/renderergles3/tr_light.o \
+  $(B)/renderergles3/tr_main.o \
+  $(B)/renderergles3/tr_marks.o \
+  $(B)/renderergles3/tr_mesh.o \
+  $(B)/renderergles3/tr_model.o \
+  $(B)/renderergles3/tr_model_iqm.o \
+  $(B)/renderergles3/tr_noise.o \
+  $(B)/renderergles3/tr_postprocess.o \
+  $(B)/renderergles3/tr_scene.o \
+  $(B)/renderergles3/tr_shade.o \
+  $(B)/renderergles3/tr_shade_calc.o \
+  $(B)/renderergles3/tr_shader.o \
+  $(B)/renderergles3/tr_shadows.o \
+  $(B)/renderergles3/tr_sky.o \
+  $(B)/renderergles3/tr_surface.o \
+  $(B)/renderergles3/tr_vbo.o \
+  $(B)/renderergles3/tr_world.o \
+  $(B)/renderergles3/sdl_gamma.o \
+  $(B)/renderergles3/sdl_glimp.o
+  
+  
 Q3R2STRINGOBJ = \
-  $(B)/renderergl2/glsl/bokeh_fp.o \
-  $(B)/renderergl2/glsl/bokeh_vp.o \
-  $(B)/renderergl2/glsl/calclevels4x_fp.o \
-  $(B)/renderergl2/glsl/calclevels4x_vp.o \
-  $(B)/renderergl2/glsl/depthblur_fp.o \
-  $(B)/renderergl2/glsl/depthblur_vp.o \
-  $(B)/renderergl2/glsl/dlight_fp.o \
-  $(B)/renderergl2/glsl/dlight_vp.o \
-  $(B)/renderergl2/glsl/down4x_fp.o \
-  $(B)/renderergl2/glsl/down4x_vp.o \
-  $(B)/renderergl2/glsl/fogpass_fp.o \
-  $(B)/renderergl2/glsl/fogpass_vp.o \
-  $(B)/renderergl2/glsl/generic_fp.o \
-  $(B)/renderergl2/glsl/generic_vp.o \
-  $(B)/renderergl2/glsl/lightall_fp.o \
-  $(B)/renderergl2/glsl/lightall_vp.o \
-  $(B)/renderergl2/glsl/pshadow_fp.o \
-  $(B)/renderergl2/glsl/pshadow_vp.o \
-  $(B)/renderergl2/glsl/shadowfill_fp.o \
-  $(B)/renderergl2/glsl/shadowfill_vp.o \
-  $(B)/renderergl2/glsl/shadowmask_fp.o \
-  $(B)/renderergl2/glsl/shadowmask_vp.o \
-  $(B)/renderergl2/glsl/ssao_fp.o \
-  $(B)/renderergl2/glsl/ssao_vp.o \
-  $(B)/renderergl2/glsl/texturecolor_fp.o \
-  $(B)/renderergl2/glsl/texturecolor_vp.o \
-  $(B)/renderergl2/glsl/tonemap_fp.o \
-  $(B)/renderergl2/glsl/tonemap_vp.o
-
-Q3ROBJ = \
-  $(B)/renderergl1/tr_altivec.o \
-  $(B)/renderergl1/tr_animation.o \
-  $(B)/renderergl1/tr_backend.o \
-  $(B)/renderergl1/tr_bsp.o \
-  $(B)/renderergl1/tr_cmds.o \
-  $(B)/renderergl1/tr_curve.o \
-  $(B)/renderergl1/tr_flares.o \
-  $(B)/renderergl1/tr_font.o \
-  $(B)/renderergl1/tr_image.o \
-  $(B)/renderergl1/tr_image_bmp.o \
-  $(B)/renderergl1/tr_image_jpg.o \
-  $(B)/renderergl1/tr_image_pcx.o \
-  $(B)/renderergl1/tr_image_png.o \
-  $(B)/renderergl1/tr_image_tga.o \
-  $(B)/renderergl1/tr_init.o \
-  $(B)/renderergl1/tr_light.o \
-  $(B)/renderergl1/tr_main.o \
-  $(B)/renderergl1/tr_marks.o \
-  $(B)/renderergl1/tr_mesh.o \
-  $(B)/renderergl1/tr_model.o \
-  $(B)/renderergl1/tr_model_iqm.o \
-  $(B)/renderergl1/tr_noise.o \
-  $(B)/renderergl1/tr_scene.o \
-  $(B)/renderergl1/tr_shade.o \
-  $(B)/renderergl1/tr_shade_calc.o \
-  $(B)/renderergl1/tr_shader.o \
-  $(B)/renderergl1/tr_shadows.o \
-  $(B)/renderergl1/tr_sky.o \
-  $(B)/renderergl1/tr_surface.o \
-  $(B)/renderergl1/tr_world.o \
-  \
-  $(B)/renderergl1/sdl_gamma.o \
-  $(B)/renderergl1/sdl_glimp.o
+  $(B)/renderergles3/glsl/bokeh_fp.o \
+  $(B)/renderergles3/glsl/bokeh_vp.o \
+  $(B)/renderergles3/glsl/calclevels4x_fp.o \
+  $(B)/renderergles3/glsl/calclevels4x_vp.o \
+  $(B)/renderergles3/glsl/depthblur_fp.o \
+  $(B)/renderergles3/glsl/depthblur_vp.o \
+  $(B)/renderergles3/glsl/dlight_fp.o \
+  $(B)/renderergles3/glsl/dlight_vp.o \
+  $(B)/renderergles3/glsl/down4x_fp.o \
+  $(B)/renderergles3/glsl/down4x_vp.o \
+  $(B)/renderergles3/glsl/fogpass_fp.o \
+  $(B)/renderergles3/glsl/fogpass_vp.o \
+  $(B)/renderergles3/glsl/generic_fp.o \
+  $(B)/renderergles3/glsl/generic_vp.o \
+  $(B)/renderergles3/glsl/lightall_fp.o \
+  $(B)/renderergles3/glsl/lightall_vp.o \
+  $(B)/renderergles3/glsl/pshadow_fp.o \
+  $(B)/renderergles3/glsl/pshadow_vp.o \
+  $(B)/renderergles3/glsl/shadowfill_fp.o \
+  $(B)/renderergles3/glsl/shadowfill_vp.o \
+  $(B)/renderergles3/glsl/shadowmask_fp.o \
+  $(B)/renderergles3/glsl/shadowmask_vp.o \
+  $(B)/renderergles3/glsl/ssao_fp.o \
+  $(B)/renderergles3/glsl/ssao_vp.o \
+  $(B)/renderergles3/glsl/texturecolor_fp.o \
+  $(B)/renderergles3/glsl/texturecolor_vp.o \
+  $(B)/renderergles3/glsl/tonemap_fp.o \
+  $(B)/renderergles3/glsl/tonemap_vp.o
 
 ifneq ($(USE_RENDERER_DLOPEN), 0)
-  Q3ROBJ += \
-    $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
-    $(B)/renderergl1/q_math.o \
-    $(B)/renderergl1/tr_subs.o
-
   Q3R2OBJ += \
-    $(B)/renderergl1/q_shared.o \
-    $(B)/renderergl1/puff.o \
-    $(B)/renderergl1/q_math.o \
-    $(B)/renderergl1/tr_subs.o
+    $(B)/renderergles3/q_shared.o \
+    $(B)/renderergles3/puff.o \
+    $(B)/renderergles3/q_math.o \
+    $(B)/renderergles3/tr_subs.o
 endif
 
 ifneq ($(USE_INTERNAL_JPEG),0)
   JPGOBJ = \
-    $(B)/renderergl1/jaricom.o \
-    $(B)/renderergl1/jcapimin.o \
-    $(B)/renderergl1/jcapistd.o \
-    $(B)/renderergl1/jcarith.o \
-    $(B)/renderergl1/jccoefct.o  \
-    $(B)/renderergl1/jccolor.o \
-    $(B)/renderergl1/jcdctmgr.o \
-    $(B)/renderergl1/jchuff.o   \
-    $(B)/renderergl1/jcinit.o \
-    $(B)/renderergl1/jcmainct.o \
-    $(B)/renderergl1/jcmarker.o \
-    $(B)/renderergl1/jcmaster.o \
-    $(B)/renderergl1/jcomapi.o \
-    $(B)/renderergl1/jcparam.o \
-    $(B)/renderergl1/jcprepct.o \
-    $(B)/renderergl1/jcsample.o \
-    $(B)/renderergl1/jctrans.o \
-    $(B)/renderergl1/jdapimin.o \
-    $(B)/renderergl1/jdapistd.o \
-    $(B)/renderergl1/jdarith.o \
-    $(B)/renderergl1/jdatadst.o \
-    $(B)/renderergl1/jdatasrc.o \
-    $(B)/renderergl1/jdcoefct.o \
-    $(B)/renderergl1/jdcolor.o \
-    $(B)/renderergl1/jddctmgr.o \
-    $(B)/renderergl1/jdhuff.o \
-    $(B)/renderergl1/jdinput.o \
-    $(B)/renderergl1/jdmainct.o \
-    $(B)/renderergl1/jdmarker.o \
-    $(B)/renderergl1/jdmaster.o \
-    $(B)/renderergl1/jdmerge.o \
-    $(B)/renderergl1/jdpostct.o \
-    $(B)/renderergl1/jdsample.o \
-    $(B)/renderergl1/jdtrans.o \
-    $(B)/renderergl1/jerror.o \
-    $(B)/renderergl1/jfdctflt.o \
-    $(B)/renderergl1/jfdctfst.o \
-    $(B)/renderergl1/jfdctint.o \
-    $(B)/renderergl1/jidctflt.o \
-    $(B)/renderergl1/jidctfst.o \
-    $(B)/renderergl1/jidctint.o \
-    $(B)/renderergl1/jmemmgr.o \
-    $(B)/renderergl1/jmemnobs.o \
-    $(B)/renderergl1/jquant1.o \
-    $(B)/renderergl1/jquant2.o \
-    $(B)/renderergl1/jutils.o
+    $(B)/renderergles3/jaricom.o \
+    $(B)/renderergles3/jcapimin.o \
+    $(B)/renderergles3/jcapistd.o \
+    $(B)/renderergles3/jcarith.o \
+    $(B)/renderergles3/jccoefct.o  \
+    $(B)/renderergles3/jccolor.o \
+    $(B)/renderergles3/jcdctmgr.o \
+    $(B)/renderergles3/jchuff.o   \
+    $(B)/renderergles3/jcinit.o \
+    $(B)/renderergles3/jcmainct.o \
+    $(B)/renderergles3/jcmarker.o \
+    $(B)/renderergles3/jcmaster.o \
+    $(B)/renderergles3/jcomapi.o \
+    $(B)/renderergles3/jcparam.o \
+    $(B)/renderergles3/jcprepct.o \
+    $(B)/renderergles3/jcsample.o \
+    $(B)/renderergles3/jctrans.o \
+    $(B)/renderergles3/jdapimin.o \
+    $(B)/renderergles3/jdapistd.o \
+    $(B)/renderergles3/jdarith.o \
+    $(B)/renderergles3/jdatadst.o \
+    $(B)/renderergles3/jdatasrc.o \
+    $(B)/renderergles3/jdcoefct.o \
+    $(B)/renderergles3/jdcolor.o \
+    $(B)/renderergles3/jddctmgr.o \
+    $(B)/renderergles3/jdhuff.o \
+    $(B)/renderergles3/jdinput.o \
+    $(B)/renderergles3/jdmainct.o \
+    $(B)/renderergles3/jdmarker.o \
+    $(B)/renderergles3/jdmaster.o \
+    $(B)/renderergles3/jdmerge.o \
+    $(B)/renderergles3/jdpostct.o \
+    $(B)/renderergles3/jdsample.o \
+    $(B)/renderergles3/jdtrans.o \
+    $(B)/renderergles3/jerror.o \
+    $(B)/renderergles3/jfdctflt.o \
+    $(B)/renderergles3/jfdctfst.o \
+    $(B)/renderergles3/jfdctint.o \
+    $(B)/renderergles3/jidctflt.o \
+    $(B)/renderergles3/jidctfst.o \
+    $(B)/renderergles3/jidctint.o \
+    $(B)/renderergles3/jmemmgr.o \
+    $(B)/renderergles3/jmemnobs.o \
+    $(B)/renderergles3/jquant1.o \
+    $(B)/renderergles3/jquant2.o \
+    $(B)/renderergles3/jutils.o
 endif
 
 ifeq ($(ARCH),x86)
@@ -2246,28 +2198,11 @@ ifeq ($(USE_MUMBLE),1)
 endif
 
 ifneq ($(USE_RENDERER_DLOPEN),0)
-$(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(LIBSDLMAIN)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) \
-		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS)
-
-$(B)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ) $(JPGOBJ)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3ROBJ) $(JPGOBJ) \
-		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
-
 $(B)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME): $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) \
 		$(THREAD_LIBS) $(LIBSDLMAIN) $(RENDERER_LIBS) $(LIBS)
 else
-$(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) $(LIBSDLMAIN)
-	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ $(Q3OBJ) $(Q3ROBJ) $(JPGOBJ) \
-		$(LIBSDLMAIN) $(CLIENT_LIBS) $(RENDERER_LIBS) $(LIBS)
-
 $(B)/$(CLIENTBIN)_opengl2$(FULLBINEXT): $(Q3OBJ) $(Q3R2OBJ) $(Q3R2STRINGOBJ) $(JPGOBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
 	$(Q)$(CC) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
@@ -2777,36 +2712,24 @@ $(B)/client/win_resource.o: $(SYSDIR)/win_resource.rc $(SYSDIR)/win_manifest.xml
 	$(DO_WINDRES)
 
 
-$(B)/renderergl1/%.o: $(CMDIR)/%.c
+$(B)/renderergles3/%.o: $(JPDIR)/%.c
 	$(DO_REF_CC)
 
-$(B)/renderergl1/%.o: $(SDLDIR)/%.c
+$(B)/renderergles3/%.o: $(SDLDIR)/%.c
+	$(DO_REF_CC)
+	
+$(B)/renderergles3/%.o: $(RCOMMONDIR)/%.c
 	$(DO_REF_CC)
 
-$(B)/renderergl1/%.o: $(JPDIR)/%.c
+$(B)/renderergles3/%.o: $(RGL2DIR)/%.c
 	$(DO_REF_CC)
 
-$(B)/renderergl1/%.o: $(RCOMMONDIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl1/%.o: $(RGL1DIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl1/tr_altivec.o: $(RGL1DIR)/tr_altivec.c
-	$(DO_REF_CC_ALTIVEC)
-
-$(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl
+$(B)/renderergles3/glsl/%.c: $(RGL2DIR)/glsl/%.glsl
 	$(DO_REF_STR)
 
-$(B)/renderergl2/glsl/%.o: $(B)/renderergl2/glsl/%.c
+$(B)/renderergles3/glsl/%.o: $(B)/renderergles3/glsl/%.c
 	$(DO_REF_CC)
-
-$(B)/renderergl2/%.o: $(RCOMMONDIR)/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl2/%.o: $(RGL2DIR)/%.c
-	$(DO_REF_CC)
-
+	
 
 $(B)/ded/%.o: $(ASMDIR)/%.s
 	$(DO_AS)
@@ -2950,9 +2873,7 @@ ifneq ($(BUILD_GAME_SO),0)
 endif
 
 ifneq ($(BUILD_CLIENT),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(CLIENTBIN)$(FULLBINEXT) $(COPYBINDIR)/$(CLIENTBIN)$(FULLBINEXT)
   ifneq ($(USE_RENDERER_DLOPEN),0)
-	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl1_$(SHLIBNAME)
     ifneq ($(BUILD_RENDERER_OPENGL2),0)
 	$(INSTALL) $(STRIP_FLAG) -m 0755 $(BR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME) $(COPYBINDIR)/$(LIBPREFIX)renderer_opengl2_$(SHLIBNAME)
     endif

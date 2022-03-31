@@ -252,6 +252,7 @@ GRAPHICS OPTIONS MENU
 #define ID_DYNAMICLIGHTS	112
 #define ID_SYNCEVERYFRAME	113
 #define ID_SHADOWS		114
+#define ID_GAMMA		115
 
 #define	NUM_REFRESHRATE	4
 #define NUM_SHADOWS 2
@@ -285,6 +286,7 @@ typedef struct {
 	menuradiobutton_s	dynamiclights;
 	menuradiobutton_s	synceveryframe;
 	menulist_s		shadows;
+	menuslider_s	gamma;
 
 	menubitmap_s	apply;
 	menubitmap_s	back;
@@ -306,6 +308,7 @@ typedef struct
 	qboolean dynamiclights;
 	qboolean synceveryframe;
 	int shadows;
+	float gamma;
 } InitialVideoOptions_s;
 
 static InitialVideoOptions_s	s_ivo;
@@ -484,7 +487,7 @@ GraphicsOptions_GetInitialVideo
 */
 static void GraphicsOptions_GetInitialVideo( void )
 {
-	s_ivo.colordepth  = s_graphicsoptions.colordepth.curvalue;
+	// s_ivo.colordepth  = s_graphicsoptions.colordepth.curvalue;
 	// s_ivo.driver      = s_graphicsoptions.driver.curvalue;
 	// s_ivo.mode        = s_graphicsoptions.mode.curvalue;
 	// s_ivo.fullscreen  = s_graphicsoptions.fs.curvalue;
@@ -492,12 +495,13 @@ static void GraphicsOptions_GetInitialVideo( void )
 	s_ivo.tq          = s_graphicsoptions.tq.curvalue;
 	s_ivo.lighting    = s_graphicsoptions.lighting.curvalue;
 	s_ivo.geometry    = s_graphicsoptions.geometry.curvalue;
-	s_ivo.filter      = s_graphicsoptions.filter.curvalue;
-	s_ivo.texturebits = s_graphicsoptions.texturebits.curvalue;
+	// s_ivo.filter      = s_graphicsoptions.filter.curvalue;
+	// s_ivo.texturebits = s_graphicsoptions.texturebits.curvalue;
 	s_ivo.refreshrate = s_graphicsoptions.refreshrate.curvalue;
 	s_ivo.dynamiclights = s_graphicsoptions.dynamiclights.curvalue;
 	s_ivo.synceveryframe = s_graphicsoptions.synceveryframe.curvalue;
 	s_ivo.shadows     = s_graphicsoptions.refreshrate.curvalue;
+	s_ivo.gamma       = s_graphicsoptions.gamma.curvalue;
 }
 
 /*
@@ -639,23 +643,27 @@ static void GraphicsOptions_UpdateMenuItems( void )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
-	if ( s_ivo.colordepth != s_graphicsoptions.colordepth.curvalue )
-	{
-		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
-	}
+	// if ( s_ivo.colordepth != s_graphicsoptions.colordepth.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
 	// if ( s_ivo.driver != s_graphicsoptions.driver.curvalue )
 	// {
 	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	// }
-	if ( s_ivo.texturebits != s_graphicsoptions.texturebits.curvalue )
-	{
-		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
-	}
+	// if ( s_ivo.texturebits != s_graphicsoptions.texturebits.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
 	if ( s_ivo.geometry != s_graphicsoptions.geometry.curvalue )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
-	if ( s_ivo.filter != s_graphicsoptions.filter.curvalue )
+	// if ( s_ivo.filter != s_graphicsoptions.filter.curvalue )
+	// {
+	// 	s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	// }
+	if ( s_ivo.gamma != s_graphicsoptions.gamma.curvalue )
 	{
 		s_graphicsoptions.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
 	}
@@ -836,6 +844,10 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 				}
 			trap_Cvar_SetValue("cg_shadows", shadows);
 		}
+		break;
+
+	case ID_GAMMA:
+		trap_Cvar_SetValue( "r_gamma", s_graphicsoptions.gamma.curvalue );
 		break;
 
 //	case ID_LIST:
@@ -1044,6 +1056,7 @@ static void GraphicsOptions_SetMenuItems( void )
 
 	s_graphicsoptions.dynamiclights.curvalue	= trap_Cvar_VariableValue( "r_dynamiclight" ) != 0;
 	s_graphicsoptions.synceveryframe.curvalue	= trap_Cvar_VariableValue( "r_finish" ) != 0;
+	s_graphicsoptions.gamma.curvalue			= trap_Cvar_VariableValue( "r_gamma" );
 }
 
 /*
@@ -1206,7 +1219,7 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.network.style				= UI_RIGHT;
 	s_graphicsoptions.network.color				= color_red;
 
-	y = 254 - 6 * (BIGCHAR_HEIGHT + 2);
+	y = 254 - 4 * (BIGCHAR_HEIGHT + 2);
 //	s_graphicsoptions.list.generic.type     = MTYPE_SPINCONTROL;
 //	s_graphicsoptions.list.generic.name     = "Graphics Settings:";
 //	s_graphicsoptions.list.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -1278,14 +1291,26 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.synceveryframe.generic.id       = ID_SYNCEVERYFRAME;
 	y += BIGCHAR_HEIGHT+2;
 
-	// references "r_colorbits"
-	s_graphicsoptions.colordepth.generic.type     = MTYPE_SPINCONTROL;
-	s_graphicsoptions.colordepth.generic.name     = "Color Depth:";
-	s_graphicsoptions.colordepth.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.colordepth.generic.x        = 400;
-	s_graphicsoptions.colordepth.generic.y        = y;
-	s_graphicsoptions.colordepth.itemnames        = colordepth_names;
+	// references "r_gamma"
+	s_graphicsoptions.gamma.generic.type			= MTYPE_SLIDER;
+	s_graphicsoptions.gamma.generic.name			= "Brightness:";
+	s_graphicsoptions.gamma.generic.flags			= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.gamma.generic.x				= 400;
+    s_graphicsoptions.gamma.generic.y				= y;
+    s_graphicsoptions.gamma.generic.callback		= GraphicsOptions_Event;
+	s_graphicsoptions.gamma.generic.id				= ID_GAMMA;
+	s_graphicsoptions.gamma.minvalue				= 0.8f;
+	s_graphicsoptions.gamma.maxvalue				= 1.3f;
 	y += BIGCHAR_HEIGHT+2;
+
+//	// references "r_colorbits"
+//	s_graphicsoptions.colordepth.generic.type     = MTYPE_SPINCONTROL;
+//	s_graphicsoptions.colordepth.generic.name     = "Color Depth:";
+//	s_graphicsoptions.colordepth.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+//	s_graphicsoptions.colordepth.generic.x        = 400;
+//	s_graphicsoptions.colordepth.generic.y        = y;
+//	s_graphicsoptions.colordepth.itemnames        = colordepth_names;
+//	y += BIGCHAR_HEIGHT+2;
 
 //	// references/modifies "r_fullscreen"
 //	s_graphicsoptions.fs.generic.type     = MTYPE_SPINCONTROL;
@@ -1345,25 +1370,25 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.tq.minvalue       = 0;
 	s_graphicsoptions.tq.maxvalue       = 3;
 	s_graphicsoptions.tq.generic.callback = GraphicsOptions_TQEvent;
-	y += BIGCHAR_HEIGHT+2;
-
-	// references/modifies "r_textureBits"
-	s_graphicsoptions.texturebits.generic.type  = MTYPE_SPINCONTROL;
-	s_graphicsoptions.texturebits.generic.name	= "Texture Quality:";
-	s_graphicsoptions.texturebits.generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.texturebits.generic.x	    = 400;
-	s_graphicsoptions.texturebits.generic.y	    = y;
-	s_graphicsoptions.texturebits.itemnames     = tq_names;
-	y += BIGCHAR_HEIGHT+2;
-
-	// references/modifies "r_textureMode"
-	s_graphicsoptions.filter.generic.type   = MTYPE_SPINCONTROL;
-	s_graphicsoptions.filter.generic.name	= "Texture Filter:";
-	s_graphicsoptions.filter.generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.filter.generic.x	    = 400;
-	s_graphicsoptions.filter.generic.y	    = y;
-	s_graphicsoptions.filter.itemnames      = filter_names;
 	y += 2*BIGCHAR_HEIGHT;
+
+//	// references/modifies "r_textureBits"
+//	s_graphicsoptions.texturebits.generic.type  = MTYPE_SPINCONTROL;
+//	s_graphicsoptions.texturebits.generic.name	= "Texture Quality:";
+//	s_graphicsoptions.texturebits.generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+//	s_graphicsoptions.texturebits.generic.x	    = 400;
+//	s_graphicsoptions.texturebits.generic.y	    = y;
+//	s_graphicsoptions.texturebits.itemnames     = tq_names;
+//	y += BIGCHAR_HEIGHT+2;
+
+//	// references/modifies "r_textureMode"
+//	s_graphicsoptions.filter.generic.type   = MTYPE_SPINCONTROL;
+//	s_graphicsoptions.filter.generic.name	= "Texture Filter:";
+//	s_graphicsoptions.filter.generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+//	s_graphicsoptions.filter.generic.x	    = 400;
+//	s_graphicsoptions.filter.generic.y	    = y;
+//	s_graphicsoptions.filter.itemnames      = filter_names;
+//	y += 2*BIGCHAR_HEIGHT;
 
 	s_graphicsoptions.driverinfo.generic.type     = MTYPE_PTEXT;
 	s_graphicsoptions.driverinfo.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -1412,15 +1437,16 @@ void GraphicsOptions_MenuInit( void )
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.mode );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.refreshrate );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.synceveryframe );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.colordepth );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.gamma );
+//	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.colordepth );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.fs );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.dynamiclights );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.shadows );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.geometry );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.tq );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.texturebits );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.filter );
+//	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.texturebits );
+//	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.filter );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driverinfo );
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.back );
