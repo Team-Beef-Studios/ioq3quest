@@ -2091,22 +2091,27 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 		return qfalse;
 	}
 
-	*shadowPlane = trace.endpos[2] + 1;
-
-	if ( cg_shadows.integer != 1 ) {	// no mark for stencil or projection shadows
-		return qtrue;
+	// no shadow if VR player is dead
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+	if ( clientPlayer && ( cg.predictedPlayerState.stats[STAT_HEALTH] <= 0 ) ) {
+		return qfalse;
 	}
 
-	// fade the shadow out with height
-	alpha = 1.0 - trace.fraction;
+	*shadowPlane = trace.endpos[2] + 1;
 
-	// hack / FPE - bogus planes?
-	//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f ) 
+	// mark for stencil or projection shadows (force it if VR player with high shadows)
+	if ( ( cg_shadows.integer == 1 ) || ( clientPlayer && ( cg_shadows.integer == 3 ) ) ) {
+		// fade the shadow out with height
+		alpha = 1.0 - trace.fraction;
 
-	// add the mark as a temporary, so it goes directly to the renderer
-	// without taking a spot in the cg_marks array
-	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 
-		cent->pe.legs.yawAngle, alpha,alpha,alpha,1, qfalse, 24, qtrue );
+		// hack / FPE - bogus planes?
+		//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f )
+
+		// add the mark as a temporary, so it goes directly to the renderer
+		// without taking a spot in the cg_marks array
+		CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal,
+			cent->pe.legs.yawAngle, alpha,alpha,alpha,1, qfalse, 24, qtrue );
+	}
 
 	return qtrue;
 }
@@ -2391,7 +2396,9 @@ void CG_Player( centity_t *cent ) {
 	// add a water splash if partially in and out of water
 	CG_PlayerSplash( cent );
 
-	if ( cg_shadows.integer == 3 && shadow ) {
+	// high detail shadow for everyone except VR player
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+	if ( cg_shadows.integer == 3 && shadow && !clientPlayer ) {
 		renderfx |= RF_SHADOW_PLANE;
 	}
 	renderfx |= RF_LIGHTING_ORIGIN;			// use the same origin for all
