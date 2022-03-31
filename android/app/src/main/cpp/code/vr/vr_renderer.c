@@ -4,6 +4,7 @@
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/client.h"
+#include "ovr_renderer.inl"
 
 #include "vr_clientinfo.h"
 #include "vr_types.h"
@@ -22,6 +23,7 @@
 #define SUPER_SAMPLE  1.15f
 
 extern vr_clientinfo_t vr;
+
 
 void APIENTRY VR_GLDebugLog(GLenum source, GLenum type, GLuint id,
 	GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -87,64 +89,21 @@ void VR_InitRenderer( engine_t* engine ) {
 	glDebugMessageCallback(VR_GLDebugLog, 0);
 #endif
 
-	//TODO:
-	/*
 	int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
-	
-	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye) {
-		framebuffer_t* framebuffer = &engine->framebuffers[eye];
-		framebuffer->colorTexture = vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D, GL_RGBA8,
-			eyeW, eyeH, 1, 3);
-		framebuffer->swapchainLength = vrapi_GetTextureSwapChainLength(framebuffer->colorTexture);
-		framebuffer->depthBuffers = (GLuint*)malloc(framebuffer->swapchainLength * sizeof(GLuint));
-		framebuffer->framebuffers = (GLuint*)malloc(framebuffer->swapchainLength * sizeof(GLuint));
+	ovrRenderer_Create(engine->session, &engine->renderer, eyeW, eyeH);
 
-		for (int index = 0; index < framebuffer->swapchainLength; ++index) {
-			GLuint colorTexture;
-			GLenum framebufferStatus;
-
-			colorTexture = vrapi_GetTextureSwapChainHandle(framebuffer->colorTexture, index);
-			glBindTexture(GL_TEXTURE_2D, colorTexture);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-			glGenRenderbuffers(1, &framebuffer->depthBuffers[index]);
-			glBindRenderbuffer(GL_RENDERBUFFER, framebuffer->depthBuffers[index]);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, eyeW, eyeH);
-			glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-			glGenFramebuffers(1, &framebuffer->framebuffers[index]);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->framebuffers[index]);
-			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-				framebuffer->depthBuffers[index]);
-			glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture, 0);
-			framebufferStatus = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
-			assert(framebufferStatus == GL_FRAMEBUFFER_COMPLETE);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		}
-	}
-	*/
+	XrReferenceSpaceCreateInfo spaceCreateInfo = {};
+	spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+	spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
+	spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
+	spaceCreateInfo.poseInReferenceSpace.position.y = 0.0f;
+	xrCreateReferenceSpace(engine->session, &spaceCreateInfo, &engine->stageSpace);
 }
 
 void VR_DestroyRenderer( engine_t* engine ) {
-	//TODO:
-	/*
-	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye)
-	{
-		if (engine->framebuffers[eye].swapchainLength > 0) {
-			glDeleteFramebuffers(engine->framebuffers[eye].swapchainLength,
-				engine->framebuffers[eye].depthBuffers);
-			free(engine->framebuffers[eye].depthBuffers);
-			free(engine->framebuffers[eye].framebuffers);
-
-			vrapi_DestroyTextureSwapChain(engine->framebuffers[eye].colorTexture);
-
-			memset(&engine->framebuffers[eye], 0, sizeof(engine->framebuffers[eye]));
-		}
-	}
-    */
+	xrDestroySpace(engine->stageSpace);
+	ovrRenderer_Destroy(&engine->renderer);
 }
 
 
@@ -238,9 +197,8 @@ ovrLayerCylinder2 BuildCylinderLayer(engine_t* engine, const int textureWidth, c
 }
 */
 
-void VR_ClearFrameBuffer( GLuint frameBuffer, int width, int height)
+void VR_ClearFrameBuffer( int width, int height )
 {
-    glBindFramebuffer( GL_DRAW_FRAMEBUFFER, frameBuffer );
 
     glEnable( GL_SCISSOR_TEST );
     glViewport( 0, 0, width, height );
@@ -261,11 +219,165 @@ void VR_ClearFrameBuffer( GLuint frameBuffer, int width, int height)
 
     glScissor( 0, 0, 0, 0 );
     glDisable( GL_SCISSOR_TEST );
-
-    glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
 }
 
 void VR_DrawFrame( engine_t* engine ) {
+	XrEventDataBuffer eventDataBuffer = {};
+
+	// Poll for events
+	for (;;) {
+		XrEventDataBaseHeader *baseEventHeader = (XrEventDataBaseHeader * )(&eventDataBuffer);
+		baseEventHeader->type = XR_TYPE_EVENT_DATA_BUFFER;
+		baseEventHeader->next = NULL;
+		if (xrPollEvent(engine->instance, &eventDataBuffer) != XR_SUCCESS) {
+			break;
+		}
+		if (baseEventHeader->type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
+			const XrEventDataSessionStateChanged* session_state_changed_event =
+					(XrEventDataSessionStateChanged*)(baseEventHeader);
+			switch (session_state_changed_event->state) {
+				case XR_SESSION_STATE_READY:
+					if (!engine->sessionActive) {
+						XrSessionBeginInfo sessionBeginInfo;
+						memset(&sessionBeginInfo, 0, sizeof(sessionBeginInfo));
+						sessionBeginInfo.type = XR_TYPE_SESSION_BEGIN_INFO;
+						sessionBeginInfo.next = NULL;
+						sessionBeginInfo.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+						if (xrBeginSession(engine->session, &sessionBeginInfo) != XR_SUCCESS) {
+							Com_Printf("xrBeginSession failed");
+							exit(1);
+						}
+						engine->sessionActive = GL_TRUE;
+					}
+					break;
+				case XR_SESSION_STATE_STOPPING:
+					if (engine->sessionActive) {
+						xrEndSession(engine->session);
+						engine->sessionActive = GL_FALSE;
+					}
+					break;
+			}
+		}
+	}
+
+	if (!engine->sessionActive) {
+		return;
+	}
+
+	// NOTE: OpenXR does not use the concept of frame indices. Instead,
+	// XrWaitFrame returns the predicted display time.
+	XrFrameWaitInfo waitFrameInfo = {};
+	waitFrameInfo.type = XR_TYPE_FRAME_WAIT_INFO;
+	waitFrameInfo.next = NULL;
+	XrFrameState frameState = {};
+	frameState.type = XR_TYPE_FRAME_STATE;
+	frameState.next = NULL;
+	xrWaitFrame(engine->session, &waitFrameInfo, &frameState);
+
+	XrFrameBeginInfo beginFrameDesc = {};
+	beginFrameDesc.type = XR_TYPE_FRAME_BEGIN_INFO;
+	beginFrameDesc.next = NULL;
+	xrBeginFrame(engine->session, &beginFrameDesc);
+
+	float fov_y = 90; //TODO:
+	float fov_x = 90; //TODO:
+
+	if (vr.weapon_zoomed) {
+		vr.weapon_zoomLevel += 0.05;
+		if (vr.weapon_zoomLevel > 2.5f)
+			vr.weapon_zoomLevel = 2.5f;
+	}
+	else {
+		//Zoom back out quicker
+		vr.weapon_zoomLevel -= 0.25f;
+		if (vr.weapon_zoomLevel < 1.0f)
+			vr.weapon_zoomLevel = 1.0f;
+	}
+
+	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
+			fov_x / vr.weapon_zoomLevel, fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
+	re.SetVRHeadsetParms(projectionMatrix.M,
+						 engine->renderer.FrameBuffer[0].FrameBuffers[engine->renderer.FrameBuffer[0].TextureSwapChainIndex],
+						 engine->renderer.FrameBuffer[1].FrameBuffers[engine->renderer.FrameBuffer[1].TextureSwapChainIndex]);
+
+	for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
+		ovrFramebuffer* frameBuffer = &engine->renderer.FrameBuffer[eye];
+		ovrFramebuffer_Acquire(frameBuffer);
+		ovrFramebuffer_SetCurrent(frameBuffer);
+
+		VR_ClearFrameBuffer(frameBuffer->Width, frameBuffer->Height);
+		Com_Frame();
+
+		ovrFramebuffer_Resolve(frameBuffer);
+		ovrFramebuffer_Release(frameBuffer);
+	}
+	ovrFramebuffer_SetNone();
+
+	// Compose the layers for this frame.
+	XrCompositionLayerProjectionView projection_layer_elements[XR_EYES_COUNT] = {};
+	XrCompositionLayerProjection projection_layer = {};
+	projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+	projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+	projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+	projection_layer.space = engine->stageSpace;
+	projection_layer.viewCount = XR_EYES_COUNT;
+	projection_layer.views = projection_layer_elements;
+
+	XrPosef viewTransform[2];
+	ovrSceneMatrices sceneMatrices;
+	XrView* projections = (XrView*)(malloc(XR_EYES_COUNT * sizeof(XrView)));
+	for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
+		XrPosef xfHeadFromEye = projections[eye].pose;
+		//XrPosef xfStageFromEye = XrPosef_Multiply(xfStageFromHead, xfHeadFromEye);
+		viewTransform[eye] = XrPosef_Inverse(xfHeadFromEye); //TODO:there should be xfStageFromEye as parameter
+
+		sceneMatrices.ViewMatrix[eye] =
+				XrMatrix4x4f_CreateFromRigidTransform(&viewTransform[eye]);
+		const XrFovf fov = projections[eye].fov;
+		XrMatrix4x4f_CreateProjectionFov(
+				&sceneMatrices.ProjectionMatrix[eye],
+				fov.angleLeft,
+				fov.angleRight,
+				fov.angleUp,
+				fov.angleDown,
+				0.1f,
+				0.0f);
+	}
+
+	for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
+		ovrFramebuffer* frameBuffer = &engine->renderer.FrameBuffer[eye];
+
+		memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
+		projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+
+		projection_layer_elements[eye].pose = XrPosef_Inverse(viewTransform[eye]);
+		projection_layer_elements[eye].fov = projections[eye].fov;
+
+		memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
+		projection_layer_elements[eye].subImage.swapchain = frameBuffer->ColorSwapChain.Handle;
+		projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
+		projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
+		projection_layer_elements[eye].subImage.imageRect.extent.width =
+				frameBuffer->ColorSwapChain.Width;
+		projection_layer_elements[eye].subImage.imageRect.extent.height =
+				frameBuffer->ColorSwapChain.Height;
+		projection_layer_elements[eye].subImage.imageArrayIndex = 0;
+	}
+
+
+	// Compose the layers for this frame.
+	const XrCompositionLayerBaseHeader* layers[1] = {};
+	layers[0] = (const XrCompositionLayerBaseHeader*)&projection_layer;
+
+	XrFrameEndInfo endFrameInfo = {};
+	endFrameInfo.type = XR_TYPE_FRAME_END_INFO;
+	endFrameInfo.displayTime = frameState.predictedDisplayTime;
+	endFrameInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+	endFrameInfo.layerCount = 1;
+	endFrameInfo.layers = layers;
+
+	xrEndFrame(engine->session, &endFrameInfo);
+	free(projections);
 
 	//TODO
 	/*

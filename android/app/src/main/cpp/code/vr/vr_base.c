@@ -259,7 +259,6 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
     sessionCreateInfo.next = &graphicsBindingAndroidGLES;
     sessionCreateInfo.createFlags = 0;
     sessionCreateInfo.systemId = engine->systemId;
-
     if (xrCreateSession(engine->instance, &sessionCreateInfo, &engine->session) != XR_SUCCESS) {
         Com_Printf("xrCreateSession failed");
         exit(1);

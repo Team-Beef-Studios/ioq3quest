@@ -84,9 +84,8 @@ int main(int argc, char* argv[]) {
     Com_Init(args);
     NET_Init( );
 
-	VR_InitRenderer(engine);
-
 	VR_EnterVR(engine, java);
+	VR_InitRenderer(engine);
 
 	bool hasFocus = true;
 	bool paused = false;

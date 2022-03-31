@@ -298,8 +298,6 @@ static void InitOpenGL( void )
 
 	// set default state
 	GL_SetDefaultState();
-
-	VR_ReInitRenderer();
 }
 
 /*
