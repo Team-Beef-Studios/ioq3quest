@@ -627,6 +627,14 @@ void R_RotateForViewer (void)
 	}
 
 	tr.viewParms.world = tr.or;
+
+#if 0
+	Com_Printf("Origin = %g, %g, %g", tr.or.modelView[12], tr.or.modelView[13], tr.or.modelView[14]);
+	//Com_Printf("Origin = %g, %g, %g", tr.viewParms.or.origin[0], tr.viewParms.or.origin[1], tr.viewParms.or.origin[2]);
+	Com_Printf("Axis 0 = %g, %g, %g", tr.viewParms.or.axis[0][0], tr.viewParms.or.axis[0][1], tr.viewParms.or.axis[0][2]);
+	Com_Printf("Axis 1 = %g, %g, %g", tr.viewParms.or.axis[1][0], tr.viewParms.or.axis[1][1], tr.viewParms.or.axis[1][2]);
+	Com_Printf("Axis 2 = %g, %g, %g", tr.viewParms.or.axis[2][0], tr.viewParms.or.axis[2][1], tr.viewParms.or.axis[2][2]);
+#endif
 }
 
 /*

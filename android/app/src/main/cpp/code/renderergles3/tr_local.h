@@ -1530,6 +1530,7 @@ typedef struct {
 	image_t					*renderImage;
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
+	image_t					*hudDepthImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
 	image_t					*screenScratchImage;
 	image_t					*textureScratchImage[2];
@@ -1542,7 +1543,8 @@ typedef struct {
 	image_t                 *screenSsaoImage;
 	image_t					*hdrDepthImage;
 	image_t                 *renderCubeImage;
-	
+	image_t                 *hudImage;
+
 	image_t					*textureDepthImage;
 
 	FBO_t					*renderFbo;
@@ -1560,6 +1562,7 @@ typedef struct {
 	FBO_t					*screenSsaoFbo;
 	FBO_t					*hdrDepthFbo;
 	FBO_t                   *renderCubeFbo;
+	FBO_t                   *hudFbo;
 
 	shader_t				*defaultShader;
 	shader_t				*shadowShader;
@@ -1568,6 +1571,8 @@ typedef struct {
 	shader_t				*flareShader;
 	shader_t				*sunShader;
 	shader_t				*sunFlareShader;
+
+	shader_t				*hudShader;
 
 	int						numLightmaps;
 	int						lightmapSize;
@@ -1585,6 +1590,8 @@ typedef struct {
 	int						currentEntityNum;
 	int						shiftedEntityNum;	// currentEntityNum << QSORT_REFENTITYNUM_SHIFT
 	model_t					*currentModel;
+
+	int                     backupFrameBuffer;
 
 	//
 	// GPU shader programs
@@ -2455,6 +2462,11 @@ typedef struct {
 	stereoFrame_t stereoFrame;
 } switchEyeCommand_t;
 
+typedef struct {
+	int commandId;
+	qboolean start;
+} hudBufferCommand_t;
+
 typedef enum {
 	RC_END_OF_LIST,
 	RC_SET_COLOR,
@@ -2469,7 +2481,8 @@ typedef enum {
 	RC_CAPSHADOWMAP,
 	RC_POSTPROCESS,
 	RC_EXPORT_CUBEMAPS,
-	RC_SWITCH_EYE
+	RC_SWITCH_EYE,
+	RC_HUD_BUFFER
 } renderCommand_t;
 
 
@@ -2515,6 +2528,9 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
 void RE_SetVRHeadsetParms( const ovrMatrix4f *projectionMatrix,
         int renderBuffer );
 #endif
+void RE_HUDBufferStart( void );
+void RE_HUDBufferEnd( void );
+
 void RE_SaveJPG(char * filename, int quality, int image_width, int image_height,
                 unsigned char *image_buffer, int padding);
 size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,

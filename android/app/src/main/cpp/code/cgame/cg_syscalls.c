@@ -288,6 +288,14 @@ void	trap_R_RenderScene( const refdef_t *fd ) {
 	syscall( CG_R_RENDERSCENE, fd );
 }
 
+void	trap_R_HUDBufferStart( void ) {
+	syscall( CG_R_HUDBUFFER_START );
+}
+
+void	trap_R_HUDBufferEnd( void ) {
+	syscall( CG_R_HUDBUFFER_END );
+}
+
 void	trap_R_SetColor( const float *rgba ) {
 	syscall( CG_R_SETCOLOR, rgba );
 }

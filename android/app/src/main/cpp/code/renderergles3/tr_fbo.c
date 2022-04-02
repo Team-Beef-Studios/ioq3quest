@@ -306,6 +306,21 @@ void FBO_Init(void)
 		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	}
 
+	{
+		tr.hudFbo = FBO_Create("_hud", tr.hudImage->width, tr.hudImage->height);
+		FBO_AttachImage(tr.hudFbo, tr.hudImage, GL_COLOR_ATTACHMENT0, 0);
+		FBO_AttachImage(tr.hudFbo, tr.hudDepthImage, GL_DEPTH_ATTACHMENT, 0);
+		R_CheckFBO(tr.hudFbo);
+
+		// clear render buffer
+		if (tr.hudFbo)
+		{
+			GL_BindFramebuffer(GL_FRAMEBUFFER, tr.hudFbo->frameBuffer);
+			qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		}
+	}
+
+
 	if (tr.screenScratchImage)
 	{
 		tr.screenScratchFbo = FBO_Create("screenScratch", tr.screenScratchImage->width, tr.screenScratchImage->height);

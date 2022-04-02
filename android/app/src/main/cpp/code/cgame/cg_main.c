@@ -1053,6 +1053,9 @@ static void CG_RegisterGraphics( void ) {
     cgs.media.reticleShader = trap_R_RegisterShader( "gfx/weapon/scope" );
     cgs.media.vignetteShader = trap_R_RegisterShader( "gfx/vignette" );
 
+    //HUD
+    cgs.media.hudShader = trap_R_RegisterShader( "sprites/vr/hud" );
+
 	//Used for the weapon selector
 	cgs.media.smallSphereModel = trap_R_RegisterModel("models/powerups/health/small_sphere.md3");
 

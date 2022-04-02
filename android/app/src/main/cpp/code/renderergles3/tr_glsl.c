@@ -66,11 +66,18 @@ typedef struct uniformInfo_s
 }
 uniformInfo_t;
 
-#define ORTHO_PROJECTION			0
-#define NORMAL_PROJECTION			1
+typedef enum {
+//	STEREO_ORTHO_PROJECTION, // An orthographic projection with slight stereo view matrix
+	HUD_ORTHO_PROJECTION, // Orthographic projection and no stereo view
+	VR_PROJECTION,
 
-GLuint		viewMatricesBuffer[2];
-GLuint		projectionMatricesBuffer[2];
+	PROJECTION_COUNT
+} projection_t;
+
+GLuint		viewMatricesBuffer[PROJECTION_COUNT];
+GLuint		projectionMatricesBuffer[PROJECTION_COUNT];
+
+float       orthoProjectionMatrix[16];
 
 
 // These must be in the same order as in uniform_t in tr_local.h.
@@ -180,7 +187,7 @@ GLSL_ViewMatricesUniformBuffer
 */
 static void GLSL_ViewMatricesUniformBuffer(const float value[32]) {
 
-	for (int i = 0; i < 2; ++i)
+	for (int i = 0; i < PROJECTION_COUNT; ++i)
 	{
 		// Update the scene matrices for when we are using a normal projection
 		qglBindBuffer(GL_UNIFORM_BUFFER, viewMatricesBuffer[i]);
@@ -196,23 +203,31 @@ static void GLSL_ViewMatricesUniformBuffer(const float value[32]) {
 			return;
 		}
 
-		if (i == ORTHO_PROJECTION)
-		{
-		    //don't want depth when in screen view
-            const auto depth = (VR_useScreenLayer() || vr.weapon_zoomed) ? 0 : (5-vr_hudDepth->integer) * 20;
-
-			//For now just set identity matrices
-			vec3_t translate;
-			VectorSet(translate, depth, 0, 0);
-			Mat4Translation( translate, viewMatrices );
-
-			VectorSet(translate, -depth, 0, 0);
-			Mat4Translation( translate, viewMatrices + 16 );
-		}
-		else
-		{
-			memcpy((char *) viewMatrices, value, 32 * sizeof(float));
-		}
+		switch (i)
+        {
+            case HUD_ORTHO_PROJECTION:
+            {
+            	if (vr.virtual_screen)
+				{
+					vec3_t translate;
+					VectorSet(translate, -10, 0, 0);
+					Mat4Translation( translate, viewMatrices );
+					VectorSet(translate, 10, 0, 0);
+					Mat4Translation( translate, viewMatrices + 16 );
+				}
+				else
+				{
+					Mat4Identity( viewMatrices );
+					Mat4Identity( viewMatrices + 16 );
+				}
+            }
+            break;
+            default:
+            {
+                memcpy((char *) viewMatrices, value, 32 * sizeof(float));
+            }
+            break;
+        }
 
 		qglUnmapBuffer(GL_UNIFORM_BUFFER);
 		qglBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -576,7 +591,7 @@ static int GLSL_LoadGPUShaderText(const char *name, const char *fallback,
 	{
 		ri.FS_FreeFile(buffer);
 	}
-	
+
 	return result;
 }
 
@@ -775,7 +790,7 @@ void GLSL_InitUniforms(shaderProgram_t *program)
 
 		if (uniforms[i] == -1)
 			continue;
-		 
+
 		program->uniformBufferOffsets[i] = size;
 
 		switch(uniformsInfo[i].type)
@@ -862,7 +877,7 @@ void GLSL_SetUniformFloat(shaderProgram_t *program, int uniformNum, GLfloat valu
 	}
 
 	*compare = value;
-	
+
 	qglProgramUniform1fEXT(program->program, uniforms[uniformNum], value);
 }
 
@@ -1056,7 +1071,7 @@ void GLSL_InitGPUShaders(void)
 
 	ri.Printf(PRINT_ALL, "------- GLSL_InitGPUShaders -------\n");
 
-	for (int i = 0; i < 2; ++i)
+	for (int i = 0; i < PROJECTION_COUNT; ++i)
 	{
 		//Generate buffer for 2 * view matrices
 		qglGenBuffers(1, &viewMatricesBuffer[i]);
@@ -1083,7 +1098,7 @@ void GLSL_InitGPUShaders(void)
 	startTime = ri.Milliseconds();
 
 	for (i = 0; i < GENERICDEF_COUNT; i++)
-	{	
+	{
 		if ((i & GENERICDEF_USE_VERTEX_ANIMATION) && (i & GENERICDEF_USE_BONE_ANIMATION))
 			continue;
 
@@ -1141,7 +1156,7 @@ void GLSL_InitGPUShaders(void)
 	{
 		ri.Error(ERR_FATAL, "Could not load texturecolor shader!");
 	}
-	
+
 	GLSL_InitUniforms(&tr.textureColorShader);
 
 	GLSL_SetUniformInt(&tr.textureColorShader, UNIFORM_TEXTUREMAP, TB_DIFFUSEMAP);
@@ -1203,7 +1218,7 @@ void GLSL_InitGPUShaders(void)
 		}
 
 		GLSL_InitUniforms(&tr.dlightShader[i]);
-		
+
 		GLSL_SetUniformInt(&tr.dlightShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
 
 		GLSL_FinishGPUShader(&tr.dlightShader[i]);
@@ -1412,7 +1427,7 @@ void GLSL_InitGPUShaders(void)
 	{
 		ri.Error(ERR_FATAL, "Could not load pshadow shader!");
 	}
-	
+
 	GLSL_InitUniforms(&tr.pshadowShader);
 
 	GLSL_SetUniformInt(&tr.pshadowShader, UNIFORM_SHADOWMAP, TB_DIFFUSEMAP);
@@ -1429,7 +1444,7 @@ void GLSL_InitGPUShaders(void)
 	{
 		ri.Error(ERR_FATAL, "Could not load down4x shader!");
 	}
-	
+
 	GLSL_InitUniforms(&tr.down4xShader);
 
 	GLSL_SetUniformInt(&tr.down4xShader, UNIFORM_TEXTUREMAP, TB_DIFFUSEMAP);
@@ -1493,7 +1508,7 @@ void GLSL_InitGPUShaders(void)
 
 		GLSL_FinishGPUShader(&tr.calclevels4xShader[i]);
 
-		numEtcShaders++;		
+		numEtcShaders++;
 	}
 
 
@@ -1517,7 +1532,7 @@ void GLSL_InitGPUShaders(void)
 	{
 		ri.Error(ERR_FATAL, "Could not load shadowmask shader!");
 	}
-	
+
 	GLSL_InitUniforms(&tr.shadowmaskShader);
 
 	GLSL_SetUniformInt(&tr.shadowmaskShader, UNIFORM_SCREENDEPTHMAP, TB_COLORMAP);
@@ -1566,7 +1581,7 @@ void GLSL_InitGPUShaders(void)
 		{
 			ri.Error(ERR_FATAL, "Could not load depthBlur shader!");
 		}
-		
+
 		GLSL_InitUniforms(&tr.depthBlurShader[i]);
 
 		GLSL_SetUniformInt(&tr.depthBlurShader[i], UNIFORM_SCREENIMAGEMAP, TB_COLORMAP);
@@ -1598,8 +1613,8 @@ void GLSL_InitGPUShaders(void)
 
 	endTime = ri.Milliseconds();
 
-	ri.Printf(PRINT_ALL, "loaded %i GLSL shaders (%i gen %i light %i etc) in %5.2f seconds\n", 
-		numGenShaders + numLightShaders + numEtcShaders, numGenShaders, numLightShaders, 
+	ri.Printf(PRINT_ALL, "loaded %i GLSL shaders (%i gen %i light %i etc) in %5.2f seconds\n",
+		numGenShaders + numLightShaders + numEtcShaders, numGenShaders, numLightShaders,
 		numEtcShaders, (endTime - startTime) / 1000.0);
 }
 
@@ -1660,15 +1675,17 @@ void GLSL_PrepareUniformBuffers(void)
         height = glConfig.vidHeight;
     }
 
-    float orthoProjectionMatrix[16];
     Mat4Ortho(0, width, height, 0, 0, 1, orthoProjectionMatrix);
 
     //ortho projection matrix
-    GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[ORTHO_PROJECTION],
+/*    GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[STEREO_ORTHO_PROJECTION],
+            orthoProjectionMatrix);
+*/
+    GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[HUD_ORTHO_PROJECTION],
             orthoProjectionMatrix);
 
     //VR projection matrix
-    GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[NORMAL_PROJECTION],
+    GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[VR_PROJECTION],
             tr.vrParms.projection);
 
 	//Set up the buffers that won't change this frame
@@ -1691,10 +1708,11 @@ void GLSL_BindProgram(shaderProgram_t * program)
 }
 
 static GLuint GLSL_CalculateProjection() {
-    GLuint result = NORMAL_PROJECTION;
-    if (backEnd.projection2D)
+    GLuint result =  VR_PROJECTION;
+
+    if (Mat4Compare(&orthoProjectionMatrix, glState.projection))
     {
-        result = ORTHO_PROJECTION;
+		result = HUD_ORTHO_PROJECTION;
     }
 
     return result;

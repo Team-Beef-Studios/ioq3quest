@@ -2761,6 +2761,34 @@ static void CG_Draw2D()
 }
 
 
+//
+// HACK HACK HACK
+//
+//Render an empty scene - seems to sort the weird out-of-body thing
+//when the HUD isn't being drawn. Need to get to the bottom of this
+//it shouldn't cost frames, but it is ugly
+static void CG_EmptySceneHackHackHack( void )
+{
+	refdef_t refdef;
+	memset( &refdef, 0, sizeof( refdef ) );
+
+	refdef.rdflags = RDF_NOWORLDMODEL;
+	AxisClear( refdef.viewaxis );
+
+	refdef.fov_x = 30;
+	refdef.fov_y = 30;
+
+	refdef.x = 0;
+	refdef.y = 0;
+	refdef.width = cgs.glconfig.vidWidth;
+	refdef.height = cgs.glconfig.vidHeight;
+
+	refdef.time = cg.time;
+
+	trap_R_ClearScene();
+	trap_R_RenderScene( &refdef );
+}
+
 /*
 =====================
 CG_DrawActive
@@ -2852,13 +2880,50 @@ void CG_DrawActive( void ) {
 		}
 	}
 
+	//Now draw the HUD shader in the world
+	{
+		refEntity_t ent;
+		trace_t trace;
+		vec3_t viewaxis[3];
+		vec3_t weaponangles;
+		vec3_t origin, endpos;
+
+		float scale = trap_Cvar_VariableValue("vr_worldscaleScaler");
+        float dist = (trap_Cvar_VariableValue("vr_hudDepth")+1) * 6 * scale;
+        float radius = dist / 3.0f;
+
+		VectorMA(cg.refdef.vieworg, dist, cg.refdef.viewaxis[0], endpos);
+		VectorMA(endpos, trap_Cvar_VariableValue("vr_hudYOffset") / 20, cg.refdef.viewaxis[2], endpos);
+
+		memset(&ent, 0, sizeof(ent));
+		ent.reType = RT_SPRITE;
+		ent.renderfx = RF_DEPTHHACK;
+
+		VectorCopy(endpos, ent.origin);
+
+		ent.radius = radius;
+		ent.invert = qtrue;
+		ent.customShader = cgs.media.hudShader;
+
+		trap_R_AddRefEntityToScene(&ent);
+	}
+
 	// draw 3D view
 	trap_R_RenderScene( &cg.refdef );
 
 	VectorCopy( baseOrg, cg.refdef.vieworg );
 
-    // draw status bar and other floating elements
-    CG_Draw2D();
+	{
+		//Tell renderer we want to draw to the HUD buffer
+		trap_R_HUDBufferStart();
+
+		// draw status bar and other floating elements
+		CG_Draw2D();
+
+		trap_R_HUDBufferEnd();
+	}
+
+	CG_EmptySceneHackHackHack();
 }
 
 

@@ -530,6 +530,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			}
 
 			GL_SetModelMatrix( backEnd.or.modelMatrix );
+            GL_SetProjectionMatrix( backEnd.viewParms.projectionMatrix );
 
 			//
 			// change depthrange. Also change projection matrix so first person weapon does not look like coming
@@ -539,23 +540,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			{
 				if (depthRange)
 				{
-					if(isCrosshair)
-					{
-						if(oldDepthRange)
-						{
-							// was not a crosshair but now is, change back proj matrix
-							GL_SetProjectionMatrix( backEnd.viewParms.projectionMatrix );
-						}
-					}
-					else
-					{
-						viewParms_t temp = backEnd.viewParms;
-
-						R_SetupProjection(&temp, r_znear->value, 0, qfalse);
-
-						GL_SetProjectionMatrix( temp.projectionMatrix );
-					}
-
 #ifdef __ANDROID__
 					if(!oldDepthRange)
 						glDepthRangef(0.0f, 0.3f);
@@ -566,11 +550,6 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				}
 				else
 				{
-					if(!wasCrosshair)
-					{
-						GL_SetProjectionMatrix( backEnd.viewParms.projectionMatrix );
-					}
-
 #ifdef __ANDROID__
 					glDepthRangef(0.0f, 1.0f);
 #else
@@ -633,6 +612,7 @@ void	RB_SetGL2D (void) {
 		return;
 
 	backEnd.projection2D = qtrue;
+
 	backEnd.last2DFBO = glState.currentFBO;
 
 	if (glState.currentFBO)
@@ -1776,6 +1756,55 @@ const void* RB_SwitchEye( const void* data ) {
 	return (const void*)(cmd + 1);
 }
 
+
+/*
+====================
+RB_HUDBuffer
+====================
+*/
+const void* RB_HUDBuffer( const void* data ) {
+    const hudBufferCommand_t *cmd = data;
+
+    // finish any 2D drawing if needed
+    if(tess.numIndexes)
+        RB_EndSurface();
+
+    if (cmd->start && tr.renderFbo->frameBuffer != tr.hudFbo->frameBuffer)
+    {
+        //keep record of current render fbo and switch to the hud buffer
+        tr.backupFrameBuffer = tr.renderFbo->frameBuffer;
+        tr.renderFbo->frameBuffer = tr.hudFbo->frameBuffer;
+
+        // Render to framebuffer
+        GL_BindFramebuffer(GL_FRAMEBUFFER, tr.hudFbo->frameBuffer);
+        qglBindRenderbuffer(GL_RENDERBUFFER, 0);
+        qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.hudImage->texnum, 0);
+
+        // Attach combined depth+stencil
+        qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, tr.hudDepthImage->texnum);
+        qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, tr.hudDepthImage->texnum);
+
+        GLenum result = qglCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if(result != GL_FRAMEBUFFER_COMPLETE)
+        {
+            ri.Error( "Error binding Framebuffer: %i\n", result );
+        }
+
+        qglClearColor( 0.0f, 0.0f,  0.0f, 1.0f );
+        qglClear( GL_COLOR_BUFFER_BIT );
+    }
+    else if (tr.renderFbo->frameBuffer == tr.hudFbo->frameBuffer)
+    {
+        //restore the true render fbo
+        tr.renderFbo->frameBuffer = tr.backupFrameBuffer;
+        GL_BindFramebuffer(GL_FRAMEBUFFER, tr.renderFbo->frameBuffer);
+    }
+
+    glState.currentFBO = tr.renderFbo;
+
+	return (const void*)(cmd + 1);
+}
+
 /*
 ====================
 RB_ExecuteRenderCommands
@@ -1828,6 +1857,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_SWITCH_EYE:
 			data = RB_SwitchEye(data);
+			break;
+		case RC_HUD_BUFFER:
+		    data = RB_HUDBuffer(data);
 			break;
 		case RC_END_OF_LIST:
 		default:

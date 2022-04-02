@@ -3,7 +3,7 @@
 setlocal
 
 set BUILD_TYPE=release
-set VERSION=0.29.0-multiview
+set VERSION=0.29.1-multiview
 
 @REM Define the following environment variables to sign a release build
 @REM set KEYSTORE=
@@ -28,6 +28,11 @@ if %BUILD_TYPE%==release (
 if %BUILD_TYPE%==debug (
 	set GRADLE_BUILD_TYPE=:app:assembleDebug
 )
+
+REM package our special pk3
+pushd android\app\src\main
+call make_pakQ3Q.bat
+popd
 
 echo #define Q3QVERSION  "%VERSION%" > .\android\app\src\main\cpp\code\vr\vr_version.h
 

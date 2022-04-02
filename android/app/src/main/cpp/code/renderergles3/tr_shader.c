@@ -3880,6 +3880,11 @@ static void CreateExternalShaders( void ) {
 		tr.sunFlareShader = FinishShader();
 	}
 
+	//Set some stuff on our HUD shader
+	{
+		tr.hudShader = R_FindShader("sprites/vr/hud", LIGHTMAP_2D, qfalse);
+		tr.hudShader->stages[0]->bundle[0].image[0] = tr.hudImage;
+	}
 }
 
 /*

@@ -250,7 +250,7 @@ static void RB_SurfaceSprite( void ) {
 	radius = ent->e.radius;
 	if ( ent->e.rotation == 0 ) {
 		VectorScale( backEnd.viewParms.or.axis[1], radius, left );
-		VectorScale( backEnd.viewParms.or.axis[2], radius, up );
+		VectorScale( backEnd.viewParms.or.axis[2], ent->e.invert ? -radius : radius, up );
 	} else {
 		float	s, c;
 		float	ang;

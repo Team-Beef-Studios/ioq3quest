@@ -430,8 +430,6 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	}
 	
 	tr.refdef.stereoFrame = stereoFrame;
-
-	GLSL_PrepareUniformBuffers();
 }
 
 
@@ -472,6 +470,36 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		*backEndMsec = backEnd.pc.msec;
 	}
 	backEnd.pc.msec = 0;
+}
+
+void RE_HUDBufferStart( void )
+{
+    hudBufferCommand_t	*cmd;
+
+    if ( !tr.registered ) {
+        return;
+    }
+    cmd = R_GetCommandBufferReserved( sizeof( *cmd ), 0 );
+    if ( !cmd ) {
+        return;
+    }
+    cmd->start = qtrue;
+    cmd->commandId = RC_HUD_BUFFER;
+}
+
+void RE_HUDBufferEnd( void )
+{
+    hudBufferCommand_t	*cmd;
+
+    if ( !tr.registered ) {
+        return;
+    }
+    cmd = R_GetCommandBufferReserved( sizeof( *cmd ), 0 );
+    if ( !cmd ) {
+        return;
+    }
+    cmd->start = qfalse;
+    cmd->commandId = RC_HUD_BUFFER;
 }
 
 //#if __ANDROID__
