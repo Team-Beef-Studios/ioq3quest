@@ -295,10 +295,26 @@ itemDef {
       		name graphics
 		group grpSystem
 		type ITEM_TYPE_MULTI
-		text "Shadow Detail:"
+		text "Opponent Shadows:"
 		cvar "cg_shadows"
-		cvarFloatList { "Low" 1 "High" 3 }
+		cvarFloatList { "None" 0 "Low" 1 "High" 3 }
 		rect 0 150 306 20
+      		textalign ITEM_ALIGN_RIGHT
+      		textalignx 133
+      		textaligny 17
+		textscale .25
+      		forecolor 1 1 1 1
+      		visible 0
+    		}
+
+	itemDef {
+      		name graphics
+		group grpSystem
+		type ITEM_TYPE_MULTI
+		text "Player Shadow:"
+		cvar "cg_playerShadow"
+		cvarFloatList { "None" 0 "Low" 1 "High" 3 }
+		rect 0 170 306 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 133
       		textaligny 17
@@ -314,7 +330,7 @@ itemDef {
 		text "Geometric Detail:"
 		cvar "r_lodbias"
 		cvarFloatList { "High" -1 "Medium" 1 "Low" 2 }
-		rect 0 170 256 20
+		rect 0 190 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 133
       		textaligny 17
@@ -331,7 +347,7 @@ itemDef {
 		text "Texture Detail:"
 		cvar "r_picmip"
 		cvarFloatList { "Low" 2 "Normal" 1 "High" 0 }
-		rect 0 190 256 20
+		rect 0 210 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 133
       		textaligny 17
@@ -380,7 +396,7 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Compress Textures:"
 		cvar "r_ext_compressed_textures"
-		rect 0 210 256 20
+		rect 0 230 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 133
       		textaligny 17

@@ -252,7 +252,7 @@ overlap and double darken.
 void RB_ShadowFinish( void ) {
 	// FIXME: implement this
 #if 0
-	if ( r_shadows->integer != 2 ) {
+	if ( r_shadows->integer != 2 || r_playerShadow->integer != 2) {
 		return;
 	}
 	if ( glConfig.stencilBits < 4 ) {

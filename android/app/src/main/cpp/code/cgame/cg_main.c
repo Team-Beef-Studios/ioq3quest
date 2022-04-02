@@ -106,6 +106,7 @@ vmCvar_t	cg_bobroll;
 vmCvar_t	cg_weaponbob;
 vmCvar_t	cg_swingSpeed;
 vmCvar_t	cg_shadows;
+vmCvar_t	cg_playerShadow;
 vmCvar_t	cg_gibs;
 vmCvar_t	cg_megagibs;
 vmCvar_t	cg_drawTimer;
@@ -228,6 +229,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_fov, "cg_fov", "90", CVAR_ARCHIVE },
 	{ &cg_viewsize, "cg_viewsize", "100", CVAR_ARCHIVE },
 	{ &cg_shadows, "cg_shadows", "1", CVAR_ARCHIVE  },
+	{ &cg_playerShadow, "cg_playerShadow", "1", CVAR_ARCHIVE  },
 	{ &cg_gibs, "cg_gibs", "1", CVAR_ARCHIVE  },
 	{ &cg_megagibs, "cg_megagibs", "0", CVAR_ARCHIVE  },
 	{ &cg_draw2D, "cg_draw2D", "1", CVAR_ARCHIVE  },
@@ -1977,6 +1979,13 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	const char *serverinfo = CG_ConfigString( CS_SERVERINFO );
 	vr->no_crosshair = (strcasestr(serverinfo, "nocrosshair") != NULL || strcasestr(serverinfo, "no crosshair") != NULL);
+	vr->local_server = cgs.localServer;
+#ifdef MISSIONPACK
+	vr->single_player = trap_Cvar_VariableValue("ui_singlePlayerActive");
+#else
+	vr->single_player = trap_Cvar_VariableValue( "g_gametype" ) == GT_SINGLE_PLAYER;
+#endif
+	vr->use_fake_6dof = !vr->single_player;
 }
 
 /*

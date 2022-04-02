@@ -2071,12 +2071,19 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 
 	*shadowPlane = 0;
 
-	if ( cg_shadows.integer == 0 ) {
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+
+	if ( (clientPlayer && cg_playerShadow.integer == 0) || (!clientPlayer && cg_shadows.integer == 0) ) {
 		return qfalse;
 	}
 
 	// no shadows when invisible
 	if ( cent->currentState.powerups & ( 1 << PW_INVIS ) ) {
+		return qfalse;
+	}
+
+	// no shadow if VR player is dead
+	if ( clientPlayer && ( cg.predictedPlayerState.stats[STAT_HEALTH] <= 0 ) ) {
 		return qfalse;
 	}
 
@@ -2093,7 +2100,8 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 
 	*shadowPlane = trace.endpos[2] + 1;
 
-	if ( cg_shadows.integer != 1 ) {	// no mark for stencil or projection shadows
+	// no mark for stencil or projection shadows
+	if ( (clientPlayer && cg_playerShadow.integer != 1) || (!clientPlayer && cg_shadows.integer != 1) ) {
 		return qtrue;
 	}
 
@@ -2101,11 +2109,11 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 	alpha = 1.0 - trace.fraction;
 
 	// hack / FPE - bogus planes?
-	//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f ) 
+	//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f )
 
 	// add the mark as a temporary, so it goes directly to the renderer
 	// without taking a spot in the cg_marks array
-	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 
+	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal,
 		cent->pe.legs.yawAngle, alpha,alpha,alpha,1, qfalse, 24, qtrue );
 
 	return qtrue;
@@ -2125,7 +2133,9 @@ static void CG_PlayerSplash( centity_t *cent ) {
 	int			contents;
 	polyVert_t	verts[4];
 
-	if ( !cg_shadows.integer ) {
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+
+	if ( (clientPlayer && !cg_playerShadow.integer) || (!clientPlayer && !cg_shadows.integer) ) {
 		return;
 	}
 
@@ -2391,7 +2401,9 @@ void CG_Player( centity_t *cent ) {
 	// add a water splash if partially in and out of water
 	CG_PlayerSplash( cent );
 
-	if ( cg_shadows.integer == 3 && shadow ) {
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+
+	if ( shadow && ( (clientPlayer && cg_playerShadow.integer == 3) || (!clientPlayer && cg_shadows.integer == 3) ) ) {
 		renderfx |= RF_SHADOW_PLANE;
 	}
 	renderfx |= RF_LIGHTING_ORIGIN;			// use the same origin for all

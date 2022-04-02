@@ -243,7 +243,7 @@ void R_MDRAddAnimSurfaces( trRefEntity_t *ent ) {
 	}
 	
 	// set up lighting
-	if ( !personalModel || r_shadows->integer > 1 )
+	if ( !personalModel || r_shadows->integer > 1 || r_playerShadow->integer > 1)
 	{
 		R_SetupEntityLighting( &tr.refdef, ent );
 	}
@@ -292,7 +292,7 @@ void R_MDRAddAnimSurfaces( trRefEntity_t *ent ) {
 		}
 
 		// projection shadows work fine with personal models
-		if ( r_shadows->integer == 3
+		if ( (r_shadows->integer == 3 || r_playerShadow->integer == 3)
 			&& fogNum == 0
 			&& (ent->e.renderfx & RF_SHADOW_PLANE )
 			&& shader->sort == SS_OPAQUE )

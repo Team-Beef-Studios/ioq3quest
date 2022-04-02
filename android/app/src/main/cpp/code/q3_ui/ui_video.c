@@ -252,10 +252,11 @@ GRAPHICS OPTIONS MENU
 #define ID_DYNAMICLIGHTS	112
 #define ID_SYNCEVERYFRAME	113
 #define ID_SHADOWS		114
-#define ID_GAMMA		115
+#define ID_PLAYERSHADOW	115
+#define ID_GAMMA		116
 
 #define	NUM_REFRESHRATE	4
-#define NUM_SHADOWS 2
+#define NUM_SHADOWS 3
 
 typedef struct {
 	menuframework_s	menu;
@@ -286,6 +287,7 @@ typedef struct {
 	menuradiobutton_s	dynamiclights;
 	menuradiobutton_s	synceveryframe;
 	menulist_s		shadows;
+	menulist_s		playershadow;
 	menuslider_s	gamma;
 
 	menubitmap_s	apply;
@@ -308,6 +310,7 @@ typedef struct
 	qboolean dynamiclights;
 	qboolean synceveryframe;
 	int shadows;
+	int playershadow;
 	float gamma;
 } InitialVideoOptions_s;
 
@@ -501,6 +504,7 @@ static void GraphicsOptions_GetInitialVideo( void )
 	s_ivo.dynamiclights = s_graphicsoptions.dynamiclights.curvalue;
 	s_ivo.synceveryframe = s_graphicsoptions.synceveryframe.curvalue;
 	s_ivo.shadows     = s_graphicsoptions.refreshrate.curvalue;
+	s_ivo.playershadow	= s_graphicsoptions.playershadow.curvalue;
 	s_ivo.gamma       = s_graphicsoptions.gamma.curvalue;
 }
 
@@ -836,13 +840,33 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 			int shadows;
 			switch (s_graphicsoptions.shadows.curvalue) {
 				case 0:
-					shadows = 1;
+					shadows = 0;
 					break;
+				case 1:
+				    shadows = 1;
+				    break;
 				default:
 					shadows = 3;
 					break;
 				}
 			trap_Cvar_SetValue("cg_shadows", shadows);
+		}
+		break;
+
+	case ID_PLAYERSHADOW: {
+			int shadow;
+			switch (s_graphicsoptions.playershadow.curvalue) {
+				case 0:
+					shadow = 0;
+					break;
+				case 1:
+				    shadow = 1;
+				    break;
+				default:
+					shadow = 3;
+					break;
+				}
+			trap_Cvar_SetValue("cg_playerShadow", shadow);
 		}
 		break;
 
@@ -1046,11 +1070,27 @@ static void GraphicsOptions_SetMenuItems( void )
 
 	switch ( (int) trap_Cvar_VariableValue( "cg_shadows" ) )
 	{
-		case 1:
+		case 0:
 			s_graphicsoptions.shadows.curvalue = 0;
 			break;
-		default:
+		case 1:
 			s_graphicsoptions.shadows.curvalue = 1;
+			break;
+		default:
+			s_graphicsoptions.shadows.curvalue = 2;
+			break;
+	}
+
+	switch ( (int) trap_Cvar_VariableValue( "cg_playerShadow" ) )
+	{
+		case 0:
+			s_graphicsoptions.playershadow.curvalue = 0;
+			break;
+		case 1:
+			s_graphicsoptions.playershadow.curvalue = 1;
+			break;
+		default:
+			s_graphicsoptions.playershadow.curvalue = 2;
 			break;
 	}
 
@@ -1137,6 +1177,7 @@ void GraphicsOptions_MenuInit( void )
 	};
 	static const char *s_shadows[] =
 	{
+		"None",
 		"Low",
 		"High",
 		NULL
@@ -1219,7 +1260,7 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.network.style				= UI_RIGHT;
 	s_graphicsoptions.network.color				= color_red;
 
-	y = 254 - 4 * (BIGCHAR_HEIGHT + 2);
+	y = 254 - 5 * (BIGCHAR_HEIGHT + 2);
 //	s_graphicsoptions.list.generic.type     = MTYPE_SPINCONTROL;
 //	s_graphicsoptions.list.generic.name     = "Graphics Settings:";
 //	s_graphicsoptions.list.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -1342,7 +1383,7 @@ void GraphicsOptions_MenuInit( void )
 
 	// references "cg_shadows"
 	s_graphicsoptions.shadows.generic.type		= MTYPE_SPINCONTROL;
-	s_graphicsoptions.shadows.generic.name		= "Shadow Detail:";
+	s_graphicsoptions.shadows.generic.name		= "Opponent Shadows:";
 	s_graphicsoptions.shadows.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_graphicsoptions.shadows.generic.x			= 400;
 	s_graphicsoptions.shadows.generic.y			= y;
@@ -1350,6 +1391,18 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.shadows.generic.callback	= GraphicsOptions_Event;
 	s_graphicsoptions.shadows.generic.id		= ID_SHADOWS;
 	s_graphicsoptions.shadows.numitems			= NUM_SHADOWS;
+	y += BIGCHAR_HEIGHT+2;
+
+	// references "cg_playerShadow"
+	s_graphicsoptions.playershadow.generic.type		= MTYPE_SPINCONTROL;
+	s_graphicsoptions.playershadow.generic.name		= "Player Shadow:";
+	s_graphicsoptions.playershadow.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.playershadow.generic.x			= 400;
+	s_graphicsoptions.playershadow.generic.y			= y;
+	s_graphicsoptions.playershadow.itemnames	        = s_shadows;
+	s_graphicsoptions.playershadow.generic.callback	= GraphicsOptions_Event;
+	s_graphicsoptions.playershadow.generic.id		= ID_PLAYERSHADOW;
+	s_graphicsoptions.playershadow.numitems			= NUM_SHADOWS;
 	y += BIGCHAR_HEIGHT+2;
 
 	// references/modifies "r_lodBias" & "subdivisions"
@@ -1443,6 +1496,7 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.dynamiclights );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.shadows );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.playershadow );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.geometry );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.tq );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.texturebits );

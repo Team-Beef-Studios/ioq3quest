@@ -18,7 +18,9 @@ typedef struct {
     float weapon_zoomLevel;
     qboolean right_handed;
     qboolean virtual_screen;
-    qboolean local_server; // used in bg_pmove.c
+    qboolean local_server;
+    qboolean single_player;
+    qboolean use_fake_6dof;
     vrFollowMode_t follow_mode;
     qboolean weapon_select;
     qboolean weapon_select_autoclose;

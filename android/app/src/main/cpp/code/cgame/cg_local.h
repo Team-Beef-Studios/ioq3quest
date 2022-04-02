@@ -1124,6 +1124,7 @@ extern	vmCvar_t		cg_bobroll;
 extern	vmCvar_t		cg_weaponbob;
 extern	vmCvar_t		cg_swingSpeed;
 extern	vmCvar_t		cg_shadows;
+extern	vmCvar_t		cg_playerShadow;
 extern	vmCvar_t		cg_gibs;
 extern	vmCvar_t		cg_megagibs;
 extern	vmCvar_t		cg_drawTimer;

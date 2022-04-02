@@ -2853,9 +2853,9 @@ void CG_DrawActive( void ) {
         cg.refdef.vieworg[2] += (vr->hmdposition[1] + heightOffset) * worldscale;
     }
 
-    if (!cgs.localServer)
+    if (vr->use_fake_6dof)
 	{
-		//If connected to a remote server, allow some amount of faked positional tracking
+		//If running multiplayer, allow some amount of faked positional tracking
 		if (cg.snap->ps.stats[STAT_HEALTH] > 0 &&
                 //Don't use fake positional if following another player  - this is handled in  the
                 //VR third person code

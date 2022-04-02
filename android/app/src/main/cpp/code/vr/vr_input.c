@@ -531,9 +531,9 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
 			VectorClear(positional);
 
 			vec2_t joystick;
-            if ( !com_sv_running || !com_sv_running->integer )
+            if ( vr.use_fake_6dof )
             {
-                //multiplayer server
+                //multiplayer game
                 if (!vr_directionMode->integer) {
 					//HMD Based
 					rotateAboutOrigin(joystickX, joystickY, vr.hmdorientation[YAW], joystick);
