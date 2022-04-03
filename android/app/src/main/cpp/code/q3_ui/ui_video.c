@@ -250,13 +250,14 @@ GRAPHICS OPTIONS MENU
 #define ID_RATIO		110
 #define ID_REFRESHRATE		111
 #define ID_DYNAMICLIGHTS	112
-#define ID_SYNCEVERYFRAME	113
+#define ID_RAILGUN		113
 #define ID_SHADOWS		114
 #define ID_PLAYERSHADOW	115
 #define ID_GAMMA		116
 
 #define	NUM_REFRESHRATE	4
 #define NUM_SHADOWS 3
+#define NUM_RAILGUN 2
 
 typedef struct {
 	menuframework_s	menu;
@@ -285,7 +286,7 @@ typedef struct {
 	menutext_s		driverinfo;
     menulist_s		refreshrate;
 	menuradiobutton_s	dynamiclights;
-	menuradiobutton_s	synceveryframe;
+	menulist_s		railgun;
 	menulist_s		shadows;
 	menulist_s		playershadow;
 	menuslider_s	gamma;
@@ -308,7 +309,7 @@ typedef struct
 	qboolean extensions;
 	int refreshrate;
 	qboolean dynamiclights;
-	qboolean synceveryframe;
+	int railgun;
 	int shadows;
 	int playershadow;
 	float gamma;
@@ -502,7 +503,7 @@ static void GraphicsOptions_GetInitialVideo( void )
 	// s_ivo.texturebits = s_graphicsoptions.texturebits.curvalue;
 	s_ivo.refreshrate = s_graphicsoptions.refreshrate.curvalue;
 	s_ivo.dynamiclights = s_graphicsoptions.dynamiclights.curvalue;
-	s_ivo.synceveryframe = s_graphicsoptions.synceveryframe.curvalue;
+	s_ivo.railgun     = s_graphicsoptions.railgun.curvalue;
 	s_ivo.shadows     = s_graphicsoptions.refreshrate.curvalue;
 	s_ivo.playershadow	= s_graphicsoptions.playershadow.curvalue;
 	s_ivo.gamma       = s_graphicsoptions.gamma.curvalue;
@@ -832,8 +833,8 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "r_dynamiclight", s_graphicsoptions.dynamiclights.curvalue );
 		break;
 
-	case ID_SYNCEVERYFRAME:
-		trap_Cvar_SetValue( "r_finish", s_graphicsoptions.synceveryframe.curvalue );
+	case ID_RAILGUN:
+		trap_Cvar_SetValue( "cg_oldRail", s_graphicsoptions.railgun.curvalue );
 		break;
 
 	case ID_SHADOWS: {
@@ -1095,7 +1096,7 @@ static void GraphicsOptions_SetMenuItems( void )
 	}
 
 	s_graphicsoptions.dynamiclights.curvalue	= trap_Cvar_VariableValue( "r_dynamiclight" ) != 0;
-	s_graphicsoptions.synceveryframe.curvalue	= trap_Cvar_VariableValue( "r_finish" ) != 0;
+	s_graphicsoptions.railgun.curvalue	= trap_Cvar_VariableValue( "cg_oldRail" );
 	s_graphicsoptions.gamma.curvalue			= trap_Cvar_VariableValue( "r_gamma" );
 }
 
@@ -1180,6 +1181,12 @@ void GraphicsOptions_MenuInit( void )
 		"None",
 		"Low",
 		"High",
+		NULL
+	};
+	static const char *s_railgun[] =
+	{
+		"High",
+		"Low",
 		NULL
 	};
 
@@ -1322,16 +1329,6 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.refreshrate.numitems			= NUM_REFRESHRATE;
 	y += BIGCHAR_HEIGHT+2;
 
-	// references "r_finish"
-	s_graphicsoptions.synceveryframe.generic.type     = MTYPE_RADIOBUTTON;
-	s_graphicsoptions.synceveryframe.generic.name	  = "Sync Every Frame:";
-	s_graphicsoptions.synceveryframe.generic.flags	  = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.synceveryframe.generic.x	      = 400;
-	s_graphicsoptions.synceveryframe.generic.y	      = y;
-	s_graphicsoptions.synceveryframe.generic.callback = GraphicsOptions_Event;
-	s_graphicsoptions.synceveryframe.generic.id       = ID_SYNCEVERYFRAME;
-	y += BIGCHAR_HEIGHT+2;
-
 	// references "r_gamma"
 	s_graphicsoptions.gamma.generic.type			= MTYPE_SLIDER;
 	s_graphicsoptions.gamma.generic.name			= "Brightness:";
@@ -1342,6 +1339,18 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.gamma.generic.id				= ID_GAMMA;
 	s_graphicsoptions.gamma.minvalue				= 0.8f;
 	s_graphicsoptions.gamma.maxvalue				= 1.3f;
+	y += BIGCHAR_HEIGHT+2;
+
+	// references "cg_oldRail"
+	s_graphicsoptions.railgun.generic.type     = MTYPE_SPINCONTROL;
+	s_graphicsoptions.railgun.generic.name	   = "Railgun Effect:";
+	s_graphicsoptions.railgun.generic.flags	   = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.railgun.generic.x	       = 400;
+	s_graphicsoptions.railgun.generic.y	       = y;
+	s_graphicsoptions.railgun.itemnames	       = s_railgun;
+	s_graphicsoptions.railgun.generic.callback = GraphicsOptions_Event;
+	s_graphicsoptions.railgun.generic.id       = ID_RAILGUN;
+	s_graphicsoptions.railgun.numitems         = NUM_RAILGUN;
 	y += BIGCHAR_HEIGHT+2;
 
 //	// references "r_colorbits"
@@ -1489,7 +1498,7 @@ void GraphicsOptions_MenuInit( void )
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.ratio );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.mode );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.refreshrate );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.synceveryframe );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.railgun );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.gamma );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.colordepth );
 //	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.fs );
