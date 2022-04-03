@@ -534,7 +534,9 @@ CG_RailTrail
 ==========================
 */
 void CG_RailTrail (clientInfo_t *ci, vec3_t start, vec3_t end) {
-	vec3_t axis[36], move, move2, vec, temp;
+
+#define NUM_PARTICLE_PER_ROTATION   18
+	vec3_t axis[NUM_PARTICLE_PER_ROTATION], move, move2, vec, vec2, temp;
 	float  len;
 	int    i, j, skip;
  
@@ -586,33 +588,35 @@ void CG_RailTrail (clientInfo_t *ci, vec3_t start, vec3_t end) {
 	VectorSubtract (end, start, vec);
 	len = VectorNormalize (vec);
 	PerpendicularVector(temp, vec);
-	for (i = 0 ; i < 36; i++)
+	for (i = 0 ; i < NUM_PARTICLE_PER_ROTATION; i++)
 	{
-		RotatePointAroundVector(axis[i], vec, temp, i * 10);//banshee 2.4 was 10
+		RotatePointAroundVector(axis[i], vec, temp, i * (360.0f / NUM_PARTICLE_PER_ROTATION));//banshee 2.4 was 10
 	}
 
-	VectorMA(move, 20, vec, move);
-	VectorScale (vec, SPACING, vec);
+	VectorMA(move, (360.0f / NUM_PARTICLE_PER_ROTATION), vec, move);
+	VectorScale (vec, SPACING, vec2);
 
 	skip = -1;
  
-	j = 18;
-	for (i = 0; i < len; i += SPACING)
+	j = 0;
+	int spacing = SPACING;
+	for (i = 0; i < len; i += spacing, spacing++)
 	{
 		if (i != skip)
 		{
-			skip = i + SPACING;
+            VectorScale (vec, spacing, vec2);
+			skip = i + spacing;
 			le = CG_AllocLocalEntity();
 			re = &le->refEntity;
 			le->leFlags = LEF_PUFF_DONT_SCALE;
 			le->leType = LE_MOVE_SCALE_FADE;
 			le->startTime = cg.time;
-			le->endTime = cg.time + (i>>1) + 600;
+			le->endTime = cg.time + (i>>1) + 500;
 			le->lifeRate = 1.0 / (le->endTime - le->startTime);
 
 			re->shaderTime = cg.time / 1000.0f;
 			re->reType = RT_SPRITE;
-			re->radius = 1.1f;
+			re->radius = 1.2f;
 			re->customShader = cgs.media.railRingsShader;
 
 			re->shaderRGBA[0] = ci->color2[0] * 255;
@@ -637,9 +641,9 @@ void CG_RailTrail (clientInfo_t *ci, vec3_t start, vec3_t end) {
 			le->pos.trDelta[2] = axis[j][2]*6;
 		}
 
-		VectorAdd (move, vec, move);
+		VectorAdd (move, vec2, move);
 
-		j = (j + ROTATION) % 36;
+		j = (j + ROTATION) % NUM_PARTICLE_PER_ROTATION;
 	}
 }
 
