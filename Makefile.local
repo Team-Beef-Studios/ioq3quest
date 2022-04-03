@@ -4,7 +4,7 @@ ANDROID_NDK_VERSION=21.1.6352462
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
-    ANDROID_SDK_ROOT?=/opt/AndroidSDK
+    ANDROID_SDK_ROOT?=$(HOME)/Android/Sdk
     ANDROID_NDK=$(ANDROID_SDK_ROOT)/ndk/$(ANDROID_NDK_VERSION)
     ANDROID_CC=$(ANDROID_NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-$(ANDROID_SDK_VERSION)-clang
     ANDROID_CFLAGS=--target=aarch64-linux-$(ANDROID_SDK_VERSION)
