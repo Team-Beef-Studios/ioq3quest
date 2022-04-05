@@ -466,6 +466,7 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
 
 	if (vr.virtual_screen || cl.snap.ps.pm_type == PM_INTERMISSION)
     {
+        vr.weapon_zoomed = qfalse;
         if (vr.menuCursorX && vr.menuCursorY)
         {
             float yaw;
