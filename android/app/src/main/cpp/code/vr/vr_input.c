@@ -569,7 +569,9 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
             //forward/back
             Com_QueueEvent(in_vrEventTime, SE_JOYSTICK_AXIS, 1, joystick[1] * 127.0f + positional[1] * 127.0f, 0, NULL);
         }
-        else if (!vr.weapon_select) //right controller
+        // In case weapon wheel is opened, and is in HMD/thumbstick mode or was opened by thumbstick, ignore standard thumbstick inputs
+        // In case weapon wheel is in controller mode and is opened by grip, allow use use of thumbstick e.g. to not block turning while wheel is open
+        else if (!vr.weapon_select || ((int)Cvar_VariableValue("vr_weaponSelectorMode") == WS_CONTROLLER && !vr.weapon_select_autoclose))
         {
             float absoluteAxisValue = sqrt(joystickY*joystickY + joystickX*joystickX);
 
