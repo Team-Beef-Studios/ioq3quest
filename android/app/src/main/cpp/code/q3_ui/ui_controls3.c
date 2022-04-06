@@ -91,7 +91,7 @@ static void Controls3_SetMenuItems( void ) {
 	s_controls3.righthanded.curvalue		= trap_Cvar_VariableValue( "vr_righthanded" ) != 0;
     s_controls3.weaponpitch.curvalue		= trap_Cvar_VariableValue( "vr_weaponPitch" )  + 25;
     s_controls3.weaponselectormode.curvalue	= (int)trap_Cvar_VariableValue( "vr_weaponSelectorMode" ) % 2;
-    s_controls3.controlschema.curvalue		= (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 2;
+    s_controls3.controlschema.curvalue		= (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 3;
     s_controls3.switchthumbsticks.curvalue	= trap_Cvar_VariableValue( "vr_switchThumbsticks" ) != 0;
 }
 
@@ -137,16 +137,16 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
     case ID_UTURN:
 		{
 			if (s_controls3.uturn.curvalue) {
-				if (s_controls3.controlschema.curvalue == 0) {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
-				} else {
+				if (s_controls3.controlschema.curvalue == 1) {
 					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
 				}
 			} else {
-				if (s_controls3.controlschema.curvalue == 0) {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "");
+				if (s_controls3.controlschema.curvalue == 1) {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
 				} else {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "");
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev");
 				}
         	}
         }
@@ -157,7 +157,7 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 		{
 			switch (s_controls3.controlschema.curvalue)
 			{
-				case 0: // Default schema
+				case 0: // Default schema (weapon wheel on grip)
 					trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
 					trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
@@ -181,8 +181,7 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", ""); // unmapped
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", ""); // unmapped
 					break;
-				default: // Now we have only two schemas
-					// All directions as weapon select (useful for HMD wheel)
+				case 1: // Weapon wheel on thumbstick - all directions as weapon select (useful for HMD wheel)
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "+weapon_select");
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", "+weapon_select");
 					trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "+weapon_select");
@@ -205,6 +204,30 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 					trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", "blank"); // unmapped
 					trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", "blank"); // unmapped
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", "blank"); // unmapped
+					break;
+				default: // Weapon wheel disabled - only prev/next weapon switch is active
+					trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
+					trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
+					if (s_controls3.uturn.curvalue) {
+						trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn"); // u-turn
+					} else {
+						trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
+					}
+					trap_Cvar_Set("vr_button_map_PRIMARYGRIP", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", ""); // unmapped
 					break;
 			}
 		}
@@ -250,6 +273,7 @@ static void Controls3_MenuInit( void ) {
 			{
 					"Weapon Wheel on Grip",
 					"Weapon Wheel on Thumbstick",
+					"Weapon Wheel Disabled",
 					NULL
 			};
 
@@ -390,7 +414,7 @@ static void Controls3_MenuInit( void ) {
 	s_controls3.controlschema.generic.callback		= Controls3_MenuEvent;
 	s_controls3.controlschema.generic.id				= ID_CONTROLSCHEMA;
 	s_controls3.controlschema.itemnames	        	= s_controlschema;
-	s_controls3.controlschema.numitems				= 2;
+	s_controls3.controlschema.numitems				= 3;
 
 	s_controls3.back.generic.type	    = MTYPE_BITMAP;
 	s_controls3.back.generic.name     = ART_BACK0;

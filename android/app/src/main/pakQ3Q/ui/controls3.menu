@@ -196,7 +196,7 @@ itemDef {
       		type ITEM_TYPE_MULTI
 		text "Control Schema:"
 		cvar "vr_controlSchema"
-		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 }
+		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 "Weapon Wheel Disabled" 2 }
 		rect 99 325 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 100

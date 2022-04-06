@@ -104,8 +104,9 @@ void VR_InitCvars( void )
 	Cvar_Get ("vr_uturn", "0", CVAR_ARCHIVE);
 	Cvar_Get ("vr_controlSchema", "0", CVAR_ARCHIVE);
 	qboolean uturnEnabled = Cvar_VariableValue( "vr_uturn" ) != 0;
-	int controlSchema = (int)Cvar_VariableValue( "vr_controlSchema" ) % 2;
+	int controlSchema = (int)Cvar_VariableValue( "vr_controlSchema" ) % 3;
 	if (controlSchema == 0) {
+		// Default schema (weapon wheel on grip)
         Cvar_Get ("vr_button_map_RTHUMBLEFT", "turnleft", CVAR_ARCHIVE); // turn left
         Cvar_Get ("vr_button_map_RTHUMBRIGHT", "turnright", CVAR_ARCHIVE); // turn right
         Cvar_Get ("vr_button_map_RTHUMBFORWARD", "weapnext", CVAR_ARCHIVE); // next weapon
@@ -128,8 +129,8 @@ void VR_InitCvars( void )
        	Cvar_Get ("vr_button_map_RTHUMBLEFT_ALT", "", CVAR_ARCHIVE); // unmapped
        	Cvar_Get ("vr_button_map_RTHUMBFORWARDLEFT", "", CVAR_ARCHIVE); // unmapped
        	Cvar_Get ("vr_button_map_RTHUMBFORWARDLEFT_ALT", "", CVAR_ARCHIVE); // unmapped
-	} else {
-	    // All directions as weapon select (useful for HMD wheel)
+    } else if (controlSchema == 1) {
+	    // Weapon wheel on thumbstick - all directions as weapon select (useful for HMD wheel)
 		Cvar_Get ("vr_button_map_RTHUMBFORWARD", "+weapon_select", CVAR_ARCHIVE);
     	Cvar_Get ("vr_button_map_RTHUMBFORWARDRIGHT", "+weapon_select", CVAR_ARCHIVE);
     	Cvar_Get ("vr_button_map_RTHUMBRIGHT", "+weapon_select", CVAR_ARCHIVE);
@@ -152,6 +153,30 @@ void VR_InitCvars( void )
         Cvar_Get ("vr_button_map_RTHUMBBACKRIGHT_ALT", "blank", CVAR_ARCHIVE); // unmapped
         Cvar_Get ("vr_button_map_RTHUMBBACKLEFT_ALT", "blank", CVAR_ARCHIVE); // unmapped
         Cvar_Get ("vr_button_map_RTHUMBFORWARDLEFT_ALT", "blank", CVAR_ARCHIVE); // unmapped
+	} else {
+		// Weapon wheel disabled - only prev/next weapon switch is active
+		Cvar_Get ("vr_button_map_RTHUMBLEFT", "turnleft", CVAR_ARCHIVE); // turn left
+		Cvar_Get ("vr_button_map_RTHUMBRIGHT", "turnright", CVAR_ARCHIVE); // turn right
+		Cvar_Get ("vr_button_map_RTHUMBFORWARD", "weapnext", CVAR_ARCHIVE); // next weapon
+		if (uturnEnabled) {
+			Cvar_Get ("vr_button_map_RTHUMBBACK", "uturn", CVAR_ARCHIVE); // u-turn
+		} else {
+			Cvar_Get ("vr_button_map_RTHUMBBACK", "weapprev", CVAR_ARCHIVE); // previous weapon
+		}
+		Cvar_Get ("vr_button_map_PRIMARYGRIP", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_PRIMARYTHUMBSTICK", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBFORWARD_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBFORWARDRIGHT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBFORWARDRIGHT_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBRIGHT_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBBACKRIGHT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBBACKRIGHT_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBBACK_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBBACKLEFT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBBACKLEFT_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBLEFT_ALT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBFORWARDLEFT", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_RTHUMBFORWARDLEFT_ALT", "", CVAR_ARCHIVE); // unmapped
 	}
 
 	//Remaining button mapping (buttons not affected by schemas)

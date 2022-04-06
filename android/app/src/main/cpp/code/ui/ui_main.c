@@ -3174,7 +3174,7 @@ static void UI_Update(const char *name) {
 		qboolean uturn = trap_Cvar_VariableValue( "vr_uturn" ) != 0;
 		switch (val)
 		{
-			case 0: // Default schema
+			case 0: // Default schema (weapon wheel on grip)
 				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
 				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
@@ -3198,8 +3198,7 @@ static void UI_Update(const char *name) {
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", ""); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", ""); // unmapped
 				break;
-			default: // Now we have only two schemas
-				// All directions as weapon select (useful for HMD wheel)
+			case 1: // Weapon wheel on thumbstick - all directions as weapon select (useful for HMD wheel)
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "+weapon_select");
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", "+weapon_select");
 				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "+weapon_select");
@@ -3223,20 +3222,44 @@ static void UI_Update(const char *name) {
 				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", "blank"); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", "blank"); // unmapped
 				break;
+			default: // Weapon wheel disabled - only prev/next weapon switch is active
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
+				if (uturn) {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn"); // u-turn
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
+				}
+				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", ""); // unmapped
+				break;
 		}
 	} else if (Q_stricmp(name, "vr_uturn") == 0) {
-		int controlSchema = (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 2;
+		int controlSchema = (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 3;
 		if (val) {
-        	if (controlSchema == 0) {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
-        	} else {
+        	if (controlSchema == 1) {
         		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
+        	} else {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
         	}
         } else {
-        	if (controlSchema == 0) {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "");
+        	if (controlSchema == 1) {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
         	} else {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "");
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev");
         	}
         }
 	} else if (Q_stricmp(name, "vr_goreLevel") == 0) {
