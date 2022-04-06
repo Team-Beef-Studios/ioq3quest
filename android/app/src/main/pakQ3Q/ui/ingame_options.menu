@@ -197,11 +197,11 @@ itemDef {
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
-	
+
 	itemDef {
       		name options
 		group grpOptions
@@ -212,9 +212,9 @@ itemDef {
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 
 	itemDef {
@@ -227,9 +227,9 @@ itemDef {
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 
 	itemDef {
@@ -242,9 +242,9 @@ itemDef {
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 
 	itemDef {
@@ -257,25 +257,25 @@ itemDef {
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 
 	itemDef {
       		name options
 		group grpOptions
 		text "Ejecting Brass:"
-		type ITEM_TYPE_MULTI	
+		type ITEM_TYPE_MULTI
 		cvar "cg_brassTime"
 		cvarFloatList { "High" 2500 "Med" 1250 "Off" 0 }
 		rect 50 139 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 
 	itemDef {
@@ -288,24 +288,9 @@ itemDef {
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
-    		}
-	
-	itemDef {
-      		name options
-		group grpOptions
-      		type ITEM_TYPE_YESNO
-		text "Low Quality Sky:"
-		cvar "r_fastsky"
-		rect 50 173 200 20
-      		textalign ITEM_ALIGN_RIGHT
-      		textalignx 143
-      		textaligny 17
-		textscale .25        
-      		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 
 	itemDef {
@@ -314,13 +299,13 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Force Player Models:"
 		cvar "cg_forceModel"
-		rect 50 190 200 20
+		rect 50 173 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 	itemDef {
       		name options
@@ -328,13 +313,13 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Draw Team Overlay:"
 		cvar "cg_drawTeamOverlay"
-		rect 50 207 200 20
+		rect 50 190 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 	itemDef {
       		name options
@@ -342,50 +327,50 @@ itemDef {
       		type ITEM_TYPE_YESNO
 		text "Show Time:"
 		cvar "cg_drawTimer"
-		rect 50 224 200 20
+		rect 50 207 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 itemDef {
-      		name options				
+      		name options
 		group grpOptions
       		type ITEM_TYPE_YESNO
 		text "Taunts Off:"
 		cvar "cg_noTaunt"
-		rect 50 241 200 20
+		rect 50 224 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 itemDef {
-      		name options				
+      		name options
 		group grpOptions
       		type ITEM_TYPE_YESNO
 		text "In Game Video:"
 		cvar "r_inGameVideo"
-		rect 50 258 200 20
+		rect 50 241 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
-		textscale .25        
+		textscale .25
       		forecolor 1 1 1 1
-      		visible 1 
+      		visible 1
     		}
 itemDef {
-      		name options				
+      		name options
 		group grpOptions
-      		type ITEM_TYPE_MULTI	
+      		type ITEM_TYPE_MULTI
 		text "HUD Type:"
 		cvar "cg_hudfiles"
 		cvarStrList { Normal "ui/hud.txt" Small "ui/hud2.txt" }
-		rect 50 275 200 20
+		rect 50 258 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
       		textaligny 17
@@ -397,9 +382,26 @@ itemDef {
 itemDef {
       		name options
 		group grpOptions
+      		type ITEM_TYPE_MULTI
+		text "HUD Mode:"
+		cvar "vr_hudDrawStatus"
+		cvarFloatList { "Off" 0 "Floating" 1 "Simple" 2 }
+		rect 50 275 200 20
+      		textalign ITEM_ALIGN_RIGHT
+      		textalignx 143
+      		textaligny 17
+		textscale .25
+      		forecolor 1 1 1 1
+      		visible 1
+      		action { uiScript update "vr_hudDrawStatus" }
+	}
+
+itemDef {
+      		name options
+		group grpOptions
       		type ITEM_TYPE_YESNO
-		text "Draw HUD:"
-		cvar "cg_drawStatus"
+		text "Draw HUD On Weapon Wheel:"
+		cvar "vr_weaponSelectorWithHud"
 		rect 50 292 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
@@ -413,8 +415,8 @@ itemDef {
       		name options
 		group grpOptions
       		type ITEM_TYPE_YESNO
-		text "Draw HUD On Weapon Wheel:"
-		cvar "vr_weaponSelectorWithHud"
+		text "Show Console Messages:"
+		cvar "vr_showConsoleMessages"
 		rect 50 309 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
