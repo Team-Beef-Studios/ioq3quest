@@ -1913,8 +1913,8 @@ static void CG_PlayerPowerups( centity_t *cent, refEntity_t *torso ) {
 		}
 		else {
 			vec3_t offset;
-			VectorSet(offset, 0, -16, 0);
-			CG_TrailItem( cent, cgs.media.redFlagModel, offset, 1.0f );
+			VectorSet(offset, 0, -1, 0);
+			CG_TrailItem( cent, cgs.media.redFlagModel, offset, 0.1f );
 		}
 		trap_R_AddLightToScene( cent->lerpOrigin, 200 + (rand()&31), 1.0, 0.2f, 0.2f );
 	}
@@ -1926,8 +1926,8 @@ static void CG_PlayerPowerups( centity_t *cent, refEntity_t *torso ) {
 		}
 		else {
 			vec3_t offset;
-			VectorSet(offset, 0, -16, 0);
-			CG_TrailItem( cent, cgs.media.blueFlagModel, offset, 1.0f );
+			VectorSet(offset, 0, -1, 0);
+			CG_TrailItem( cent, cgs.media.blueFlagModel, offset, 0.1f );
 		}
 		trap_R_AddLightToScene( cent->lerpOrigin, 200 + (rand()&31), 0.2f, 0.2f, 1.0 );
 	}
@@ -1939,8 +1939,8 @@ static void CG_PlayerPowerups( centity_t *cent, refEntity_t *torso ) {
 		}
 		else {
 			vec3_t offset;
-			VectorSet(offset, 0, -16, 0);
-			CG_TrailItem( cent, cgs.media.neutralFlagModel, offset, 1.0f );
+			VectorSet(offset, 0, -1, 0);
+			CG_TrailItem( cent, cgs.media.neutralFlagModel, offset, 0.1f );
 		}
 		trap_R_AddLightToScene( cent->lerpOrigin, 200 + (rand()&31), 1.0, 1.0, 1.0 );
 	}

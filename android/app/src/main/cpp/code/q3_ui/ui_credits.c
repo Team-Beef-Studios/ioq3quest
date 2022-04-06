@@ -128,9 +128,9 @@ Special Thanks to the whole discord!
     UI_DrawString( 320, y, "DrBeef", UI_CENTER|UI_SMALLFONT, color_white );
 
     y += 1.42 * PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
-    UI_DrawProportionalString( 320, y, "Companion App", UI_CENTER|UI_SMALLFONT, color_red );
+    UI_DrawProportionalString( 320, y, "Companion App      Custom Quest Home", UI_CENTER|UI_SMALLFONT, color_red );
     y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
-    UI_DrawString( 320, y, "Baggyg", UI_CENTER|UI_SMALLFONT, color_white );
+    UI_DrawString( 320, y, "Baggyg                     ROBYER1", UI_CENTER|UI_SMALLFONT, color_white );
 
 	y += 1.42 * PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawProportionalString( 320, y, "Additional Quake3Quest coding", UI_CENTER|UI_SMALLFONT, color_red );
