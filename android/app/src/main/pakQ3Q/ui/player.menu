@@ -277,8 +277,7 @@ itemDef {
       	border 0
       	bordercolor 0 0 0 0
       	visible 1
-//	mouseEnter { show message_name }
-//	mouseExit { hide message_name }
+      	decoration
     	}
 
 itemDef {
