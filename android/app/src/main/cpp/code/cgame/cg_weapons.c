@@ -1868,6 +1868,11 @@ void CG_DrawWeaponSelect( void ) {
 		return;
 	}
 
+	// don't display when weapon wheel is opened
+	if (vr->weapon_select) {
+		return;
+	}
+
 	color = CG_FadeColor( cg.weaponSelectTime, WEAPON_SELECT_TIME );
 	if ( !color ) {
 		return;
@@ -2120,7 +2125,8 @@ void CG_DrawWeaponSelector( void )
     float thumbstickAxisX = 0.0f;
     float thumbstickAxisY = 0.0f;
 	float a = atan2(vr->thumbstick_location[thumb][0], vr->thumbstick_location[thumb][1]);
-    if (length(vr->thumbstick_location[thumb][0], vr->thumbstick_location[thumb][1]) > 0.95f)
+	float thumbstickValue = length(vr->thumbstick_location[thumb][0], vr->thumbstick_location[thumb][1]);
+    if (thumbstickValue > 0.95f)
     {
         thumbstickAxisX = sinf(a) * 0.95f;
         thumbstickAxisY = cosf(a) * 0.95f;
@@ -2390,12 +2396,13 @@ void CG_DrawWeaponSelector( void )
 	// In case was invoked by thumbstick axis and thumbstick is centered
 	// select weapon (if any selected) and close the selector
 	if (vr->weapon_select_autoclose && frac > 0.25f) {
-	    if (thumbstickAxisX > -0.1f && thumbstickAxisX < 0.1f && thumbstickAxisY > -0.1f && thumbstickAxisY < 0.1f) {
+	    if (thumbstickValue < 0.1f) {
 	        if (selected) {
 	            cg.weaponSelect = cg.weaponSelectorSelection;
 	        }
 	    	vr->weapon_select = qfalse;
             vr->weapon_select_autoclose = qfalse;
+            vr->weapon_select_using_thumbstick = qfalse;
 	    }
 	}
 }
