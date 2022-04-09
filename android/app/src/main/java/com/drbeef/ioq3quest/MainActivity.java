@@ -156,7 +156,7 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 	}
 
 	public void copy_asset(String path, String name, String newName, boolean force) {
-		File f = new File(path + "/" + name);
+		File f = new File(path + "/" + newName);
 		if (!f.exists() || force) {
 
 			//Ensure we have an appropriate folder
