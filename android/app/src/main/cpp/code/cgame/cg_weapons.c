@@ -1724,6 +1724,10 @@ void CG_AddViewWeapon( playerState_t *ps ) {
         return;
     }
 
+    if (vr->weapon_zoomed) {
+        return; // do not draw weapon model with enabled weapon scope
+    }
+
 	cent = &cg.predictedPlayerEntity;	// &cg_entities[cg.snap->ps.clientNum];
 	CG_RegisterWeapon( ps->weapon );
 	weapon = &cg_weapons[ ps->weapon ];
