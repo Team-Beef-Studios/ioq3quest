@@ -163,7 +163,7 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 			String fullname = path + "/" + name;
 			String directory = fullname.substring(0, fullname.lastIndexOf("/"));
 			new File(directory).mkdirs();
-			_copy_asset(name, path + "/" + targetName);
+			_copy_asset(name, path + "/" + newName);
 		}
 	}
 
