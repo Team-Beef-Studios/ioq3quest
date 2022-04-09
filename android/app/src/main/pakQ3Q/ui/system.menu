@@ -513,7 +513,7 @@ itemDef {
 		group grpSystem
       		type ITEM_TYPE_SLIDER
 		text "Effects Volume:"
-		cvarfloat "s_volume" 0.1 0 0.8
+		cvarfloat "s_volume" 0.1 0 0.7
 		rect 99 92 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
@@ -528,7 +528,7 @@ itemDef {
 		group grpSystem
       		type ITEM_TYPE_SLIDER
 		text "Music Volume:"
-		cvarfloat "s_musicvolume" 0.1 0 0.8
+		cvarfloat "s_musicvolume" 0.1 0 0.7
 		rect 99 119 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
