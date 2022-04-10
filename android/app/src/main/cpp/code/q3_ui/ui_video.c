@@ -1338,7 +1338,7 @@ void GraphicsOptions_MenuInit( void )
     s_graphicsoptions.gamma.generic.callback		= GraphicsOptions_Event;
 	s_graphicsoptions.gamma.generic.id				= ID_GAMMA;
 	s_graphicsoptions.gamma.minvalue				= 0.8f;
-	s_graphicsoptions.gamma.maxvalue				= 1.3f;
+	s_graphicsoptions.gamma.maxvalue				= 1.2f;
 	y += BIGCHAR_HEIGHT+2;
 
 	// references "cg_oldRail"
