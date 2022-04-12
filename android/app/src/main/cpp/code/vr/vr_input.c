@@ -525,8 +525,35 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
     vr.thumbstick_location[isRightController][0] = joystickX;
     vr.thumbstick_location[isRightController][1] = joystickY;
 
-	if (!vr.virtual_screen && cl.snap.ps.pm_type != PM_INTERMISSION)
+	if (vr.virtual_screen || cl.snap.ps.pm_type == PM_INTERMISSION)
 	{
+
+	    // Use thumbstick UP/DOWN as PAGEUP/PAGEDOWN in menus
+        if (joystickY > thumbstickPressedThreshold) {
+            if (!IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_UP)) {
+                IN_ActivateInput(&controller->axisButtons, VR_TOUCH_AXIS_UP);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGUP, qtrue, 0, NULL);
+            }
+        } else if (joystickY < -thumbstickPressedThreshold) {
+            if (!IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_DOWN)) {
+                IN_ActivateInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWN);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGDN, qtrue, 0, NULL);
+            }
+        } else if (joystickY < thumbstickReleasedThreshold && joystickY > -thumbstickReleasedThreshold) {
+            if (IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_UP)) {
+                IN_DeactivateInput(&controller->axisButtons, VR_TOUCH_AXIS_UP);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGUP, qfalse, 0, NULL);
+            }
+            if (IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_DOWN)) {
+                IN_DeactivateInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWN);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGDN, qfalse, 0, NULL);
+            }
+        }
+
+	}
+	else
+	{
+
 		if (isRightController == (vr_switchThumbsticks->integer != 0)) {
 			vec3_t positional;
 			VectorClear(positional);
