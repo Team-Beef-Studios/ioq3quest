@@ -3177,11 +3177,11 @@ static void UI_Update(const char *name) {
 			case 0: // Default schema (weapon wheel on grip)
 				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
 				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", ""); // unmapped
 				if (uturn) {
 					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn"); // u-turn
 				} else {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", ""); // unmapped
 				}
 				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+weapon_select"); // weapon selector
 				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
@@ -3211,11 +3211,11 @@ static void UI_Update(const char *name) {
 				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
 				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", "turnleft"); // turn left
 				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", "turnright"); // turn right
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "weapnext");
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "blank");
 				if (uturn) {
 					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
 				} else {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "blank");
 				}
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", "blank"); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", "blank"); // unmapped
@@ -3257,9 +3257,11 @@ static void UI_Update(const char *name) {
         	}
         } else {
         	if (controlSchema == 1) {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
-        	} else {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "blank");
+        	} else if (controlSchema == 2) {
         		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev");
+        	} else {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "");
         	}
         }
 	} else if (Q_stricmp(name, "vr_goreLevel") == 0) {

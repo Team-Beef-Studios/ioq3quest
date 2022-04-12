@@ -144,9 +144,11 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 				}
 			} else {
 				if (s_controls3.controlschema.curvalue == 1) {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
-				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "blank");
+				} else if (s_controls3.controlschema.curvalue == 2) {
 					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev");
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "blank");
 				}
         	}
         }
@@ -160,11 +162,11 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 				case 0: // Default schema (weapon wheel on grip)
 					trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
 					trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
-					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", ""); // unmapped
 					if (s_controls3.uturn.curvalue) {
 						trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn"); // u-turn
 					} else {
-						trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
+						trap_Cvar_Set("vr_button_map_RTHUMBBACK", ""); // unmapped
 					}
 					trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+weapon_select"); // weapon selector
 					trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
@@ -194,11 +196,11 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 					trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
 					trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", "turnleft"); // turn left
 					trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", "turnright"); // turn right
-					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "weapnext");
+					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "blank");
 					if (s_controls3.uturn.curvalue) {
 						trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
 					} else {
-						trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
+						trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "blank");
 					}
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", "blank"); // unmapped
 					trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", "blank"); // unmapped
