@@ -228,18 +228,18 @@ static void Main_MenuDraw( void ) {
 
 	int yPos = 410;
 	if (uis.demoversion) {
-		UI_DrawProportionalString( 320, 372, "DEMO DEMO DEMO DEMO DEMO DEMO DEMO DEMO DEMO", UI_CENTER|UI_SMALLFONT, color );
+		UI_DrawProportionalString( 320, 372, "Demo: Play the 1st tier of SP or MP on our demo servers. Install full game for more!", UI_CENTER|UI_SMALLFONT, color );
 		UI_DrawString( 320, yPos, "Quake III Arena(c) 1999-2000, Id Software, Inc.  All Rights Reserved", UI_CENTER|UI_SMALLFONT, color );
 	} else {
 		UI_DrawString( 320, yPos, "Quake III Arena(c) 1999-2000, Id Software, Inc.  All Rights Reserved", UI_CENTER|UI_SMALLFONT, color );
 	}
 
 	yPos += SMALLCHAR_HEIGHT;
-	UI_DrawString( 320, yPos, "Quake3Quest " Q3QVERSION " - Visit quake3.quakevr.com for discord invite.", UI_CENTER|UI_SMALLFONT, color );
+	UI_DrawString( 320, yPos, "Quake3Quest " Q3QVERSION " - Visit quake3.quakevr.com for discord invite.", UI_CENTER|UI_SMALLFONT, color_white );
 	yPos += SMALLCHAR_HEIGHT;
-	UI_DrawString( 320, yPos, "Join our discord for news, leaderboards and community!", UI_CENTER|UI_SMALLFONT, color );
+	UI_DrawString( 320, yPos, "Join our discord for news, leaderboards and community!", UI_CENTER|UI_SMALLFONT, color_white );
 	yPos += SMALLCHAR_HEIGHT;
-	UI_DrawString( 320, yPos, "Get mods & mappacks via the companion app!", UI_CENTER|UI_SMALLFONT, color );
+	UI_DrawString( 320, yPos, "Get mods & mappacks via the companion app!", UI_CENTER|UI_SMALLFONT, color_white );
 }
 
 
