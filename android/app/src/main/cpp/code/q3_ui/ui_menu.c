@@ -228,7 +228,11 @@ static void Main_MenuDraw( void ) {
 
 	int yPos = 410;
 	if (uis.demoversion) {
-		UI_DrawProportionalString( 320, 372, "Demo: Play the 1st tier of SP or MP on our demo servers. Install full game for more!", UI_CENTER|UI_SMALLFONT, color );
+		yPos = 372;
+		UI_DrawString( 320, yPos, "Demo: Play the 1st tier of SP or MP on our demo servers", UI_CENTER|UI_SMALLFONT, color_white );
+		yPos += SMALLCHAR_HEIGHT;
+		UI_DrawString( 320, yPos, "Install full game for more!", UI_CENTER|UI_SMALLFONT, color_white );
+		yPos += SMALLCHAR_HEIGHT;
 		UI_DrawString( 320, yPos, "Quake III Arena(c) 1999-2000, Id Software, Inc.  All Rights Reserved", UI_CENTER|UI_SMALLFONT, color );
 	} else {
 		UI_DrawString( 320, yPos, "Quake III Arena(c) 1999-2000, Id Software, Inc.  All Rights Reserved", UI_CENTER|UI_SMALLFONT, color );
