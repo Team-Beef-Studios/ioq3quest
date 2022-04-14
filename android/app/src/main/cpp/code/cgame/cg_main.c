@@ -1028,18 +1028,24 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.medalAssist = trap_R_RegisterShaderNoMip( "medal_assist" );
 	cgs.media.medalCapture = trap_R_RegisterShaderNoMip( "medal_capture" );
 
-
 	memset( cg_items, 0, sizeof( cg_items ) );
 	memset( cg_weapons, 0, sizeof( cg_weapons ) );
 
 	// only register the items that the server says we need
 	Q_strncpyz(items, CG_ConfigString(CS_ITEMS), sizeof(items));
-
 	for ( i = 1 ; i < bg_numItems ; i++ ) {
 		if ( items[ i ] == '1' || cg_buildScript.integer ) {
 			CG_LoadingItem( i );
 			CG_RegisterItemVisuals( i );
 		}
+	}
+
+	// register all weapons (as they are used on weapon wheel selector)
+	for (int weaponId = 1; weaponId < WP_NUM_WEAPONS; ++weaponId) {
+		if (weaponId == WP_GRAPPLING_HOOK) {
+			continue;
+		}
+		CG_RegisterWeapon(weaponId);
 	}
 
 	// wall marks
