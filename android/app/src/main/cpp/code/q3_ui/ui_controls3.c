@@ -216,7 +216,7 @@ static void Controls3_MenuEvent( void* ptr, int notification ) {
 					} else {
 						trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
 					}
-					trap_Cvar_Set("vr_button_map_PRIMARYGRIP", ""); // unmapped
+					trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
 					trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", ""); // unmapped
 					trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", ""); // unmapped

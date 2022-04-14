@@ -163,7 +163,7 @@ void VR_InitCvars( void )
 		} else {
 			Cvar_Get ("vr_button_map_RTHUMBBACK", "weapprev", CVAR_ARCHIVE); // previous weapon
 		}
-		Cvar_Get ("vr_button_map_PRIMARYGRIP", "", CVAR_ARCHIVE); // unmapped
+		Cvar_Get ("vr_button_map_PRIMARYGRIP", "+alt", CVAR_ARCHIVE); // switch to alt layout
 		Cvar_Get ("vr_button_map_PRIMARYTHUMBSTICK", "", CVAR_ARCHIVE); // unmapped
 		Cvar_Get ("vr_button_map_RTHUMBFORWARD_ALT", "", CVAR_ARCHIVE); // unmapped
 		Cvar_Get ("vr_button_map_RTHUMBFORWARDRIGHT", "", CVAR_ARCHIVE); // unmapped
