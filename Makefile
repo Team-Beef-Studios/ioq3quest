@@ -353,6 +353,9 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     -pipe -DUSE_ICON -DARCH_STRING=\\\"$(ARCH)\\\"
   CLIENT_CFLAGS += $(SDL_CFLAGS)
 
+  # Flag -ffast-math replacement: https://pspdfkit.com/blog/2021/understanding-fast-math/
+  # Flags -ffp-contract=fast -fno-trapping-math are unused because they are causing lightmap issues
+  OPTIMIZEFASTMATH = -ffinite-math-only -fno-math-errno -fassociative-math -freciprocal-math -fno-signed-zeros
   OPTIMIZEVM = -O3
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
 
@@ -1261,6 +1264,11 @@ endef
 define DO_REF_CC
 $(echo_cmd) "REF_CC $<"
 $(Q)$(CC) $(SHLIBCFLAGS) $(CFLAGS) $(CLIENT_CFLAGS) $(OPTIMIZE) -o $@ -c $<
+endef
+
+define DO_REF_CC_PRECISE
+$(echo_cmd) "REF_CC $<"
+$(Q)$(CC) $(SHLIBCFLAGS) $(CFLAGS) $(CLIENT_CFLAGS) $(OPTIMIZEVM) $(OPTIMIZEFASTMATH) -o $@ -c $<
 endef
 
 define DO_REF_CC_ALTIVEC
@@ -2721,7 +2729,7 @@ $(B)/renderergles3/%.o: $(RCOMMONDIR)/%.c
 	$(DO_REF_CC)
 
 $(B)/renderergles3/%.o: $(RGL2DIR)/%.c
-	$(DO_REF_CC)
+	$(DO_REF_CC_PRECISE)
 
 $(B)/renderergles3/glsl/%.c: $(RGL2DIR)/glsl/%.glsl
 	$(DO_REF_STR)
