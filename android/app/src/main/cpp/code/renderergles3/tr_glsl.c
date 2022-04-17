@@ -1106,6 +1106,13 @@ void GLSL_InitGPUShaders(void)
 		if (glRefConfig.swizzleNormalmap)
 			Q_strcat(extradefines, 1024, "#define SWIZZLE_NORMALMAP\n");
 
+
+		// HACK: use in main menu simple light model (to prevent issue with missing models textures)
+		if (Cvar_Get("r_uiFullScreen", "1", 0)->integer)
+		{
+			Q_strcat(extradefines, 1024, "#define USE_MENU_LIGHT\n");
+		}
+
 		if (lightType)
 		{
 			Q_strcat(extradefines, 1024, "#define USE_LIGHT\n");
