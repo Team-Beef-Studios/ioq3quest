@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 	while (1) {
 		if (hasFocus != g_HasFocus) {
 			hasFocus = g_HasFocus;
-			if (!hasFocus && !Cvar_VariableValue ("cl_paused")) {
+			if (!hasFocus && VR_isPauseable()) {
 				Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_ESCAPE, qtrue, 0, NULL );
 				//Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_CONSOLE, qtrue, 0, NULL );
 				paused = true;
