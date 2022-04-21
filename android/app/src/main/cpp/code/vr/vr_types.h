@@ -87,4 +87,52 @@ typedef enum {
 	VRFM_QUERY		= 99	//Used to query which mode is active
 } vrFollowMode_t;
 
+//ovrFramebuffer
+void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer);
+GLboolean ovrFramebuffer_Create(
+		XrSession session,
+		ovrFramebuffer* frameBuffer,
+		const GLenum colorFormat,
+		const int width,
+		const int height,
+		const int multisamples);
+void ovrFramebuffer_Destroy(ovrFramebuffer* frameBuffer);
+void ovrFramebuffer_SetCurrent(ovrFramebuffer* frameBuffer);
+void ovrFramebuffer_SetNone();
+void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer);
+void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer);
+void ovrFramebuffer_Release(ovrFramebuffer* frameBuffer);
+
+//ovrRenderer
+void ovrRenderer_Clear(ovrRenderer* renderer);
+void ovrRenderer_Create(
+		XrSession session,
+		ovrRenderer* renderer,
+		int suggestedEyeTextureWidth,
+		int suggestedEyeTextureHeight);
+void ovrRenderer_Destroy(ovrRenderer* renderer);
+void ovrRenderer_SetFoveation(
+		XrInstance* instance,
+		XrSession* session,
+		ovrRenderer* renderer,
+		XrFoveationLevelFB level,
+		float verticalOffset,
+		XrFoveationDynamicFB dynamic);
+
+//ovrMatrix4f
+ovrMatrix4f ovrMatrix4f_CreateProjection(
+		const float minX,
+		const float maxX,
+		float const minY,
+		const float maxY,
+		const float nearZ,
+		const float farZ);
+ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
+		const float fovDegreesX,
+		const float fovDegreesY,
+		const float offsetX,
+		const float offsetY,
+		const float nearZ,
+		const float farZ);
+
 #endif

@@ -20,6 +20,10 @@ Copyright : Copyright (c) Facebook Technologies, LLC and its affiliates. All rig
 #include <android/log.h>
 #include <assert.h>
 
+//ID engines common
+#include "../qcommon/q_shared.h"
+#include "../qcommon/qcommon.h"
+
 #if !defined(EGL_OPENGL_ES3_BIT_KHR)
 #define EGL_OPENGL_ES3_BIT_KHR 0x0040
 #endif
@@ -64,9 +68,9 @@ GLint level,
 #define ALOGE(...) Com_Printf(__VA_ARGS__)
 #define ALOGV(...) Com_Printf(__VA_ARGS__)
 
-static const int CPU_LEVEL = 2;
-static const int GPU_LEVEL = 3;
-static const int NUM_MULTI_SAMPLES = 4;
+const int CPU_LEVEL = 2;
+const int GPU_LEVEL = 3;
+const int NUM_MULTI_SAMPLES = 4;
 
 typedef union {
     XrCompositionLayerProjection Projection;
@@ -84,7 +88,7 @@ OpenGL-ES Utility Functions
 ================================================================================
 */
 
-static const char* EglErrorString(const EGLint error) {
+const char* EglErrorString(const EGLint error) {
     switch (error) {
         case EGL_SUCCESS:
             return "EGL_SUCCESS";
@@ -121,7 +125,7 @@ static const char* EglErrorString(const EGLint error) {
     }
 }
 
-static const char* GlFrameBufferStatusString(GLenum status) {
+const char* GlFrameBufferStatusString(GLenum status) {
     switch (status) {
         case GL_FRAMEBUFFER_UNDEFINED:
             return "GL_FRAMEBUFFER_UNDEFINED";
@@ -146,7 +150,7 @@ ovrFramebuffer
 ================================================================================
 */
 
-static void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer) {
+void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer) {
     frameBuffer->Width = 0;
     frameBuffer->Height = 0;
     frameBuffer->Multisamples = 0;
@@ -160,7 +164,7 @@ static void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer) {
     frameBuffer->FrameBuffers = NULL;
 }
 
-static GLboolean ovrFramebuffer_Create(
+GLboolean ovrFramebuffer_Create(
         XrSession session,
         ovrFramebuffer* frameBuffer,
         const GLenum colorFormat,
@@ -331,7 +335,7 @@ static GLboolean ovrFramebuffer_Create(
     return true;
 }
 
-static void ovrFramebuffer_Destroy(ovrFramebuffer* frameBuffer) {
+void ovrFramebuffer_Destroy(ovrFramebuffer* frameBuffer) {
     GL(glDeleteFramebuffers(frameBuffer->TextureSwapChainLength, frameBuffer->FrameBuffers));
     GL(glDeleteRenderbuffers(frameBuffer->TextureSwapChainLength, frameBuffer->DepthBuffers));
     OXR(xrDestroySwapchain(frameBuffer->ColorSwapChain.Handle));
@@ -343,16 +347,16 @@ static void ovrFramebuffer_Destroy(ovrFramebuffer* frameBuffer) {
     ovrFramebuffer_Clear(frameBuffer);
 }
 
-static void ovrFramebuffer_SetCurrent(ovrFramebuffer* frameBuffer) {
+void ovrFramebuffer_SetCurrent(ovrFramebuffer* frameBuffer) {
     GL(glBindFramebuffer(
             GL_DRAW_FRAMEBUFFER, frameBuffer->FrameBuffers[frameBuffer->TextureSwapChainIndex]));
 }
 
-static void ovrFramebuffer_SetNone() {
+void ovrFramebuffer_SetNone() {
     GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
 }
 
-static void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer) {
+void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer) {
     // Discard the depth buffer, so the tiler won't need to write it back out to memory.
     const GLenum depthAttachment[1] = {GL_DEPTH_ATTACHMENT};
     glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, depthAttachment);
@@ -360,7 +364,7 @@ static void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer) {
     // We now let the resolve happen implicitly.
 }
 
-static void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer) {
+void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer) {
     // Acquire the swapchain image
     XrSwapchainImageAcquireInfo acquireInfo = {XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO, NULL};
     OXR(xrAcquireSwapchainImage(
@@ -382,7 +386,7 @@ static void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer) {
     }
 }
 
-static void ovrFramebuffer_Release(ovrFramebuffer* frameBuffer) {
+void ovrFramebuffer_Release(ovrFramebuffer* frameBuffer) {
     XrSwapchainImageReleaseInfo releaseInfo = {XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO, NULL};
     OXR(xrReleaseSwapchainImage(frameBuffer->ColorSwapChain.Handle, &releaseInfo));
 }
@@ -395,13 +399,13 @@ ovrRenderer
 ================================================================================
 */
 
-static void ovrRenderer_Clear(ovrRenderer* renderer) {
+void ovrRenderer_Clear(ovrRenderer* renderer) {
     for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
         ovrFramebuffer_Clear(&renderer->FrameBuffer[eye]);
     }
 }
 
-static void ovrRenderer_Create(
+void ovrRenderer_Create(
         XrSession session,
         ovrRenderer* renderer,
         int suggestedEyeTextureWidth,
@@ -418,13 +422,13 @@ static void ovrRenderer_Create(
     }
 }
 
-static void ovrRenderer_Destroy(ovrRenderer* renderer) {
+void ovrRenderer_Destroy(ovrRenderer* renderer) {
     for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
         ovrFramebuffer_Destroy(&renderer->FrameBuffer[eye]);
     }
 }
 
-static void ovrRenderer_SetFoveation(
+void ovrRenderer_SetFoveation(
         XrInstance* instance,
         XrSession* session,
         ovrRenderer* renderer,
@@ -477,7 +481,7 @@ static void ovrRenderer_SetFoveation(
     }
 }
 
-static inline ovrMatrix4f ovrMatrix4f_CreateProjection(
+ovrMatrix4f ovrMatrix4f_CreateProjection(
         const float minX,
         const float maxX,
         float const minY,
@@ -535,7 +539,7 @@ static inline ovrMatrix4f ovrMatrix4f_CreateProjection(
     return out;
 }
 
-static inline ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
+ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
         const float fovDegreesX,
         const float fovDegreesY,
         const float offsetX,

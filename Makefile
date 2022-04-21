@@ -1812,6 +1812,7 @@ Q3OBJ = \
   $(B)/client/vr_base.o \
   $(B)/client/vr_input.o \
   $(B)/client/vr_renderer.o \
+  $(B)/client/vr_types.o \
   \
   $(B)/client/con_log.o \
   $(B)/client/sys_autoupdater.o \

@@ -4,11 +4,9 @@
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/client.h"
-#include "ovr_renderer.inl"
 
 #include "vr_clientinfo.h"
 #include "vr_types.h"
-//#include "../SDL2/include/SDL_opengles2_gl2.h"
 
 #include <assert.h>
 #include <stdlib.h>
