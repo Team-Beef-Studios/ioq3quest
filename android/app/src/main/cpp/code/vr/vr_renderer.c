@@ -90,6 +90,13 @@ void VR_InitRenderer( engine_t* engine ) {
 	int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
 	ovrRenderer_Create(engine->session, &engine->renderer, eyeW, eyeH);
+	ovrRenderer_SetFoveation(
+			&engine->instance,
+			&engine->session,
+			&engine->renderer,
+			XR_FOVEATION_LEVEL_HIGH_FB,
+			0,
+			XR_FOVEATION_DYNAMIC_DISABLED_FB);
 
 	XrReferenceSpaceCreateInfo spaceCreateInfo = {};
 	spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
