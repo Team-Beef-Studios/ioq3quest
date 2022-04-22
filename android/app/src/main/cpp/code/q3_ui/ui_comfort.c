@@ -62,7 +62,7 @@ typedef struct {
     menuslider_s 		heightadjust;
     menuradiobutton_s	rollhit;
 	menuslider_s 		hapticintensity;
-	menulist_s          huddepth;
+	menuslider_s        huddepth;
 	menuslider_s 		hudyoffset;
 
 	menubitmap_s		back;
@@ -104,7 +104,7 @@ static void Comfort_MenuEvent( void* ptr, int notification ) {
         break;
 
 	case ID_HUDDEPTH:
-		trap_Cvar_SetValue( "vr_hudDepth", s_comfort.huddepth.curvalue );
+		trap_Cvar_SetValue( "vr_hudDepth", ((int)s_comfort.huddepth.curvalue % NUM_HUDDEPTH));
 		break;
 
     case ID_HUDYOFFSET:
@@ -119,17 +119,6 @@ static void Comfort_MenuEvent( void* ptr, int notification ) {
 
 static void Comfort_MenuInit( void ) {
 	int				y;
-
-    static const char *s_hud_depths[] =
-    {
-            "Very Close",
-            "Close",
-            "Middle",
-            "Further",
-            "Far",
-            "Distant",
-            NULL
-    };
 
 	memset( &s_comfort, 0 ,sizeof(comfort_t) );
 
@@ -204,22 +193,22 @@ static void Comfort_MenuInit( void ) {
 	s_comfort.hapticintensity.maxvalue		     = 1.0;
 
     y += BIGCHAR_HEIGHT+2;
-    s_comfort.huddepth.generic.type		= MTYPE_SPINCONTROL;
+    s_comfort.huddepth.generic.type		= MTYPE_SLIDER;
     s_comfort.huddepth.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
     s_comfort.huddepth.generic.x			= VR_X_POS;
     s_comfort.huddepth.generic.y			= y;
     s_comfort.huddepth.generic.name		= "HUD Depth:";
     s_comfort.huddepth.generic.callback	= Comfort_MenuEvent;
     s_comfort.huddepth.generic.id		= ID_HUDDEPTH;
-    s_comfort.huddepth.itemnames	        = s_hud_depths;
-    s_comfort.huddepth.numitems			= NUM_HUDDEPTH;
+	s_comfort.huddepth.minvalue		     = 0;
+	s_comfort.huddepth.maxvalue		     = 5;
 
 	y += BIGCHAR_HEIGHT+2;
 	s_comfort.hudyoffset.generic.type	     = MTYPE_SLIDER;
 	s_comfort.hudyoffset.generic.x			 = VR_X_POS;
 	s_comfort.hudyoffset.generic.y			 = y;
 	s_comfort.hudyoffset.generic.flags	 	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_comfort.hudyoffset.generic.name	     = "HUD Y Offset:";
+	s_comfort.hudyoffset.generic.name	     = "HUD Vertical Position:";
 	s_comfort.hudyoffset.generic.id 	     	= ID_HUDYOFFSET;
 	s_comfort.hudyoffset.generic.callback  	= Comfort_MenuEvent;
 	s_comfort.hudyoffset.minvalue		     = 0;

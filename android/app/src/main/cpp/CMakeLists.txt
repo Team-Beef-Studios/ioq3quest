@@ -5,7 +5,7 @@ set(${CMAKE_C_FLAGS}, "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Werror")
 link_directories(../jniLibs/arm64-v8a)
 
-add_library(main SHARED main.cpp)
+add_library(main SHARED main.c)
 
 SET(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Configs" FORCE)
 SET(BUILD_FOLDER release-android-aarch64)

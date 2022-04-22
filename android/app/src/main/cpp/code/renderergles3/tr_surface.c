@@ -226,8 +226,9 @@ void RB_InstantQuad(vec4_t quadVerts[4])
 	VectorSet2(texCoords[3], 0.0f, 1.0f);
 
 	GLSL_BindProgram(&tr.textureColorShader);
-	
-	GLSL_SetUniformMat4(&tr.textureColorShader, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+
+	GLSL_SetUniformMat4(&tr.textureColorShader, UNIFORM_MODELMATRIX, glState.modelMatrix);
+	GLSL_BindBuffers(&tr.textureColorShader);
 	GLSL_SetUniformVec4(&tr.textureColorShader, UNIFORM_COLOR, colorWhite);
 
 	RB_InstantQuad2(quadVerts, texCoords);
@@ -249,7 +250,7 @@ static void RB_SurfaceSprite( void ) {
 	radius = ent->e.radius;
 	if ( ent->e.rotation == 0 ) {
 		VectorScale( backEnd.viewParms.or.axis[1], radius, left );
-		VectorScale( backEnd.viewParms.or.axis[2], radius, up );
+		VectorScale( backEnd.viewParms.or.axis[2], ent->e.invert ? -radius : radius, up );
 	} else {
 		float	s, c;
 		float	ang;
@@ -538,8 +539,9 @@ static void RB_SurfaceBeam( void )
 	RB_UpdateTessVao(ATTR_POSITION);
 	
 	GLSL_BindProgram(sp);
-		
-	GLSL_SetUniformMat4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+
+	GLSL_SetUniformMat4(sp, UNIFORM_MODELMATRIX, glState.modelMatrix);
+	GLSL_BindBuffers(sp);
 					
 	GLSL_SetUniformVec4(sp, UNIFORM_COLOR, colorRed);
 

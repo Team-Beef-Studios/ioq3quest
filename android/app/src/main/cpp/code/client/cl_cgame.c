@@ -697,6 +697,12 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_HAPTICEVENT:
 	    VR_HapticEvent( VMA(1), args[2], args[3], args[4], VMF(5), VMF(6) );
 		return 0;
+	case CG_R_HUDBUFFER_START:
+		re.HUDBufferStart(args[1]);
+		return 0;
+	case CG_R_HUDBUFFER_END:
+		re.HUDBufferEnd();
+		return 0;
 
 
 	default:

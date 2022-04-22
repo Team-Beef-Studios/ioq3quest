@@ -4,20 +4,17 @@
 
 #include <android/log.h>
 
-#include <string>
+#include <client/keycodes.h>
+#include <qcommon/q_shared.h>
+#include <qcommon/qcommon.h>
+#include <vr/vr_base.h>
+#include <vr/vr_renderer.h>
+#include <unistd.h>
 
-extern "C" {
-	#include <client/keycodes.h>
-	#include <qcommon/q_shared.h>
-	#include <qcommon/qcommon.h>
-	#include <vr/vr_base.h>
-	#include <vr/vr_renderer.h>
-	#include <unistd.h>
+#include <SDL.h>
 
-	#include <SDL.h>
+extern void CON_LogcatFn( void (*LogcatFn)( const char* message ) );
 
-	extern void CON_LogcatFn( void (*LogcatFn)( const char* message ) );
-}
 
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "Quake3", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "Quake3", __VA_ARGS__))
@@ -27,30 +24,26 @@ extern "C" {
 static JNIEnv* g_Env = NULL;
 static JavaVM* g_JavaVM = NULL;
 static jobject g_ActivityObject = NULL;
-static bool    g_HasFocus = true;
+static qboolean g_HasFocus = qtrue;
 
-
-extern "C"
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeCreate(JNIEnv* env, jclass cls, jobject thisObject)
 {
-	JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeCreate(JNIEnv* env, jclass cls, jobject thisObject)
-	{
-		g_ActivityObject = env->NewGlobalRef(thisObject);
+    g_ActivityObject = (*env)->NewGlobalRef(env, thisObject);
+}
+
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeFocusChanged(JNIEnv *env, jclass clazz, jboolean focus)
+{
+    g_HasFocus = focus;
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+    g_JavaVM = vm;
+    if ((*g_JavaVM)->GetEnv(g_JavaVM, (void**) &g_Env, JNI_VERSION_1_4) != JNI_OK) {
+        return -1;
     }
 
-	JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeFocusChanged(JNIEnv *env, jclass clazz, jboolean focus)
-	{
-	    g_HasFocus = focus;
-	}
-
-	JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
-	{
-		g_JavaVM = vm;
-		if (g_JavaVM->GetEnv((void**) &g_Env, JNI_VERSION_1_4) != JNI_OK) {
-			return -1;
-		}
-
-		return JNI_VERSION_1_4;
-	}
+    return JNI_VERSION_1_4;
 }
 
 static void ioq3_logfn(const char* msg)
@@ -62,13 +55,13 @@ static ovrJava engine_get_ovrJava() {
 	ovrJava java;
 	java.Vm = g_JavaVM;
 	java.ActivityObject = g_ActivityObject;
-	java.Vm->AttachCurrentThread(&java.Env, NULL);
+	(*java.Vm)->AttachCurrentThread(java.Vm, &java.Env, NULL);
 	return java;
 }
 
 int main(int argc, char* argv[]) {
 	ovrJava java = engine_get_ovrJava();
-	engine_t* engine = nullptr;
+	engine_t* engine = NULL;
 	engine = VR_Init(java);
 
 	//sleep(30);
@@ -87,19 +80,19 @@ int main(int argc, char* argv[]) {
 	VR_EnterVR(engine, java);
 	VR_InitRenderer(engine);
 
-	bool hasFocus = true;
-	bool paused = false;
+	qboolean hasFocus = qtrue;
+    qboolean paused = qfalse;
 	while (1) {
 		if (hasFocus != g_HasFocus) {
 			hasFocus = g_HasFocus;
 			if (!hasFocus && !Cvar_VariableValue ("cl_paused")) {
 				Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_ESCAPE, qtrue, 0, NULL );
 				//Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_CONSOLE, qtrue, 0, NULL );
-				paused = true;
+				paused = qtrue;
 			} else if (hasFocus && paused) {
 				//Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_CONSOLE, qtrue, 0, NULL );
 				Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_ESCAPE, qtrue, 0, NULL );
-				paused = false;
+				paused = qfalse;
 			}
 		}
 

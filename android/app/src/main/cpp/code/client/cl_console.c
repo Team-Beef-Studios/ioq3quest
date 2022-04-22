@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 int g_console_field_width = 78;
 
 extern vr_clientinfo_t vr;
+extern cvar_t *vr_hudDrawStatus;
+extern cvar_t *vr_showConsoleMessages;
 
 #define	NUM_CON_TIMES 4
 
@@ -555,12 +557,6 @@ void Con_DrawInput (void) {
 		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue, qtrue );
 }
 
-
-static int Con_GetChatOffsetY( void )
-{
-	return vr.show_console ? (-30 * vr.hmdorientation[PITCH]) : 0;
-}
-
 /*
 ================
 Con_DrawNotify
@@ -579,6 +575,11 @@ void Con_DrawNotify (void)
 
 	currentColor = 7;
 	re.SetColor( g_color_table[currentColor] );
+
+	re.HUDBufferStart(qfalse);
+
+	int xadjust = (vr_hudDrawStatus->integer != 1) ? 500 : 10;
+	int yadjust = (vr_hudDrawStatus->integer != 1) ? 600 : 10;
 
 	v = 0;
 	for (i= con.current-NUM_CON_TIMES+1 ; i<=con.current ; i++)
@@ -605,13 +606,21 @@ void Con_DrawNotify (void)
 				currentColor = ColorIndexForNumber( text[x]>>8 );
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*SMALLCHAR_WIDTH + 500, v + Con_GetChatOffsetY(), text[x] & 0xff );
+
+			if (vr_showConsoleMessages->integer)
+			{
+				SCR_DrawSmallChar(
+						cl_conXOffset->integer + con.xadjust + (x + 1) * SMALLCHAR_WIDTH + xadjust,
+						v + yadjust, text[x] & 0xff);
+			}
 		}
 
 		v += SMALLCHAR_HEIGHT;
 	}
 
 	re.SetColor( NULL );
+
+	re.HUDBufferEnd();
 
 	if (Key_GetCatcher( ) & (KEYCATCH_UI | KEYCATCH_CGAME) ) {
 		return;

@@ -519,6 +519,13 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	char serverinfo[MAX_INFO_STRING];
 	trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
 	vr->no_crosshair = (strcasestr(serverinfo, "nocrosshair") != NULL || strcasestr(serverinfo, "no crosshair") != NULL);
+	vr->local_server = qtrue;
+#ifdef MISSIONPACK
+	vr->single_player = trap_Cvar_VariableValue("ui_singlePlayerActive");
+#else
+	vr->single_player = trap_Cvar_VariableValue( "g_gametype" ) == GT_SINGLE_PLAYER;
+#endif
+	vr->use_fake_6dof = !vr->single_player;
 }
 
 

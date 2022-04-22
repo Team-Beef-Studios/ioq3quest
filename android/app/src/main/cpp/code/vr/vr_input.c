@@ -44,8 +44,11 @@ static vrController_t rightController;
 static int in_vrEventTime = 0;
 static double lastframetime = 0;
 
-static float pressedThreshold = 0.75f;
-static float releasedThreshold = 0.5f;
+static float triggerPressedThreshold = 0.75f;
+static float triggerReleasedThreshold = 0.5f;
+
+static float thumbstickPressedThreshold = 0.5f;
+static float thumbstickReleasedThreshold = 0.4f;
 
 extern cvar_t *cl_sensitivity;
 extern cvar_t *m_pitch;
@@ -105,6 +108,11 @@ static ovrVector3f normalizeVec(ovrVector3f vec) {
     return result;
 }
 */
+
+static float length(float x, float y)
+{
+    return sqrtf(powf(x, 2.0f) + powf(y, 2.0f));
+}
 
 void NormalizeAngles(vec3_t angles)
 {
@@ -249,23 +257,50 @@ static void VR_processHaptics() {
     }*/
 }
 
-// Returns true in case button press should be auto-repeated when holding (now only applicable for smooth-turn)
-static qboolean IN_SendButtonAction(const char* action, qboolean pressed, qboolean isThumbstickAxis, float axisValue)
+static qboolean IN_GetInputAction(const char* inputName, char* action)
+{
+    char cvarname[256];
+    Com_sprintf(cvarname, 256, "vr_button_map_%s%s", inputName, alt_key_mode_active ? "_ALT" : "");
+    char * val = Cvar_VariableString(cvarname);
+    if (val && strlen(val) > 0)
+    {
+        Com_sprintf(action, 256, "%s", val);
+        return qtrue;
+    }
+
+    //If we didn't find something for this input and the alt key is active, then see if the un-alt key has a function
+    if (alt_key_mode_active)
+    {
+        Com_sprintf(cvarname, 256, "vr_button_map_%s", inputName);
+        char * val = Cvar_VariableString(cvarname);
+        if (val && strlen(val) > 0)
+        {
+            Com_sprintf(action, 256, "%s", val);
+            return qtrue;
+        }
+    }
+
+    return qfalse;
+}
+
+// Returns true in case active input should be auto-repeated (now only applicable for smooth-turn)
+static qboolean IN_SendInputAction(const char* action, qboolean inputActive, float axisValue, qboolean thumbstickAxis)
 {
     if (action)
     {
         //handle our special actions first
         if (strcmp(action, "blank") == 0) {
-            // empty function to block alt fallback on unmapped alt buttons
+            // Empty function used to block alt fallback on unmapped alt buttons or
+            // force 8-way mapping mode of thumbstick without assigning actual action
         }
         else if (strcmp(action, "+alt") == 0)
         {
-            alt_key_mode_active = pressed;
+            alt_key_mode_active = inputActive;
         }
         else if (strcmp(action, "+weapon_stabilise") == 0)
         {
             //stabilised weapon only triggered when controllers close enough (40cm) to each other
-            if (pressed)
+            if (inputActive)
             {
                 vec3_t l;
                 VectorSubtract(vr.weaponposition, vr.offhandposition, l);
@@ -280,24 +315,28 @@ static qboolean IN_SendButtonAction(const char* action, qboolean pressed, qboole
         //server search in the server menu
         else if (strcmp(action, "+moveup") == 0)
         {
-            Com_QueueEvent(in_vrEventTime, SE_KEY, K_SPACE, pressed, 0, NULL);
+            Com_QueueEvent(in_vrEventTime, SE_KEY, K_SPACE, inputActive, 0, NULL);
         }
         else if (strcmp(action, "+weapon_select") == 0)
         {
-            vr.weapon_select = pressed;
-            vr.weapon_select_autoclose = isThumbstickAxis;
-            if (!pressed)
-            {
+            vr.weapon_select = inputActive;
+            if (inputActive) {
+                int selectorType = (int) Cvar_VariableValue("vr_weaponSelectorMode");
+                vr.weapon_select_using_thumbstick = (selectorType == WS_HMD);
+                vr.weapon_select_autoclose = vr.weapon_select_using_thumbstick && thumbstickAxis;
+            } else {
+                vr.weapon_select_using_thumbstick = qfalse;
+                vr.weapon_select_autoclose = qfalse;
                 Cbuf_AddText("weapon_select");
             }
         }
         else if (action[0] == '+')
         {
             char command[256];
-            Com_sprintf(command, sizeof(command), "%s%s\n", pressed ? "+" : "-", action + 1);
+            Com_sprintf(command, sizeof(command), "%s%s\n", inputActive ? "+" : "-", action + 1);
             Cbuf_AddText(command);
         }
-        else if (pressed)
+        else if (inputActive)
         {
             if (strcmp(action, "turnleft") == 0) {
                 if (vr_snapturn->integer > 0) { // snap turn
@@ -307,7 +346,7 @@ static qboolean IN_SendButtonAction(const char* action, qboolean pressed, qboole
                     }
                     CL_SnapTurn(-snap);
                 } else { // yaw (smooth turn)
-                    float value = (isThumbstickAxis ? axisValue : 1.0f) * cl_sensitivity->value * m_yaw->value;
+                    float value = (axisValue > 0.0f ? axisValue : 1.0f) * cl_sensitivity->value * m_yaw->value;
                     Com_QueueEvent(in_vrEventTime, SE_MOUSE, -value, 0, 0, NULL);
                     return qtrue;
                 }
@@ -319,7 +358,7 @@ static qboolean IN_SendButtonAction(const char* action, qboolean pressed, qboole
                     }
                     CL_SnapTurn(snap);
                 } else { // yaw (smooth turn)
-                    float value = (isThumbstickAxis ? axisValue : 1.0f) * cl_sensitivity->value * m_yaw->value;
+                    float value = (axisValue > 0.0f ? axisValue : 1.0f) * cl_sensitivity->value * m_yaw->value;
                     Com_QueueEvent(in_vrEventTime, SE_MOUSE, value, 0, 0, NULL);
                     return qtrue;
                 }
@@ -333,6 +372,53 @@ static qboolean IN_SendButtonAction(const char* action, qboolean pressed, qboole
         }
     }
     return qfalse;
+}
+
+static void IN_ActivateInput(uint32_t * inputGroup, int inputFlag) {
+    *inputGroup |= inputFlag;
+}
+
+static void IN_DeactivateInput(uint32_t * inputGroup, int inputFlag) {
+    *inputGroup &= ~inputFlag;
+}
+
+static qboolean IN_InputActivated(uint32_t * inputGroup, int inputFlag) {
+    return (*inputGroup & inputFlag);
+}
+
+static void IN_HandleActiveInput(uint32_t * inputGroup, int inputFlag, char* inputName, float axisValue, qboolean thumbstickAxis) {
+    if (IN_InputActivated(inputGroup, inputFlag)) {
+        // Input is already in activated state, nothing to do
+        return;
+    }
+    char action[256];
+    if (IN_GetInputAction(inputName, action)) {
+        // Activate input action
+        if (!IN_SendInputAction(action, qtrue, axisValue, thumbstickAxis)) {
+            // Action should not be repeated, mark input as activated
+            IN_ActivateInput(inputGroup, inputFlag);
+        }
+    } else {
+        // No assigned action -> mark input as activated
+        // (to avoid unnecessary action lookup next time)
+        IN_ActivateInput(inputGroup, inputFlag);
+    }
+}
+
+static void IN_HandleInactiveInput(uint32_t * inputGroup, int inputFlag, char* inputName, float axisValue, qboolean thumbstickAxis) {
+    if (!IN_InputActivated(inputGroup, inputFlag)) {
+        // Input is not in activated state, nothing to do
+        return;
+    }
+    char action[256];
+    if (IN_GetInputAction(inputName, action)) {
+        // Deactivate input action and remove input activated state
+        IN_SendInputAction(action, qfalse, axisValue, thumbstickAxis);
+        IN_DeactivateInput(inputGroup, inputFlag);
+    } else {
+        // No assigned action -> just remove input activated state
+        IN_DeactivateInput(inputGroup, inputFlag);
+    }
 }
 
 void VR_HapticEvent(const char* event, int position, int flags, int intensity, float angle, float yHeight )
@@ -393,37 +479,6 @@ void VR_HapticEvent(const char* event, int position, int flags, int intensity, f
     }
 }
 
-static qboolean IN_GetButtonAction(const char* button, char* action)
-{
-    char cvarname[256];
-    Com_sprintf(cvarname, 256, "vr_button_map_%s%s", button, alt_key_mode_active ? "_ALT" : "");
-    char * val = Cvar_VariableString(cvarname);
-    if (val && strlen(val) > 0)
-    {
-        Com_sprintf(action, 256, "%s", val);
-        return qtrue;
-    }
-
-    //If we didn't find something for this button and the alt key is active, then see if the un-alt key has a function
-    if (alt_key_mode_active)
-    {
-        Com_sprintf(cvarname, 256, "vr_button_map_%s", button);
-        char * val = Cvar_VariableString(cvarname);
-        if (val && strlen(val) > 0)
-        {
-            Com_sprintf(action, 256, "%s", val);
-            return qtrue;
-        }
-    }
-
-    return qfalse;
-}
-
-static float length(float x, float y)
-{
-    return sqrtf(powf(x, 2.0f) + powf(y, 2.0f));
-}
-
 void IN_VRInit( void )
 {
 	memset(&vr, 0, sizeof(vr));
@@ -473,6 +528,7 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
 
 	if (vr.virtual_screen || cl.snap.ps.pm_type == PM_INTERMISSION)
     {
+        vr.weapon_zoomed = qfalse;
         if (vr.menuCursorX && vr.menuCursorY)
         {
             float yaw;
@@ -500,8 +556,6 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
                            (VectorLength(vr.weaponoffset) < 0.24f) &&
                            cl.snap.ps.stats[STAT_HEALTH] > 0;
 
-        vr.show_console = (VectorLength(vr.offhandoffset) < 0.2f);
-
         if (vr_twoHandedWeapons->integer && vr.weapon_stabilised)
         {
             //Apply smoothing to the weapon hand
@@ -524,24 +578,162 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
 }
 */
 
+static qboolean IN_VRJoystickUse8WayMapping( void ) {
+    char action[256];
+    return IN_GetInputAction("RTHUMBFORWARDRIGHT", action)
+        || IN_GetInputAction("RTHUMBBACKRIGHT", action)
+        || IN_GetInputAction("RTHUMBBACKLEFT", action)
+        || IN_GetInputAction("RTHUMBFORWARDLEFT", action);
+}
+
+static void IN_VRJoystickHandle4WayMapping( uint32_t * inputGroup, float joystickAngle, float joystickValue ) {
+    if (joystickAngle >= 315.0 || joystickAngle < 45.0) { // UP
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+        // Activate UP
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+    } else if (joystickAngle < 135.0) { // RIGHT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+        // Activate RIGHT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+    } else if (joystickAngle < 225.0) { // DOWN
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+        // Activate DOWN
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+    } else { // LEFT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+        // Activate LEFT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+    }
+}
+
+static void IN_VRJoystickHandle8WayMapping( uint32_t * inputGroup, float joystickAngle, float joystickValue ) {
+    if (joystickAngle > 337.5 || joystickAngle < 22.5) { // UP
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+        // Activate UP
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+    } else if (joystickAngle < 67.5) { // UP-RIGHT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+        // Activate UP-RIGHT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+    } else if (joystickAngle < 112.5) { // RIGHT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+        // Activate RIGHT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+    } else if (joystickAngle < 157.5) { // DOWN-RIGHT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+        // Activate DOWN-RIGHT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+    } else if (joystickAngle < 202.5) { // DOWN
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+        // Activate DOWN
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+    } else if (joystickAngle < 247.5) { // DOWN-LEFT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+        // Activate DOWN-LEFT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+    } else if (joystickAngle < 292.5) { // LEFT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+        // Activate LEFT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+    } else { // UP-LEFT
+        // Deactivate neighboring inputs
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+        IN_HandleInactiveInput(inputGroup, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+        // Activate UP-LEFT
+        IN_HandleActiveInput(inputGroup, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+    }
+}
+
 static void IN_VRJoystick( qboolean isRightController, float joystickX, float joystickY )
 {
-    char action[256];
 	vrController_t* controller = isRightController == qtrue ? &rightController : &leftController;
 
     vr.thumbstick_location[isRightController][0] = joystickX;
     vr.thumbstick_location[isRightController][1] = joystickY;
 
-	if (!vr.virtual_screen && cl.snap.ps.pm_type != PM_INTERMISSION)
+	if (vr.virtual_screen || cl.snap.ps.pm_type == PM_INTERMISSION)
 	{
+
+	    // Use thumbstick UP/DOWN as PAGEUP/PAGEDOWN in menus
+        if (joystickY > thumbstickPressedThreshold) {
+            if (!IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_UP)) {
+                IN_ActivateInput(&controller->axisButtons, VR_TOUCH_AXIS_UP);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGUP, qtrue, 0, NULL);
+            }
+        } else if (joystickY < -thumbstickPressedThreshold) {
+            if (!IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_DOWN)) {
+                IN_ActivateInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWN);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGDN, qtrue, 0, NULL);
+            }
+        } else if (joystickY < thumbstickReleasedThreshold && joystickY > -thumbstickReleasedThreshold) {
+            if (IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_UP)) {
+                IN_DeactivateInput(&controller->axisButtons, VR_TOUCH_AXIS_UP);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGUP, qfalse, 0, NULL);
+            }
+            if (IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_DOWN)) {
+                IN_DeactivateInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWN);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_PGDN, qfalse, 0, NULL);
+            }
+        }
+
+	}
+	else
+	{
+
 		if (isRightController == (vr_switchThumbsticks->integer != 0)) {
 			vec3_t positional;
 			VectorClear(positional);
 
 			vec2_t joystick;
-            if ( !com_sv_running || !com_sv_running->integer )
+            if ( vr.use_fake_6dof )
             {
-                //multiplayer server
+                //multiplayer game
                 if (!vr_directionMode->integer) {
 					//HMD Based
 					rotateAboutOrigin(joystickX, joystickY, vr.hmdorientation[YAW], joystick);
@@ -577,556 +769,183 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
             //forward/back
             Com_QueueEvent(in_vrEventTime, SE_JOYSTICK_AXIS, 1, joystick[1] * 127.0f + positional[1] * 127.0f, 0, NULL);
         }
-        else if (!vr.weapon_select) //right controller
+
+        // In case thumbstick is used by weapon wheel (is in HMD/thumbstick mode), ignore standard thumbstick inputs
+        else if (!vr.weapon_select_using_thumbstick)
         {
-            float absoluteAxisValue = sqrt(joystickY*joystickY + joystickX*joystickX);
-
-            // up, up-left, up-right (use release threshold to be more sensitive)
-            if (joystickY > releasedThreshold) {
-
-                // stop left & right
-                if ((controller->axisButtons & VR_TOUCH_AXIS_LEFT) && IN_GetButtonAction("RTHUMBLEFT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_LEFT;
-                if ((controller->axisButtons & VR_TOUCH_AXIS_RIGHT) && IN_GetButtonAction("RTHUMBRIGHT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_RIGHT;
-
-                // up-left (use release threshold to be more sensitive)
-                if (joystickX < -releasedThreshold) {
-                    // stop up
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_UP) && IN_GetButtonAction("RTHUMBFORWARD", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_UP;
-                    // stop up-right
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_UPRIGHT) && IN_GetButtonAction("RTHUMBFORWARDRIGHT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_UPRIGHT;
-                    // start up-left
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_UPLEFT)) {
-                        if (IN_GetButtonAction("RTHUMBFORWARDLEFT", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                              controller->axisButtons |= VR_TOUCH_AXIS_UPLEFT;
-                            };
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_UPLEFT;
-                        }
-                    }
-
-                // up-right (use release threshold to be more sensitive)
-                } else if (joystickX > releasedThreshold) {
-                    // stop up
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_UP) && IN_GetButtonAction("RTHUMBFORWARD", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_UP;
-                    // stop up-left
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_UPLEFT) && IN_GetButtonAction("RTHUMBFORWARDLEFT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_UPLEFT;
-                    // start up-right
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_UPRIGHT)) {
-                        if (IN_GetButtonAction("RTHUMBFORWARDRIGHT", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_UPRIGHT;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_UPRIGHT;
-                        }
-                    }
-
-                // direct-up
+            float joystickValue = length(joystickX, joystickY);
+            if (joystickValue < thumbstickReleasedThreshold) {
+                // Joystick within threshold -> disable all inputs
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_UP, "RTHUMBFORWARD", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_UPRIGHT, "RTHUMBFORWARDRIGHT", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_RIGHT, "RTHUMBRIGHT", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWNRIGHT, "RTHUMBBACKRIGHT", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWN, "RTHUMBBACK", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_DOWNLEFT, "RTHUMBBACKLEFT", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_LEFT, "RTHUMBLEFT", joystickValue, qtrue);
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_UPLEFT, "RTHUMBFORWARDLEFT", joystickValue, qtrue);
+            } else if (joystickValue > thumbstickPressedThreshold) {
+                float joystickAngle = AngleNormalize360(RAD2DEG(atan2(joystickX, joystickY)));
+                if (IN_VRJoystickUse8WayMapping()) {
+                    IN_VRJoystickHandle8WayMapping(&controller->axisButtons, joystickAngle, joystickValue);
                 } else {
-                    // stop up-left
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_UPLEFT) && IN_GetButtonAction("RTHUMBFORWARDLEFT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_UPLEFT;
-                    // stop up-right
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_UPRIGHT) && IN_GetButtonAction("RTHUMBFORWARDRIGHT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_UPRIGHT;
-                    // start up
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_UP) && joystickY > pressedThreshold) {
-                        if (IN_GetButtonAction("RTHUMBFORWARD", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_UP;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_UP;
-                        }
-                    }
+                    IN_VRJoystickHandle4WayMapping(&controller->axisButtons, joystickAngle, joystickValue);
                 }
-
-            // down, down-left, down-right (use release threshold to be more sensitive)
-            } else if (joystickY < -releasedThreshold) {
-
-                // stop left & right
-                if ((controller->axisButtons & VR_TOUCH_AXIS_LEFT) && IN_GetButtonAction("RTHUMBLEFT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_LEFT;
-                if ((controller->axisButtons & VR_TOUCH_AXIS_RIGHT) && IN_GetButtonAction("RTHUMBRIGHT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_RIGHT;
-
-                // down-left (use release threshold to be more sensitive)
-                if (joystickX < -releasedThreshold) {
-                    // stop down
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_DOWN) && IN_GetButtonAction("RTHUMBBACK", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_DOWN;
-                    // stop down-right
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_DOWNRIGHT) && IN_GetButtonAction("RTHUMBBACKRIGHT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNRIGHT;
-                    // start down-left
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_DOWNLEFT)) {
-                        if (IN_GetButtonAction("RTHUMBBACKLEFT", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_DOWNLEFT;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_DOWNLEFT;
-                        }
-                    }
-
-                // down-right (use release threshold to be more sensitive)
-                } else if (joystickX > releasedThreshold) {
-                    // stop down
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_DOWN) && IN_GetButtonAction("RTHUMBBACK", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_DOWN;
-                    // stop down-left
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_DOWNLEFT) && IN_GetButtonAction("RTHUMBBACKLEFT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNLEFT;
-                    // start down-right
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_DOWNRIGHT)) {
-                        if (IN_GetButtonAction("RTHUMBBACKRIGHT", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_DOWNRIGHT;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_DOWNRIGHT;
-                        }
-                    }
-
-                // direct-down
-                } else {
-                    // stop down-left
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_DOWNLEFT) && IN_GetButtonAction("RTHUMBBACKLEFT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNLEFT;
-                    // stop down-right
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_DOWNRIGHT) && IN_GetButtonAction("RTHUMBBACKRIGHT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNRIGHT;
-                    // start down
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_DOWN) && joystickY < -pressedThreshold) {
-                        if (IN_GetButtonAction("RTHUMBBACK", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_DOWN;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_DOWN;
-                        }
-                    }
-                }
-
-            // left & right
-            } else {
-
-                // stop up-left
-                if ((controller->axisButtons & VR_TOUCH_AXIS_UPLEFT) && IN_GetButtonAction("RTHUMBFORWARDLEFT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_UPLEFT;
-                // stop up
-                if ((controller->axisButtons & VR_TOUCH_AXIS_UP) && IN_GetButtonAction("RTHUMBFORWARD", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_UP;
-                // stop up-right
-                if ((controller->axisButtons & VR_TOUCH_AXIS_UPRIGHT) && IN_GetButtonAction("RTHUMBFORWARDRIGHT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_UPRIGHT;
-                // stop down-left
-                if ((controller->axisButtons & VR_TOUCH_AXIS_DOWNLEFT) && IN_GetButtonAction("RTHUMBBACKLEFT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNLEFT;
-                // stop down
-                if ((controller->axisButtons & VR_TOUCH_AXIS_DOWN) && IN_GetButtonAction("RTHUMBBACK", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_DOWN;
-                // stop down-right
-                if ((controller->axisButtons & VR_TOUCH_AXIS_DOWNRIGHT) && IN_GetButtonAction("RTHUMBBACKRIGHT", action)) {
-                    IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                }
-                controller->axisButtons &= ~VR_TOUCH_AXIS_DOWNRIGHT;
-
-                // left
-                if (joystickX < -pressedThreshold) {
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_LEFT)) {
-                        if (IN_GetButtonAction("RTHUMBLEFT", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_LEFT;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_LEFT;
-                        }
-                    }
-                } else if (joystickX > -releasedThreshold) {
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_LEFT) && IN_GetButtonAction("RTHUMBLEFT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_LEFT;
-                }
-
-                // right
-                if (joystickX > pressedThreshold) {
-                    if (!(controller->axisButtons & VR_TOUCH_AXIS_RIGHT)) {
-                        if (IN_GetButtonAction("RTHUMBRIGHT", action)) {
-                            if (!IN_SendButtonAction(action, qtrue, qtrue, absoluteAxisValue)) {
-                                controller->axisButtons |= VR_TOUCH_AXIS_RIGHT;
-                            }
-                        } else {
-                            controller->axisButtons |= VR_TOUCH_AXIS_RIGHT;
-                        }
-                    }
-                } else if (joystickX < releasedThreshold) {
-                    if ((controller->axisButtons & VR_TOUCH_AXIS_RIGHT) && IN_GetButtonAction("RTHUMBRIGHT", action)) {
-                        IN_SendButtonAction(action, qfalse, qtrue, absoluteAxisValue);
-                    }
-                    controller->axisButtons &= ~VR_TOUCH_AXIS_RIGHT;
-                }
-
             }
-
         }
+
     }
 }
 
-static void IN_VRTriggers( qboolean isRightController, float index ) {
+static void IN_VRTriggers( qboolean isRightController, float triggerValue ) {
 	vrController_t* controller = isRightController == qtrue ? &rightController : &leftController;
 
-	// Controllers are used for menu navigation in screen mode or in intermission
-	if (VR_useScreenLayer() || cl.snap.ps.pm_type == PM_INTERMISSION)
-    {
-        if (!(controller->axisButtons & VR_TOUCH_AXIS_TRIGGER_INDEX) && index > pressedThreshold)
+	if (VR_useScreenLayer() || cl.snap.ps.pm_type == PM_INTERMISSION) {
+
+    	// Triggers are used for menu navigation in screen mode or in intermission
+        if (triggerValue > triggerPressedThreshold && !IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX))
         {
-            controller->axisButtons |= VR_TOUCH_AXIS_TRIGGER_INDEX;
+            IN_ActivateInput(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX);
             if ((isRightController && !vr.menuLeftHanded) || (!isRightController && vr.menuLeftHanded)) {
                 // Active controller confirms selection
                 Com_QueueEvent(in_vrEventTime, SE_KEY, K_MOUSE1, qtrue, 0, NULL);
-                VR_Vibrate(200, vr_righthanded->integer ? 2 : 1, 0.8);
+                VR_Vibrate(200, vr.menuLeftHanded ? 1 : 2, 0.8);
             } else {
                 // Inactive controller becomes active one
                 vr.menuLeftHanded = !vr.menuLeftHanded;
             }
         }
-        else if ((controller->axisButtons & VR_TOUCH_AXIS_TRIGGER_INDEX) && index < releasedThreshold)
+        else if (triggerValue < triggerReleasedThreshold && IN_InputActivated(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX))
         {
-            controller->axisButtons &= ~VR_TOUCH_AXIS_TRIGGER_INDEX;
+            IN_DeactivateInput(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX);
             if ((isRightController && !vr.menuLeftHanded) || (!isRightController && vr.menuLeftHanded)) {
                 Com_QueueEvent(in_vrEventTime, SE_KEY, K_MOUSE1, qfalse, 0, NULL);
             }
         }
-    }
-    else
-    {
-        char action[256];
+
+    } else {
         
-        //Primary trigger
+        // Primary trigger
         if (isRightController == (vr_righthanded->integer != 0))
         {
-            if (!(controller->axisButtons & VR_TOUCH_AXIS_TRIGGER_INDEX) &&
-                index > pressedThreshold)
-            {
-                if (IN_GetButtonAction("PRIMARYTRIGGER", action))
-                {
-                    if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                        controller->axisButtons |= VR_TOUCH_AXIS_TRIGGER_INDEX;
-                    }
-                }
-                else
-                {
-                    controller->axisButtons |= VR_TOUCH_AXIS_TRIGGER_INDEX;
-                }
-            }
-            else if ((controller->axisButtons & VR_TOUCH_AXIS_TRIGGER_INDEX) &&
-                     index < releasedThreshold)
-            {
-                controller->axisButtons &= ~VR_TOUCH_AXIS_TRIGGER_INDEX;
-                if (IN_GetButtonAction("PRIMARYTRIGGER", action))
-                {
-                    IN_SendButtonAction(action, qfalse, qfalse, 0);
-                }
+            if (triggerValue > triggerPressedThreshold) {
+                IN_HandleActiveInput(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX, "PRIMARYTRIGGER", triggerValue, qfalse);
+            } else if (triggerValue < triggerReleasedThreshold) {
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX, "PRIMARYTRIGGER", triggerValue, qfalse);
             }
         }
 
-        //off hand trigger
+        // Off hand trigger
         if (isRightController != (vr_righthanded->integer != 0))
         {
-            if (!(controller->axisButtons & VR_TOUCH_AXIS_TRIGGER_INDEX) &&
-                index > pressedThreshold)
-            {
-                if (IN_GetButtonAction("SECONDARYTRIGGER", action))
-                {
-                    if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                        controller->axisButtons |= VR_TOUCH_AXIS_TRIGGER_INDEX;
-                    }
-                }
-                else
-                {
-                    controller->axisButtons |= VR_TOUCH_AXIS_TRIGGER_INDEX;
-                }
-            }
-            else if ((controller->axisButtons & VR_TOUCH_AXIS_TRIGGER_INDEX) &&
-                     index < releasedThreshold)
-            {
-                controller->axisButtons &= ~VR_TOUCH_AXIS_TRIGGER_INDEX;
-                if (IN_GetButtonAction("SECONDARYTRIGGER", action))
-                {
-                    IN_SendButtonAction(action, qfalse, qfalse, 0);
-                }
+            if (triggerValue > triggerPressedThreshold) {
+                IN_HandleActiveInput(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX, "SECONDARYTRIGGER", triggerValue, qfalse);
+            } else if (triggerValue < triggerReleasedThreshold) {
+                IN_HandleInactiveInput(&controller->axisButtons, VR_TOUCH_AXIS_TRIGGER_INDEX, "SECONDARYTRIGGER", triggerValue, qfalse);
             }
         }
+
     }
 }
 
 static void IN_VRButtons( qboolean isRightController, uint32_t buttons )
 {
-    char action[256];
-
 	vrController_t* controller = isRightController == qtrue ? &rightController : &leftController;
 
 	//TODO:
 	/*
 	{
-        if ((buttons & ovrButton_Enter) && !(controller->buttons & ovrButton_Enter)) {
-            controller->buttons |= ovrButton_Enter;
-            Com_QueueEvent(in_vrEventTime, SE_KEY, K_ESCAPE, qtrue, 0, NULL);
-        } else if (!(buttons & ovrButton_Enter) && (controller->buttons & ovrButton_Enter)) {
-            controller->buttons &= ~ovrButton_Enter;
-            Com_QueueEvent(in_vrEventTime, SE_KEY, K_ESCAPE, qfalse, 0, NULL);
-        }
+    // Menu button
+    if ((buttons & ovrButton_Enter) && !IN_InputActivated(&controller->buttons, ovrButton_Enter)) {
+        IN_ActivateInput(&controller->buttons, ovrButton_Enter);
+        Com_QueueEvent(in_vrEventTime, SE_KEY, K_ESCAPE, qtrue, 0, NULL);
+    } else if (!(buttons & ovrButton_Enter) && IN_InputActivated(&controller->buttons, ovrButton_Enter)) {
+        IN_DeactivateInput(&controller->buttons, ovrButton_Enter);
+        Com_QueueEvent(in_vrEventTime, SE_KEY, K_ESCAPE, qfalse, 0, NULL);
     }
 
 	if (isRightController == !vr_righthanded->integer)
     {
-        if ((buttons & ovrButton_GripTrigger) && !(controller->buttons & ovrButton_GripTrigger))
-        {
-            if (IN_GetButtonAction("SECONDARYGRIP", action))
-            {
-                if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                    controller->buttons |= ovrButton_GripTrigger;
-                }
-            }
-            else
-            {
-                controller->buttons |= ovrButton_GripTrigger;
-            }
-        }
-        else if (!(buttons & ovrButton_GripTrigger) &&
-                 (controller->buttons & ovrButton_GripTrigger))
-        {
-            controller->buttons &= ~ovrButton_GripTrigger;
-            if (IN_GetButtonAction("SECONDARYGRIP", action))
-            {
-                IN_SendButtonAction(action, qfalse, qfalse, 0);
-            }
+        if (buttons & ovrButton_GripTrigger) {
+            IN_HandleActiveInput(&controller->buttons, ovrButton_GripTrigger, "SECONDARYGRIP", 0, qfalse);
+        } else {
+            IN_HandleInactiveInput(&controller->buttons, ovrButton_GripTrigger, "SECONDARYGRIP", 0, qfalse);
         }
 	}
     else
     {
-        if ((buttons & ovrButton_GripTrigger) && !(controller->buttons & ovrButton_GripTrigger))
-        {
-            if (IN_GetButtonAction("PRIMARYGRIP", action))
-            {
-                if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                    controller->buttons |= ovrButton_GripTrigger;
-                }
-            }
-            else
-            {
-                controller->buttons |= ovrButton_GripTrigger;
-            }
-        }
-        else if (!(buttons & ovrButton_GripTrigger) &&
-                 (controller->buttons & ovrButton_GripTrigger))
-        {
-            controller->buttons &= ~ovrButton_GripTrigger;
-            if (IN_GetButtonAction("PRIMARYGRIP", action))
-            {
-                IN_SendButtonAction(action, qfalse, qfalse, 0);
-            }
+        if (buttons & ovrButton_GripTrigger) {
+            IN_HandleActiveInput(&controller->buttons, ovrButton_GripTrigger, "PRIMARYGRIP", 0, qfalse);
+        } else {
+            IN_HandleInactiveInput(&controller->buttons, ovrButton_GripTrigger, "PRIMARYGRIP", 0, qfalse);
         }
     }
 
-
     if (isRightController == !vr_righthanded->integer)
     {
-        if ((buttons & ovrButton_LThumb) && !(controller->buttons & ovrButton_LThumb)) {
-            if (IN_GetButtonAction("SECONDARYTHUMBSTICK", action))
-            {
-                if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                    controller->buttons |= ovrButton_LThumb;
-                }
+        if (buttons & ovrButton_LThumb) {
+            if (!IN_InputActivated(&controller->buttons, ovrButton_LThumb)) {
+                // Initiate position reset for fake 6DoF
+                vr.realign = 3;
             }
-            else
-            {
-                controller->buttons |= ovrButton_LThumb;
-            }
-
-            vr.realign = 3;
-        } else if (!(buttons & ovrButton_LThumb) && (controller->buttons & ovrButton_LThumb)) {
-            controller->buttons &= ~ovrButton_LThumb;
-            if (IN_GetButtonAction("SECONDARYTHUMBSTICK", action))
-            {
-                IN_SendButtonAction(action, qfalse, qfalse, 0);
-            }
+            IN_HandleActiveInput(&controller->buttons, ovrButton_LThumb, "SECONDARYTHUMBSTICK", 0, qfalse);
+        } else {
+            IN_HandleInactiveInput(&controller->buttons, ovrButton_LThumb, "SECONDARYTHUMBSTICK", 0, qfalse);
         }
     }
     else
     {
-        if ((buttons & ovrButton_RThumb) && !(controller->buttons & ovrButton_RThumb)) {
-            if (IN_GetButtonAction("PRIMARYTHUMBSTICK", action))
-            {
-                if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                    controller->buttons |= ovrButton_RThumb;
-                }
-            }
-            else
-            {
-                controller->buttons |= ovrButton_RThumb;
-            }
-        } else if (!(buttons & ovrButton_RThumb) && (controller->buttons & ovrButton_RThumb)) {
-            controller->buttons &= ~ovrButton_RThumb;
-            if (IN_GetButtonAction("PRIMARYTHUMBSTICK", action))
-            {
-                IN_SendButtonAction(action, qfalse, qfalse, 0);
-            }
+        if (buttons & ovrButton_RThumb) {
+            IN_HandleActiveInput(&controller->buttons, ovrButton_RThumb, "PRIMARYTHUMBSTICK", 0, qfalse);
+        } else {
+            IN_HandleInactiveInput(&controller->buttons, ovrButton_RThumb, "PRIMARYTHUMBSTICK", 0, qfalse);
         }
     }
 
-    //Jump
-    if ((buttons & ovrButton_A) && !(controller->buttons & ovrButton_A))
-    {
+    if (buttons & ovrButton_A) {
         if (cl.snap.ps.pm_flags & PMF_FOLLOW)
         {
-            controller->buttons |= ovrButton_A;
-            Cbuf_AddText("cmd team spectator\n");
-        }
-        else
-        {
-            if (IN_GetButtonAction("A", action))
-            {
-                if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                    controller->buttons |= ovrButton_A;
-                }
-            }
-            else
-            {
-                controller->buttons |= ovrButton_A;
-            }
-        }
-    }
-    else if (!(buttons & ovrButton_A) && (controller->buttons & ovrButton_A))
-    {
-        controller->buttons &= ~ovrButton_A;
-        if (IN_GetButtonAction("A", action) && !(cl.snap.ps.pm_flags & PMF_FOLLOW))
-        {
-            IN_SendButtonAction(action, qfalse, qfalse, 0);
-        }
-    }
-
-    //Crouch
-    if ((buttons & ovrButton_B) && !(controller->buttons & ovrButton_B)) {
-        if (IN_GetButtonAction("B", action))
-        {
-            if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                controller->buttons |= ovrButton_B;
+            // Go back to free spectator mode if following player
+            if (!IN_InputActivated(&controller->buttons, ovrButton_A)) {
+                IN_ActivateInput(&controller->buttons, ovrButton_A);
+                Cbuf_AddText("cmd team spectator\n");
             }
         }
         else
         {
-            controller->buttons |= ovrButton_B;
+            IN_HandleActiveInput(&controller->buttons, ovrButton_A, "A", 0, qfalse);
         }
-    } else if (!(buttons & ovrButton_B) && (controller->buttons & ovrButton_B)) {
-        controller->buttons &= ~ovrButton_B;
-        if (IN_GetButtonAction("B", action))
-        {
-            IN_SendButtonAction(action, qfalse, qfalse, 0);
-        }
+    } else {
+       IN_HandleInactiveInput(&controller->buttons, ovrButton_A, "A", 0, qfalse);
     }
 
-    //X default is "use item"
-    if ((buttons & ovrButton_X) && !(controller->buttons & ovrButton_X))
-    {
+    if (buttons & ovrButton_B) {
+        IN_HandleActiveInput(&controller->buttons, ovrButton_B, "B", 0, qfalse);
+    } else {
+        IN_HandleInactiveInput(&controller->buttons, ovrButton_B, "B", 0, qfalse);
+    }
+
+    if (buttons & ovrButton_X) {
         if (cl.snap.ps.pm_flags & PMF_FOLLOW)
         {
-            controller->buttons |= ovrButton_X;
-            //Switch follow mode
-            vr.follow_mode = (vr.follow_mode+1) % VRFM_NUM_FOLLOWMODES;
+            // Switch follow mode
+            if (!IN_InputActivated(&controller->buttons, ovrButton_X)) {
+                IN_ActivateInput(&controller->buttons, ovrButton_X);
+                vr.follow_mode = (vr.follow_mode+1) % VRFM_NUM_FOLLOWMODES;
+            }
         }
         else
         {
-            if (IN_GetButtonAction("X", action))
-            {
-                if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                    controller->buttons |= ovrButton_X;
-                }
-            }
-            else
-            {
-                controller->buttons |= ovrButton_X;
-            }
+            IN_HandleActiveInput(&controller->buttons, ovrButton_X, "X", 0, qfalse);
         }
-    }
-    else if (!(buttons & ovrButton_X) && (controller->buttons & ovrButton_X))
-    {
-        controller->buttons &= ~ovrButton_X;
-        if (IN_GetButtonAction("X", action) && !(cl.snap.ps.pm_flags & PMF_FOLLOW))
-        {
-            IN_SendButtonAction(action, qfalse, qfalse, 0);
-        }
+    } else {
+        IN_HandleInactiveInput(&controller->buttons, ovrButton_X, "X", 0, qfalse);
     }
 
-    //Y default is Gesture
-    if ((buttons & ovrButton_Y) && !(controller->buttons & ovrButton_Y)) {
-        if (IN_GetButtonAction("Y", action))
-        {
-            if (!IN_SendButtonAction(action, qtrue, qfalse, 0)) {
-                controller->buttons |= ovrButton_Y;
-            }
-        }
-        else
-        {
-            controller->buttons |= ovrButton_Y;
-        }
-    } else if (!(buttons & ovrButton_Y) && (controller->buttons & ovrButton_Y)) {
-        controller->buttons &= ~ovrButton_Y;
-        if (IN_GetButtonAction("Y", action))
-        {
-            IN_SendButtonAction(action, qfalse, qfalse, 0);
-        }
+    if (buttons & ovrButton_Y) {
+        IN_HandleActiveInput(&controller->buttons, ovrButton_Y, "Y", 0, qfalse);
+    } else {
+        IN_HandleInactiveInput(&controller->buttons, ovrButton_Y, "Y", 0, qfalse);
     }
     */
 }
@@ -1195,7 +1014,6 @@ void IN_VRInputFrame( void )
 		vr.clientview_yaw_last = clientview_yaw;
 	}
 
-
 	ovrInputCapabilityHeader capsHeader;
 	uint32_t index = 0;
 	for (;;) {
@@ -1229,7 +1047,6 @@ void IN_VRInputFrame( void )
 		if (stateResult < 0) {
 			continue;
 		}
-
 
 		qboolean isRight;
 		vrController_t* controller;

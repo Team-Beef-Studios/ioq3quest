@@ -50,7 +50,7 @@ extern vr_clientinfo_t *vr;
 
 
 float PM_GetFrictionCoefficient( void ) {
-    if (vr != NULL && vr->clientNum == pm->ps->clientNum && vr->local_server) {
+    if (vr != NULL && vr->clientNum == pm->ps->clientNum && !vr->use_fake_6dof) {
         return 10.0f;
     } else {
         return 6.0f;
@@ -58,7 +58,7 @@ float PM_GetFrictionCoefficient( void ) {
 }
 
 float PM_GetAccelerationCoefficient( void ) {
-    if (vr != NULL && vr->clientNum == pm->ps->clientNum && vr->local_server) {
+    if (vr != NULL && vr->clientNum == pm->ps->clientNum && !vr->use_fake_6dof) {
         return 1000.0f;
     } else {
         return 10.0f;
@@ -1828,14 +1828,14 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd ) {
 
 	// circularly clamp the angles with deltas
 	for (i=0 ; i<3 ; i++) {
-		if (vr != NULL && vr->clientNum == ps->clientNum && vr->local_server)
+		if (vr != NULL && vr->clientNum == ps->clientNum && !vr->use_fake_6dof)
 		{
-			//Client is the VR player on the "local" server
+			//Client is the VR player in the singleplayer game
 			temp = cmd->angles[i] + (i == YAW ? ps->delta_angles[i] : 0);
 		}
 		else
 		{
-			//Client is either a BOT or a remote/connected player, or
+			//Client is either a BOT or we are running multiplayer, or
 			//the vr player playing on a remote server (since this is shared code by game and cgame)
 			temp = cmd->angles[i] + ps->delta_angles[i];
 		}

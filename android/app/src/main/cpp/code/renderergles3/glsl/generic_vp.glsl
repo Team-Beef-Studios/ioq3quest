@@ -36,13 +36,15 @@ uniform float  u_FogEyeT;
 uniform vec4   u_FogColorMask;
 #endif
 
+uniform mat4 u_ModelMatrix;
+
 #if defined(USE_DEFORM_VERTEXES)
 uniform int    u_DeformGen;
 uniform float  u_DeformParams[5];
 uniform float  u_Time;
 #endif
 
-uniform mat4   u_ModelViewProjectionMatrix;
+
 uniform vec4   u_BaseColor;
 uniform vec4   u_VertColor;
 
@@ -60,6 +62,16 @@ uniform float  u_VertexLerp;
 #elif defined(USE_BONE_ANIMATION)
 uniform mat4 u_BoneMatrix[MAX_GLSL_BONES];
 #endif
+
+// Uniforms
+layout(shared) uniform ViewMatrices
+{
+    uniform mat4 u_ViewMatrices[NUM_VIEWS];
+};
+layout(shared) uniform ProjectionMatrix
+{
+    uniform mat4 u_ProjectionMatrix;
+};
 
 varying vec2   var_DiffuseTex;
 varying vec4   var_Color;
@@ -227,7 +239,7 @@ void main()
 	position = DeformPosition(position, normal, attr_TexCoord0.st);
 #endif
 
-	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
+	gl_Position = u_ProjectionMatrix * (u_ViewMatrices[gl_ViewID_OVR] * (u_ModelMatrix * vec4(position, 1.0)));
 
 #if defined(USE_TCGEN)
 	vec2 tex = GenTexCoords(u_TCGen0, position, normal, u_TCGen0Vector0, u_TCGen0Vector1);

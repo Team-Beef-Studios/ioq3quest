@@ -256,6 +256,11 @@ extern void (APIENTRYP qglUnlockArraysEXT) (void);
 	GLE(void, FramebufferTexture2D, GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
 	GLE(void, FramebufferRenderbuffer, GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer) \
 	GLE(void, GenerateMipmap, GLenum target) \
+	GLE(void*, MapBufferRange, GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access) \
+	GLE(void, UnmapBuffer, GLenum target) \
+	GLE(GLuint, GetUniformBlockIndex, GLuint program, const GLchar *uniformBlockName) \
+	GLE(void, UniformBlockBinding, GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding) \
+	GLE(void, BindBufferBase, GLenum target, GLuint index, GLuint buffer) \
 	GLE(void, BlitFramebuffer, GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter) \
 	GLE(void, RenderbufferStorageMultisample, GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height) \
 

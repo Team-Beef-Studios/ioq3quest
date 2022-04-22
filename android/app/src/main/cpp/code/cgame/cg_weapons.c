@@ -231,9 +231,9 @@ void CG_ConvertFromVR(vec3_t in, vec3_t offset, vec3_t out)
 	VectorSet(vrSpace, in[2], in[0], in[1] );
 
 	vec2_t r;
-	if (!cgs.localServer)
+	if (vr->use_fake_6dof)
 	{
-		//We are connected to a multiplayer server, so make the appropriate adjustment to the view
+		//We are running multiplayer, so make the appropriate adjustment to the view
 		//angles as we send orientation to the server that includes the weapon angles
 		float deltaYaw = SHORT2ANGLE(cg.predictedPlayerState.delta_angles[YAW]);
 		if (cg.snap->ps.pm_flags & PMF_FOLLOW)
@@ -262,7 +262,7 @@ void CG_ConvertFromVR(vec3_t in, vec3_t offset, vec3_t out)
 
 static void CG_CalculateVRPositionInWorld( vec3_t in_position,  vec3_t in_offset, vec3_t in_orientation, vec3_t origin, vec3_t angles )
 {
-    if (!cgs.localServer)
+    if (vr->use_fake_6dof)
     {
         //Use absolute position for the faked 6DoF for multiplayer
         vec3_t offset;
@@ -274,7 +274,7 @@ static void CG_CalculateVRPositionInWorld( vec3_t in_position,  vec3_t in_offset
     }
     else
     {
-        //Local server - true 6DoF offset from HMD
+        //Singleplayer - true 6DoF offset from HMD
 		vec3_t offset;
 		VectorCopy(in_offset, offset);
 		offset[1] = 0; // up/down is index 1 in this case
@@ -284,7 +284,7 @@ static void CG_CalculateVRPositionInWorld( vec3_t in_position,  vec3_t in_offset
     }
 
     VectorCopy(in_orientation, angles);
-    if ( !cgs.localServer )
+    if ( vr->use_fake_6dof )
     {
         //Calculate the offhand angles from "first principles"
         float deltaYaw = SHORT2ANGLE(cg.predictedPlayerState.delta_angles[YAW]);
@@ -534,7 +534,9 @@ CG_RailTrail
 ==========================
 */
 void CG_RailTrail (clientInfo_t *ci, vec3_t start, vec3_t end) {
-	vec3_t axis[36], move, move2, vec, temp;
+
+#define NUM_PARTICLE_PER_ROTATION   18
+	vec3_t axis[NUM_PARTICLE_PER_ROTATION], move, move2, vec, vec2, temp;
 	float  len;
 	int    i, j, skip;
  
@@ -586,33 +588,35 @@ void CG_RailTrail (clientInfo_t *ci, vec3_t start, vec3_t end) {
 	VectorSubtract (end, start, vec);
 	len = VectorNormalize (vec);
 	PerpendicularVector(temp, vec);
-	for (i = 0 ; i < 36; i++)
+	for (i = 0 ; i < NUM_PARTICLE_PER_ROTATION; i++)
 	{
-		RotatePointAroundVector(axis[i], vec, temp, i * 10);//banshee 2.4 was 10
+		RotatePointAroundVector(axis[i], vec, temp, i * (360.0f / NUM_PARTICLE_PER_ROTATION));//banshee 2.4 was 10
 	}
 
-	VectorMA(move, 20, vec, move);
-	VectorScale (vec, SPACING, vec);
+	VectorMA(move, (360.0f / NUM_PARTICLE_PER_ROTATION), vec, move);
+	VectorScale (vec, SPACING, vec2);
 
 	skip = -1;
  
-	j = 18;
-	for (i = 0; i < len; i += SPACING)
+	j = 0;
+	int spacing = SPACING;
+	for (i = 0; i < len; i += spacing, spacing++)
 	{
 		if (i != skip)
 		{
-			skip = i + SPACING;
+            VectorScale (vec, spacing, vec2);
+			skip = i + spacing;
 			le = CG_AllocLocalEntity();
 			re = &le->refEntity;
 			le->leFlags = LEF_PUFF_DONT_SCALE;
 			le->leType = LE_MOVE_SCALE_FADE;
 			le->startTime = cg.time;
-			le->endTime = cg.time + (i>>1) + 600;
+			le->endTime = cg.time + (i>>1) + 500;
 			le->lifeRate = 1.0 / (le->endTime - le->startTime);
 
 			re->shaderTime = cg.time / 1000.0f;
 			re->reType = RT_SPRITE;
-			re->radius = 1.1f;
+			re->radius = 1.2f;
 			re->customShader = cgs.media.railRingsShader;
 
 			re->shaderRGBA[0] = ci->color2[0] * 255;
@@ -637,9 +641,9 @@ void CG_RailTrail (clientInfo_t *ci, vec3_t start, vec3_t end) {
 			le->pos.trDelta[2] = axis[j][2]*6;
 		}
 
-		VectorAdd (move, vec, move);
+		VectorAdd (move, vec2, move);
 
-		j = (j + ROTATION) % 36;
+		j = (j + ROTATION) % NUM_PARTICLE_PER_ROTATION;
 	}
 }
 
@@ -1720,6 +1724,10 @@ void CG_AddViewWeapon( playerState_t *ps ) {
         return;
     }
 
+    if (vr->weapon_zoomed) {
+        return; // do not draw weapon model with enabled weapon scope
+    }
+
 	cent = &cg.predictedPlayerEntity;	// &cg_entities[cg.snap->ps.clientNum];
 	CG_RegisterWeapon( ps->weapon );
 	weapon = &cg_weapons[ ps->weapon ];
@@ -1818,7 +1826,7 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 	}
 
 	hand.hModel = weapon->handsModel;
-	hand.renderfx = RF_DEPTHHACK | RF_FIRST_PERSON | RF_MINLIGHT;
+	hand.renderfx = /*RF_DEPTHHACK |*/ RF_FIRST_PERSON | RF_MINLIGHT;
 
 	//scale the whole model
 	for ( int i = 0; i < 3; i++ ) {
@@ -1853,6 +1861,11 @@ void CG_DrawWeaponSelect( void ) {
 
 	// don't display if dead
 	if ( cg.predictedPlayerState.stats[STAT_HEALTH] <= 0 ) {
+		return;
+	}
+
+	// don't display when weapon wheel is opened
+	if (vr->weapon_select) {
 		return;
 	}
 
@@ -2064,19 +2077,21 @@ void CG_DrawWeaponSelector( void )
     }
 
     const int selectorMode = (int)trap_Cvar_VariableValue("vr_weaponSelectorMode");
-    float DEPTH = 5.0f;
-    float RAD = 4.0f;
-	float SCALE = 0.05f;
+    float dist = 10.0f;
+    float radius = 4.0f;
+	float scale = 0.05f;
 
     if (selectorMode == WS_HMD) // HMD locked
     {
         VectorCopy(vr->hmdorientation, cg.weaponSelectorAngles);
         VectorCopy(vr->hmdposition, cg.weaponSelectorOrigin);
         VectorClear(cg.weaponSelectorOffset);
-        DEPTH = 7.5f; // push a bit further away from the HMD origin
+		dist = (trap_Cvar_VariableValue("vr_hudDepth")+3) * 3;
+		radius = dist / 3.0f;
+		scale = 0.04f + 0.01f * (trap_Cvar_VariableValue("vr_hudDepth")+1);
     }
 
-	float frac = (cg.time - cg.weaponSelectorTime) / (20 * DEPTH);
+	float frac = (cg.time - cg.weaponSelectorTime) / 100.0f;
 	if (frac > 1.0f) frac = 1.0f;
 
 	vec3_t controllerOrigin, controllerAngles, controllerOffset, selectorOrigin;
@@ -2099,7 +2114,7 @@ void CG_DrawWeaponSelector( void )
 	}
 
 	VectorCopy(wheelOrigin, beamOrigin);
-	VectorMA(wheelOrigin, ((DEPTH*2.0f)*((selectorMode == WS_CONTROLLER) ? frac : 1.0f)), wheelForward, wheelOrigin);
+	VectorMA(wheelOrigin, (dist * ((selectorMode == WS_CONTROLLER) ? frac : 1.0f)), wheelForward, wheelOrigin);
     VectorCopy(wheelOrigin, selectorOrigin);
 
     const int switchThumbsticks = (int)trap_Cvar_VariableValue("vr_switchThumbsticks");
@@ -2108,7 +2123,8 @@ void CG_DrawWeaponSelector( void )
     float thumbstickAxisX = 0.0f;
     float thumbstickAxisY = 0.0f;
 	float a = atan2(vr->thumbstick_location[thumb][0], vr->thumbstick_location[thumb][1]);
-    if (length(vr->thumbstick_location[thumb][0], vr->thumbstick_location[thumb][1]) > 0.95f)
+	float thumbstickValue = length(vr->thumbstick_location[thumb][0], vr->thumbstick_location[thumb][1]);
+    if (thumbstickValue > 0.95f)
     {
         thumbstickAxisX = sinf(a) * 0.95f;
         thumbstickAxisY = cosf(a) * 0.95f;
@@ -2134,17 +2150,17 @@ void CG_DrawWeaponSelector( void )
         y = thumbstickAxisY;
     }
 
-	VectorMA(selectorOrigin, RAD * x, wheelRight, selectorOrigin);
-    VectorMA(selectorOrigin, RAD * y, wheelUp, selectorOrigin);
+	VectorMA(selectorOrigin, radius * x, wheelRight, selectorOrigin);
+    VectorMA(selectorOrigin, radius * y, wheelUp, selectorOrigin);
 
 	{
         refEntity_t		blob;
         memset( &blob, 0, sizeof( blob ) );
         VectorCopy( selectorOrigin, blob.origin );
         AnglesToAxis(vec3_origin, blob.axis);
-        VectorScale( blob.axis[0], SCALE - 0.01f, blob.axis[0] );
-        VectorScale( blob.axis[1], SCALE - 0.01f, blob.axis[1] );
-        VectorScale( blob.axis[2], SCALE - 0.01f, blob.axis[2] );
+        VectorScale( blob.axis[0], scale - 0.01f, blob.axis[0] );
+        VectorScale( blob.axis[1], scale - 0.01f, blob.axis[1] );
+        VectorScale( blob.axis[2], scale - 0.01f, blob.axis[2] );
         blob.nonNormalizedAxes = qtrue;
         blob.hModel = cgs.media.smallSphereModel;
         trap_R_AddRefEntityToScene( &blob );
@@ -2193,7 +2209,7 @@ void CG_DrawWeaponSelector( void )
             vec3_t forward, up;
             AngleVectors(angles, forward, NULL, up);
 
-            VectorMA(wheelOrigin, (RAD*frac), up, iconOrigin);
+            VectorMA(wheelOrigin, (radius*frac), up, iconOrigin);
             VectorMA(iconOrigin, 0.2f, forward, iconBackground);
             VectorMA(iconOrigin, -0.2f, forward, iconForeground);
 
@@ -2276,7 +2292,7 @@ void CG_DrawWeaponSelector( void )
 					iconAngles[ROLL] -= 90.0f;
 				}
 
-                float weaponScale = ((SCALE+0.02f)*frac) +
+                float weaponScale = ((scale+0.02f)*frac) +
 				        (cg.weaponSelectorSelection == weaponId ? 0.04f : 0);
 
 				AnglesToAxis(iconAngles, ent.axis);
@@ -2330,10 +2346,13 @@ void CG_DrawWeaponSelector( void )
 				refEntity_t		sprite;
 				memset( &sprite, 0, sizeof( sprite ) );
 
+				float sRadius = 0.7f
+						+ (0.2f * (trap_Cvar_VariableValue("vr_hudDepth")-1));
+
                 VectorCopy(iconOrigin, sprite.origin);
                 sprite.reType = RT_SPRITE;
                 sprite.customShader = cg_weapons[weaponId].weaponIcon;
-                sprite.radius = 0.6f + (cg.weaponSelectorSelection == weaponId ? 0.1f : 0);
+                sprite.radius = sRadius * 0.9f * (cg.weaponSelectorSelection == weaponId ? 1.1f : 1.0);
                 sprite.shaderRGBA[0] = 255;
                 sprite.shaderRGBA[1] = 255;
                 sprite.shaderRGBA[2] = 255;
@@ -2345,7 +2364,7 @@ void CG_DrawWeaponSelector( void )
 				VectorCopy( iconBackground, sprite.origin );
                 sprite.reType = RT_SPRITE;
 				sprite.customShader = cgs.media.selectShader;
-				sprite.radius = 0.7f + (cg.weaponSelectorSelection == weaponId ? 0.1f : 0);
+				sprite.radius = sRadius * (cg.weaponSelectorSelection == weaponId ? 1.1f : 1.0);
 				sprite.shaderRGBA[0] = 255;
 				sprite.shaderRGBA[1] = 255;
 				sprite.shaderRGBA[2] = 255;
@@ -2358,7 +2377,7 @@ void CG_DrawWeaponSelector( void )
 					VectorCopy(iconForeground, sprite.origin);
                     sprite.reType = RT_SPRITE;
 					sprite.customShader = cgs.media.noammoShader;
-					sprite.radius = 0.7f;
+					sprite.radius = sRadius;
 					sprite.shaderRGBA[0] = 255;
 					sprite.shaderRGBA[1] = 255;
 					sprite.shaderRGBA[2] = 255;
@@ -2378,12 +2397,13 @@ void CG_DrawWeaponSelector( void )
 	// In case was invoked by thumbstick axis and thumbstick is centered
 	// select weapon (if any selected) and close the selector
 	if (vr->weapon_select_autoclose && frac > 0.25f) {
-	    if (thumbstickAxisX > -0.1f && thumbstickAxisX < 0.1f && thumbstickAxisY > -0.1f && thumbstickAxisY < 0.1f) {
+	    if (thumbstickValue < 0.1f) {
 	        if (selected) {
 	            cg.weaponSelect = cg.weaponSelectorSelection;
 	        }
 	    	vr->weapon_select = qfalse;
             vr->weapon_select_autoclose = qfalse;
+            vr->weapon_select_using_thumbstick = qfalse;
 	    }
 	}
 }

@@ -44,12 +44,11 @@ SETUP MENU
 #define ID_COMFORT              12
 #define ID_GAME					13
 #define ID_SYSTEMCONFIG			14
-#define ID_VR					15
-#define ID_CDKEY				16
-#define ID_LOAD					17
-#define ID_SAVE					18
-#define ID_DEFAULTS				19
-#define ID_BACK					20
+#define ID_CDKEY				15
+#define ID_LOAD					16
+#define ID_SAVE					17
+#define ID_DEFAULTS				18
+#define ID_BACK					19
 
 
 typedef struct {
@@ -63,7 +62,6 @@ typedef struct {
 	menutext_s      comfort;
 	menutext_s		game;
 	menutext_s		setupsystem;
-//	menutext_s		vr;
 //	menutext_s		cdkey;
 //	menutext_s		load;
 //	menutext_s		save;
@@ -130,10 +128,6 @@ static void UI_SetupMenu_Event( void *ptr, int event ) {
 	case ID_SYSTEMCONFIG:
 		UI_GraphicsOptionsMenu();
 		break;
-
-//	case ID_VR:
-//		UI_VRMenu();
-//		break;
 
 //	case ID_CDKEY:
 //		UI_CDKeyMenu();

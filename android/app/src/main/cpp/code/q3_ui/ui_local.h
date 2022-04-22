@@ -406,12 +406,6 @@ extern void UI_PreferencesMenu( void );
 extern void Preferences_Cache( void );
 
 //
-// ui_vr.c
-//
-extern void UI_VRMenu( void );
-extern void VR_Cache( void );
-
-//
 // ui_controls3.c
 //
 extern void UI_Controls3Menu( void );

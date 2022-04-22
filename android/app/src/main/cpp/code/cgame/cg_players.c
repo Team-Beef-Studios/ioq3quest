@@ -1692,7 +1692,7 @@ static void CG_PlayerFlag( centity_t *cent, qhandle_t hSkin, refEntity_t *torso 
 	int			legsAnim, flagAnim, updateangles;
 	float		angle, d;
 
-	// show the flag pole model
+    // show the flag pole model
 	memset( &pole, 0, sizeof(pole) );
 	pole.hModel = cgs.media.flagPoleModel;
 	VectorCopy( torso->lightingOrigin, pole.lightingOrigin );
@@ -1908,39 +1908,39 @@ static void CG_PlayerPowerups( centity_t *cent, refEntity_t *torso ) {
 	ci = &cgs.clientinfo[ cent->currentState.clientNum ];
 	// redflag
 	if ( powerups & ( 1 << PW_REDFLAG ) ) {
-		if (ci->newAnims) {
+		if (ci->newAnims && cent->currentState.clientNum != vr->clientNum) {
 			CG_PlayerFlag( cent, cgs.media.redFlagFlapSkin, torso );
 		}
 		else {
 			vec3_t offset;
-			VectorSet(offset, 0, -16, 0);
-			CG_TrailItem( cent, cgs.media.redFlagModel, offset, 1.0f );
+			VectorSet(offset, 0, -1, 0);
+			CG_TrailItem( cent, cgs.media.redFlagModel, offset, 0.1f );
 		}
 		trap_R_AddLightToScene( cent->lerpOrigin, 200 + (rand()&31), 1.0, 0.2f, 0.2f );
 	}
 
 	// blueflag
 	if ( powerups & ( 1 << PW_BLUEFLAG ) ) {
-		if (ci->newAnims){
+		if (ci->newAnims && cent->currentState.clientNum != vr->clientNum){
 			CG_PlayerFlag( cent, cgs.media.blueFlagFlapSkin, torso );
 		}
 		else {
 			vec3_t offset;
-			VectorSet(offset, 0, -16, 0);
-			CG_TrailItem( cent, cgs.media.blueFlagModel, offset, 1.0f );
+			VectorSet(offset, 0, -1, 0);
+			CG_TrailItem( cent, cgs.media.blueFlagModel, offset, 0.1f );
 		}
 		trap_R_AddLightToScene( cent->lerpOrigin, 200 + (rand()&31), 0.2f, 0.2f, 1.0 );
 	}
 
 	// neutralflag
 	if ( powerups & ( 1 << PW_NEUTRALFLAG ) ) {
-		if (ci->newAnims) {
+		if (ci->newAnims && cent->currentState.clientNum != vr->clientNum) {
 			CG_PlayerFlag( cent, cgs.media.neutralFlagFlapSkin, torso );
 		}
 		else {
 			vec3_t offset;
-			VectorSet(offset, 0, -16, 0);
-			CG_TrailItem( cent, cgs.media.neutralFlagModel, offset, 1.0f );
+			VectorSet(offset, 0, -1, 0);
+			CG_TrailItem( cent, cgs.media.neutralFlagModel, offset, 0.1f );
 		}
 		trap_R_AddLightToScene( cent->lerpOrigin, 200 + (rand()&31), 1.0, 1.0, 1.0 );
 	}
@@ -2071,12 +2071,19 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 
 	*shadowPlane = 0;
 
-	if ( cg_shadows.integer == 0 ) {
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+
+	if ( (clientPlayer && cg_playerShadow.integer == 0) || (!clientPlayer && cg_shadows.integer == 0) ) {
 		return qfalse;
 	}
 
 	// no shadows when invisible
 	if ( cent->currentState.powerups & ( 1 << PW_INVIS ) ) {
+		return qfalse;
+	}
+
+	// no shadow if VR player is dead
+	if ( clientPlayer && ( cg.predictedPlayerState.stats[STAT_HEALTH] <= 0 ) ) {
 		return qfalse;
 	}
 
@@ -2093,7 +2100,8 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 
 	*shadowPlane = trace.endpos[2] + 1;
 
-	if ( cg_shadows.integer != 1 ) {	// no mark for stencil or projection shadows
+	// no mark for stencil or projection shadows
+	if ( (clientPlayer && cg_playerShadow.integer != 1) || (!clientPlayer && cg_shadows.integer != 1) ) {
 		return qtrue;
 	}
 
@@ -2101,11 +2109,11 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 	alpha = 1.0 - trace.fraction;
 
 	// hack / FPE - bogus planes?
-	//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f ) 
+	//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f )
 
 	// add the mark as a temporary, so it goes directly to the renderer
 	// without taking a spot in the cg_marks array
-	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 
+	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal,
 		cent->pe.legs.yawAngle, alpha,alpha,alpha,1, qfalse, 24, qtrue );
 
 	return qtrue;
@@ -2125,7 +2133,9 @@ static void CG_PlayerSplash( centity_t *cent ) {
 	int			contents;
 	polyVert_t	verts[4];
 
-	if ( !cg_shadows.integer ) {
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+
+	if ( (clientPlayer && !cg_playerShadow.integer) || (!clientPlayer && !cg_shadows.integer) ) {
 		return;
 	}
 
@@ -2391,7 +2401,9 @@ void CG_Player( centity_t *cent ) {
 	// add a water splash if partially in and out of water
 	CG_PlayerSplash( cent );
 
-	if ( cg_shadows.integer == 3 && shadow ) {
+	qboolean clientPlayer = cent->currentState.number == cg.snap->ps.clientNum;
+
+	if ( shadow && ( (clientPlayer && cg_playerShadow.integer == 3) || (!clientPlayer && cg_shadows.integer == 3) ) ) {
 		renderfx |= RF_SHADOW_PLANE;
 	}
 	renderfx |= RF_LIGHTING_ORIGIN;			// use the same origin for all

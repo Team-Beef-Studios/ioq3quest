@@ -1,23 +1,47 @@
 #!/bin/bash
 
-TARGET=debug
-
-WORKDIR=$(readlink -f $(dirname $0))
-
-NAME=$(cat $WORKDIR/app/src/main/res/values/strings.xml | grep "app_name" | cut -d">" -f2 | cut -d"<" -f1 )
-VERSION=$(cat $WORKDIR/app/src/main/AndroidManifest.xml | grep "versionName" | cut -d\" -f2 | cut -d\" -f1 )
-PACKAGE_NAME=$(cat $WORKDIR/app/src/main/AndroidManifest.xml | grep "package" | cut -d\" -f2 | cut -d\" -f1 )
-
-if [ "$1" == "clean" ] || [ "$2" == "clean" ] || [ "$3" == "clean" ]; then
-	rm -rf $WORKDIR/../build
-	rm -rf $WORKDIR/build
-	rm -rf $WORKDIR/app/build
-	rm -rf $WORKDIR/app/src/main/jniLibs
+if [ -z "$ANDROID_SDK_ROOT" ]; then
+  ANDROID_SDK_ROOT=~/Android/Sdk
+fi
+if [ -z "$ANDROID_TOOLS_VERSION" ]; then
+  ANDROID_TOOLS_VERSION=29.0.2
+fi
+if [ -z "$KEYSTORE" ]; then
+  KEYSTORE=~/.android/release.keystore
 fi
 
-echo "#define Q3QVERSION  \"$VERSION"\" > $WORKDIR/app/src/main/cpp/code/vr/vr_version.h
+SCRIPTDIR=$(readlink -f $(dirname $0))
 
-cd $WORKDIR/..
+APP_NAME=$(cat $SCRIPTDIR/app/src/main/res/values/strings.xml | grep "app_name" | cut -d">" -f2 | cut -d"<" -f1 )
+APP_VERSION=$(cat $SCRIPTDIR/app/src/main/AndroidManifest.xml | grep "versionName" | cut -d\" -f2 | cut -d\" -f1 )
+APP_PACKAGE=$(cat $SCRIPTDIR/app/src/main/AndroidManifest.xml | grep "package" | cut -d\" -f2 | cut -d\" -f1 )
+
+if [ "$1" == "release" ] || [ "$2" == "release" ] || [ "$3" == "release" ] || [ "$4" == "release" ]; then
+  TARGET=release
+  GRADLE_BUILD_TYPE=:app:assembleRelease
+  APK_NAME=app-release-unsigned.apk
+else
+  TARGET=debug
+  GRADLE_BUILD_TYPE=:app:assembleDebug
+  APK_NAME=app-debug.apk
+fi
+
+APK_LOCATION="$SCRIPTDIR/app/build/outputs/apk/$TARGET"
+
+if [ "$1" == "clean" ] || [ "$2" == "clean" ] || [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
+	rm -rf $SCRIPTDIR/../build
+	rm -rf $SCRIPTDIR/build
+	rm -rf $SCRIPTDIR/app/build
+	rm -rf $SCRIPTDIR/app/src/main/jniLibs
+fi
+
+cd $SCRIPTDIR/app/src/main/pakQ3Q
+rm -f $SCRIPTDIR/app/src/main/assets/pakQ3Q.pk3
+zip -r $SCRIPTDIR/app/src/main/assets/pakQ3Q.pk3 .
+
+echo "#define Q3QVERSION  \"$APP_VERSION"\" > $SCRIPTDIR/app/src/main/cpp/code/vr/vr_version.h
+
+cd $SCRIPTDIR/..
 
 make -j $(getconf _NPROCESSORS_ONLN) $TARGET
 if [ $? -ne 0 ]; then
@@ -25,23 +49,38 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-cd $WORKDIR
+cd $SCRIPTDIR
 
-./make.sh
+./gradlew "$GRADLE_BUILD_TYPE"
 
 if [ $? -ne 0 ]; then
 	echo "Failed to build android project"
 	exit 1
 fi
 
-ANDROID_STORAGE_LOCATION=/sdcard/Android/data/$PACKAGE_NAME/files/
-APK_LOCATION=$WORKDIR/app/build/outputs/apk/debug/app-debug.apk
+UNSIGNED_APK="$APK_LOCATION/$APK_NAME"
+if [ "$TARGET" == "release" ]; then
+  echo "Signing Release APK"
+  APK_NAME="$APP_NAME-release-$APP_VERSION.apk"
+  SIGNED_APK="$APK_LOCATION/$APK_NAME"
+  if [ -z "$KEYSTORE_PASS" ]; then
+    echo ""
+    echo "Keystore Password:"
+    read -s KEYSTORE_PASS
+  fi
+  apksigner="$ANDROID_SDK_ROOT/build-tools/$ANDROID_TOOLS_VERSION/apksigner"
+  $apksigner sign --ks "$KEYSTORE" --out "$SIGNED_APK" --v2-signing-enabled true --ks-pass "pass:$KEYSTORE_PASS" "$UNSIGNED_APK"
+  rm "$UNSIGNED_APK"
+else
+  APK_NAME="$APP_NAME-debug-$APP_VERSION.apk"
+  mv "$UNSIGNED_APK" "$APK_LOCATION/$APK_NAME"
+fi
 
-if [ "$1" == "install" ] || [ "$2" == "install" ] || [ "$3" == "install" ]; then
-  adb install -r $APK_LOCATION
+if [ "$1" == "install" ] || [ "$2" == "install" ] || [ "$3" == "install" ] || [ "$4" == "install" ]; then
+  adb install -r "$APK_LOCATION/$APK_NAME"
   if [ $? -ne 0 ]; then
-    adb uninstall $PACKAGE_NAME
-    adb install $APK_LOCATION
+    adb uninstall $APP_PACKAGE
+    adb install "$APK_LOCATION/$APK_NAME"
     if [ $? -ne 0 ]; then
       echo "Failed to install apk."
       exit 1
@@ -49,6 +88,7 @@ if [ "$1" == "install" ] || [ "$2" == "install" ] || [ "$3" == "install" ]; then
   fi
 fi
 
+#ANDROID_STORAGE_LOCATION=/sdcard/Android/data/$APP_PACKAGE/files/
 #adb shell mkdir -p $ANDROID_STORAGE_LOCATION
 #adb push --sync ~/.local/share/Steam/steamapps/common/Quake\ 3\ Arena/baseq3 $ANDROID_STORAGE_LOCATION
 #if [ $? -ne 0 ]; then
@@ -66,9 +106,9 @@ fi
 #	exit 1
 #fi
 
-if [ "$1" == "start" ] || [ "$2" == "start" ] || [ "$3" == "start" ]; then
+if [ "$1" == "start" ] || [ "$2" == "start" ] || [ "$3" == "start" ] || [ "$4" == "start" ]; then
   adb logcat -c
-  adb shell am start -n $PACKAGE_NAME/.MainActivity
+  adb shell am start -n $APP_PACKAGE/.MainActivity
   if [ $? -ne 0 ]; then
     echo "Failed to start application."
     exit 1

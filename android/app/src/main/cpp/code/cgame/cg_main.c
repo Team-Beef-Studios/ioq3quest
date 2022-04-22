@@ -106,6 +106,7 @@ vmCvar_t	cg_bobroll;
 vmCvar_t	cg_weaponbob;
 vmCvar_t	cg_swingSpeed;
 vmCvar_t	cg_shadows;
+vmCvar_t	cg_playerShadow;
 vmCvar_t	cg_gibs;
 vmCvar_t	cg_megagibs;
 vmCvar_t	cg_drawTimer;
@@ -124,8 +125,6 @@ vmCvar_t	cg_crosshairSize;
 vmCvar_t	cg_crosshairX;
 vmCvar_t	cg_crosshairY;
 vmCvar_t	cg_crosshairHealth;
-vmCvar_t	cg_draw2D;
-vmCvar_t	cg_drawStatus;
 vmCvar_t	cg_animSpeed;
 vmCvar_t	cg_debugAnim;
 vmCvar_t	cg_debugPosition;
@@ -228,10 +227,9 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_fov, "cg_fov", "90", CVAR_ARCHIVE },
 	{ &cg_viewsize, "cg_viewsize", "100", CVAR_ARCHIVE },
 	{ &cg_shadows, "cg_shadows", "1", CVAR_ARCHIVE  },
+	{ &cg_playerShadow, "cg_playerShadow", "1", CVAR_ARCHIVE  },
 	{ &cg_gibs, "cg_gibs", "1", CVAR_ARCHIVE  },
 	{ &cg_megagibs, "cg_megagibs", "0", CVAR_ARCHIVE  },
-	{ &cg_draw2D, "cg_draw2D", "1", CVAR_ARCHIVE  },
-	{ &cg_drawStatus, "cg_drawStatus", "1", CVAR_ARCHIVE  },
 	{ &cg_drawTimer, "cg_drawTimer", "0", CVAR_ARCHIVE  },
 	{ &cg_drawFPS, "cg_drawFPS", "0", CVAR_ARCHIVE  },
 	{ &cg_drawSnapshot, "cg_drawSnapshot", "0", CVAR_ARCHIVE  },
@@ -1026,18 +1024,24 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.medalAssist = trap_R_RegisterShaderNoMip( "medal_assist" );
 	cgs.media.medalCapture = trap_R_RegisterShaderNoMip( "medal_capture" );
 
-
 	memset( cg_items, 0, sizeof( cg_items ) );
 	memset( cg_weapons, 0, sizeof( cg_weapons ) );
 
 	// only register the items that the server says we need
 	Q_strncpyz(items, CG_ConfigString(CS_ITEMS), sizeof(items));
-
 	for ( i = 1 ; i < bg_numItems ; i++ ) {
 		if ( items[ i ] == '1' || cg_buildScript.integer ) {
 			CG_LoadingItem( i );
 			CG_RegisterItemVisuals( i );
 		}
+	}
+
+	// register all weapons (as they are used on weapon wheel selector)
+	for (int weaponId = 1; weaponId < WP_NUM_WEAPONS; ++weaponId) {
+		if (weaponId == WP_GRAPPLING_HOOK) {
+			continue;
+		}
+		CG_RegisterWeapon(weaponId);
 	}
 
 	// wall marks
@@ -1052,6 +1056,9 @@ static void CG_RegisterGraphics( void ) {
 	//Load from pakQ3Q
     cgs.media.reticleShader = trap_R_RegisterShader( "gfx/weapon/scope" );
     cgs.media.vignetteShader = trap_R_RegisterShader( "gfx/vignette" );
+
+    //HUD
+    cgs.media.hudShader = trap_R_RegisterShader( "sprites/vr/hud" );
 
 	//Used for the weapon selector
 	cgs.media.smallSphereModel = trap_R_RegisterModel("models/powerups/health/small_sphere.md3");
@@ -1974,6 +1981,13 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	const char *serverinfo = CG_ConfigString( CS_SERVERINFO );
 	vr->no_crosshair = (strcasestr(serverinfo, "nocrosshair") != NULL || strcasestr(serverinfo, "no crosshair") != NULL);
+	vr->local_server = cgs.localServer;
+#ifdef MISSIONPACK
+	vr->single_player = trap_Cvar_VariableValue("ui_singlePlayerActive");
+#else
+	vr->single_player = trap_Cvar_VariableValue( "g_gametype" ) == GT_SINGLE_PLAYER;
+#endif
+	vr->use_fake_6dof = !vr->single_player;
 }
 
 /*

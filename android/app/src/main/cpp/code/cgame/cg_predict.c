@@ -297,7 +297,7 @@ static void CG_TouchItem( centity_t *cent ) {
 			return;
 	}
 
-	if (cg.stereoView == STEREO_LEFT)
+	//if (cg.stereoView == STEREO_LEFT)
 	{
 		// grab it
 		BG_AddPredictableEventToPlayerstate(EV_ITEM_PICKUP, cent->currentState.modelindex,

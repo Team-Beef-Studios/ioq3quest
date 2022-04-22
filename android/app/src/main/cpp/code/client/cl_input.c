@@ -599,12 +599,10 @@ void CL_FinishMove( usercmd_t *cmd ) {
 
 	vr.clientNum = cl.snap.ps.clientNum;
 
-	//If we are running with a remote non-vr server, then the best we can do is pass the angles from the weapon
-	//and adjust the move values accordingly, to "fake" a 3DoF weapon but keeping the movement correct
-	if ( !com_sv_running || !com_sv_running->integer )
+	//If we are running multiplayer, pass the angles from the weapon and adjust the move values accordingly,
+	// to "fake" a 3DoF weapon but keeping the movement correct (necessary with a remote non-vr server)
+	if ( vr.use_fake_6dof )
 	{
-        vr.local_server = qfalse;
-
         //Realign in playspace
         if (--vr.realign == 0)
         {
@@ -633,10 +631,6 @@ void CL_FinishMove( usercmd_t *cmd ) {
 		cmd->forwardmove = out[1];
 	}
 	else {
-		//Record client number - local server uses this to know we can use absolute angles
-		//rather than deltas
-        vr.local_server = qtrue;
-
 		for (i = 0; i < 3; i++) {
 			cmd->angles[i] = ANGLE2SHORT(cl.viewangles[i]);
 		}

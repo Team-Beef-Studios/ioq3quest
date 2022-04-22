@@ -41,13 +41,12 @@ uniform vec4   u_DiffuseTexMatrix;
 uniform vec4   u_DiffuseTexOffTurb;
 #endif
 
-uniform mat4   u_ModelViewProjectionMatrix;
+
+uniform mat4 u_ModelMatrix;
+
 uniform vec4   u_BaseColor;
 uniform vec4   u_VertColor;
 
-#if defined(USE_MODELMATRIX)
-uniform mat4   u_ModelMatrix;
-#endif
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float  u_VertexLerp;
@@ -66,6 +65,16 @@ uniform vec3   u_AmbientLight;
 uniform vec4  u_PrimaryLightOrigin;
 uniform float u_PrimaryLightRadius;
 #endif
+
+// Uniforms
+layout(shared) uniform ViewMatrices
+{
+    uniform mat4 u_ViewMatrices[NUM_VIEWS];
+};
+layout(shared) uniform ProjectionMatrix
+{
+    uniform mat4 u_ProjectionMatrix;
+};
 
 varying vec4   var_TexCoords;
 
@@ -188,14 +197,14 @@ void main()
 	var_TexCoords.xy = texCoords;
 #endif
 
-	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
+	gl_Position = u_ProjectionMatrix * (u_ViewMatrices[gl_ViewID_OVR] * (u_ModelMatrix * vec4(position, 1.0)));
 
 #if defined(USE_MODELMATRIX)
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
 	normal    = (u_ModelMatrix * vec4(normal,   0.0)).xyz;
-  #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
+#if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	tangent   = (u_ModelMatrix * vec4(tangent,  0.0)).xyz;
-  #endif
+#endif
 #endif
 
 #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
@@ -206,9 +215,9 @@ void main()
 	vec3 L = u_LightOrigin.xyz - (position * u_LightOrigin.w);
 #elif defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 	vec3 L = attr_LightDirection;
-  #if defined(USE_MODELMATRIX)
+#if defined(USE_MODELMATRIX)
 	L = (u_ModelMatrix * vec4(L, 0.0)).xyz;
-  #endif
+#endif
 #endif
 
 #if defined(USE_LIGHTMAP)

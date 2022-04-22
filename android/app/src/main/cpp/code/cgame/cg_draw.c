@@ -304,6 +304,8 @@ void CG_Draw3DModel( float x, float y, float w, float h, qhandle_t model, qhandl
 
 	refdef.time = cg.time;
 
+	refdef.isHUD = qtrue;
+
 	trap_R_ClearScene();
 	trap_R_AddRefEntityToScene( &ent );
 	trap_R_RenderScene( &refdef );
@@ -477,7 +479,7 @@ static void CG_DrawStatusBarHead( float x ) {
 }
 #endif // MISSIONPACK
 
-/*
+/*c
 ================
 CG_DrawStatusBarFlag
 
@@ -539,7 +541,7 @@ static void CG_DrawStatusBar( void ) {
 		{ 0.5f, 0.5f, 0.5f, 1.0f },     // weapon firing
 		{ 1.0f, 1.0f, 1.0f, 1.0f } };   // health > 100
 
-	if ( cg_drawStatus.integer == 0 ) {
+	if ( trap_Cvar_VariableValue( "vr_hudDrawStatus" ) == 0 ) {
 		return;
 	}
 
@@ -2647,10 +2649,10 @@ static void CG_DrawVignette( void )
 
 /*
 =================
-CG_Draw2D
+CG_DrawHUD2D - Draw 2D elements always intended for the in-world HUD
 =================
 */
-static void CG_Draw2D()
+static void CG_DrawHUD2D()
 {
 #ifdef MISSIONPACK
 	if (cgs.orderPending && cg.time > cgs.orderTime) {
@@ -2662,32 +2664,18 @@ static void CG_Draw2D()
 		return;
 	}
 
-	if ( cg_draw2D.integer == 0 ) {
-		return;
-	}
-
 	if ( cg.snap->ps.pm_type == PM_INTERMISSION ) {
 		CG_DrawIntermission();
 		return;
 	}
 
-/*
-	if (cg.cameraMode) {
-		return;
-	}
-*/
 	if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR ) {
 		CG_DrawSpectator();
-
-//		if(stereoFrame == STEREO_CENTER)
-//			CG_DrawCrosshair();
 
 		CG_DrawCrosshairNames();
 	} else {
 		// don't draw any status if dead or the scoreboard is being explicitly shown
 		if ( !cg.showScores && cg.snap->ps.stats[STAT_HEALTH] > 0 ) {
-
-			CG_DrawVignette();
 
 			// If weapon selector is active, check whether draw HUD
 			if (cg.weaponSelectorTime != 0 && trap_Cvar_VariableValue("vr_weaponSelectorWithHud") == 0) {
@@ -2695,7 +2683,7 @@ static void CG_Draw2D()
 			}
 
 #ifdef MISSIONPACK
-			if ( cg_drawStatus.integer ) {
+			if ( trap_Cvar_VariableValue( "vr_hudDrawStatus" ) != 0.0f ) {
 				Menu_PaintAll();
 				CG_DrawTimedMenus();
 			}
@@ -2708,10 +2696,6 @@ static void CG_Draw2D()
 #ifdef MISSIONPACK
 			CG_DrawProxWarning();
 #endif
-
-			if(vr->weapon_zoomed) {
-				CG_DrawWeapReticle();
-			}
 
 			CG_DrawCrosshairNames();
 			CG_DrawWeaponSelect();
@@ -2760,6 +2744,61 @@ static void CG_Draw2D()
 	}
 }
 
+/*
+=================
+CG_DrawScreen2D - Draws 2D elements always intended for the screen
+=================
+*/
+static void CG_DrawScreen2D()
+{
+	// if we are taking a levelshot for the menu, don't draw anything
+	if ( cg.levelShot ) {
+		return;
+	}
+
+	if ( cg.snap->ps.pm_type == PM_INTERMISSION ) {
+		return;
+	}
+
+	if ( cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR   &&
+	    !cg.showScores && cg.snap->ps.stats[STAT_HEALTH] > 0 ) {
+
+        CG_DrawVignette();
+
+        if(vr->weapon_zoomed) {
+            CG_DrawWeapReticle();
+        }
+    }
+}
+
+
+//
+// HACK HACK HACK
+//
+//Render an empty scene - seems to sort the weird out-of-body thing
+//when the HUD isn't being drawn. Need to get to the bottom of this
+//it shouldn't cost frames, but it is ugly
+static void CG_EmptySceneHackHackHack( void )
+{
+	refdef_t refdef;
+	memset( &refdef, 0, sizeof( refdef ) );
+
+	refdef.rdflags = RDF_NOWORLDMODEL;
+	AxisClear( refdef.viewaxis );
+
+	refdef.fov_x = 30;
+	refdef.fov_y = 30;
+
+	refdef.x = 0;
+	refdef.y = 0;
+	refdef.width = cgs.glconfig.vidWidth;
+	refdef.height = cgs.glconfig.vidHeight;
+
+	refdef.time = cg.time;
+
+	trap_R_ClearScene();
+	trap_R_RenderScene( &refdef );
+}
 
 /*
 =====================
@@ -2797,19 +2836,23 @@ void CG_DrawActive( void ) {
     if ( cg.demoPlayback || CG_IsThirdPersonFollowMode(VRFM_THIRDPERSON_1))
     {
         worldscale *= SPECTATOR_WORLDSCALE_MULTIPLIER;
+		trap_Cvar_SetValue("vr_worldscaleScaler", SPECTATOR_WORLDSCALE_MULTIPLIER);
         //Just move camera down about 20cm
         heightOffset = -0.2f;
     }
 	else if (CG_IsDeathCam() || CG_IsThirdPersonFollowMode(VRFM_THIRDPERSON_2))
 	{
 		worldscale *= SPECTATOR2_WORLDSCALE_MULTIPLIER;
+		trap_Cvar_SetValue("vr_worldscaleScaler", SPECTATOR2_WORLDSCALE_MULTIPLIER);
 		//Just move camera down about 50cm
 		heightOffset = -0.5f;
 	}
+	else
+	{
+		float zoomCoeff =  ((2.5f-vr->weapon_zoomLevel)/1.5f); // normally 1.0
+		trap_Cvar_SetValue("vr_worldscaleScaler", zoomCoeff);
+	}
 
-
-	float ipd = trap_Cvar_VariableValue("r_stereoSeparation") / 1000.0f;
-	float separation = worldscale * (ipd / 2) * (cg.stereoView == STEREO_LEFT ? -1.0f : 1.0f);
 
 	if (cg.snap->ps.pm_flags & PMF_FOLLOW && vr->follow_mode == VRFM_FIRSTPERSON)
     {
@@ -2821,9 +2864,9 @@ void CG_DrawActive( void ) {
         cg.refdef.vieworg[2] += (vr->hmdposition[1] + heightOffset) * worldscale;
     }
 
-    if (!cgs.localServer)
+    if (vr->use_fake_6dof)
 	{
-		//If connected to a remote server, allow some amount of faked positional tracking
+		//If running multiplayer, allow some amount of faked positional tracking
 		if (cg.snap->ps.stats[STAT_HEALTH] > 0 &&
                 //Don't use fake positional if following another player  - this is handled in  the
                 //VR third person code
@@ -2848,16 +2891,87 @@ void CG_DrawActive( void ) {
 		}
 	}
 
-	float zoomCoeff =  ((2.5f-vr->weapon_zoomLevel)/1.5f);
-	VectorMA(cg.refdef.vieworg, -separation * zoomCoeff, cg.refdef.viewaxis[1], cg.refdef.vieworg);
+	//Now draw the HUD shader in the world
+    if (trap_Cvar_VariableValue("vr_hudDrawStatus") != 2.0f)
+	{
+		refEntity_t ent;
+		trace_t trace;
+		vec3_t viewaxis[3];
+		vec3_t origin, endpos, angles;
+        vec3_t forward, right, up;
+
+		float scale = trap_Cvar_VariableValue("vr_worldscaleScaler");
+        float dist = (trap_Cvar_VariableValue("vr_hudDepth")+3) * 3 * scale;
+        float radius = dist / 3.0f;
+
+        if (cg.snap->ps.stats[STAT_HEALTH] > 0 &&
+                cg.snap->ps.pm_type != PM_INTERMISSION)
+        {
+            float viewYaw = SHORT2ANGLE(cg.predictedPlayerState.delta_angles[YAW]) +
+                            (vr->clientviewangles[YAW] - vr->hmdorientation[YAW]);
+
+            static float hmd_yaw_x = 0.0f;
+            static float hmd_yaw_y = 1.0f;
+            static float prevPitch = 0.0f;
+            {
+                hmd_yaw_x = 0.95f * hmd_yaw_x + 0.05f * cosf(DEG2RAD(vr->hmdorientation[YAW]));
+                hmd_yaw_y = 0.95f * hmd_yaw_y + 0.05f * sinf(DEG2RAD(vr->hmdorientation[YAW]));
+            }
+
+            angles[YAW] = viewYaw + RAD2DEG(atan2(hmd_yaw_y, hmd_yaw_x));
+            angles[PITCH] = 0.95f * prevPitch + 0.05f * vr->hmdorientation[PITCH];
+            prevPitch = angles[PITCH];
+            angles[ROLL] = 0;
+            AngleVectors(angles, forward, right, up);
+
+            VectorMA(cg.refdef.vieworg, dist, forward, endpos);
+            VectorMA(endpos, trap_Cvar_VariableValue("vr_hudYOffset") / 20, up, endpos);
+        }
+        else
+        {
+            //Lock to face
+            VectorMA(cg.refdef.vieworg, dist, cg.refdef.viewaxis[0], endpos);
+        }
+
+		memset(&ent, 0, sizeof(ent));
+		ent.reType = RT_SPRITE;
+		ent.renderfx = RF_DEPTHHACK | RF_FIRST_PERSON;
+
+		VectorCopy(endpos, ent.origin);
+
+		ent.radius = radius;
+		ent.invert = qtrue;
+		ent.customShader = cgs.media.hudShader;
+
+		trap_R_AddRefEntityToScene(&ent);
+	}
 
 	// draw 3D view
 	trap_R_RenderScene( &cg.refdef );
 
 	VectorCopy( baseOrg, cg.refdef.vieworg );
 
-    // draw status bar and other floating elements
-    CG_Draw2D();
+	{
+        //Now draw the screen 2D stuff
+        CG_DrawScreen2D();
+
+        if (!vr->weapon_zoomed)
+		{
+			cg.drawingHUD = qtrue;
+
+			//Tell renderer we want to draw to the HUD buffer
+			trap_R_HUDBufferStart(qtrue);
+
+			// draw status bar and other floating elements
+			CG_DrawHUD2D();
+
+			trap_R_HUDBufferEnd();
+
+			cg.drawingHUD = qfalse;
+		}
+	}
+
+	CG_EmptySceneHackHackHack();
 }
 
 

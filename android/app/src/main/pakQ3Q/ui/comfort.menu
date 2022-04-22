@@ -99,10 +99,9 @@ itemDef {
 	itemDef {
       		name comfort
 		group grpComfort
-      		type ITEM_TYPE_MULTI
+      		type ITEM_TYPE_SLIDER
 		text "HUD Depth:"
-		cvar "vr_hudDepth"
-		cvarFloatList { "Very Close" 0 "Close" 1 "Middle" 2 "Further" 3 "Far" 4 "Distant" 5 }
+		cvarfloat "vr_hudDepth" 1 0 5
 		rect 99 250 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
@@ -116,7 +115,7 @@ itemDef {
       		name comfort
 		group grpComfort
       		type ITEM_TYPE_SLIDER
-		text "HUD Y Offset:"
+		text "HUD Vertical Position:"
 		cvarfloat "vr_hudYOffset" 20 -200 200
 		rect 99 275 256 20
       		textalign ITEM_ALIGN_RIGHT

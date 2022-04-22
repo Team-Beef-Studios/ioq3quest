@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../vr/vr_clientinfo.h"
 
 extern vr_clientinfo_t vr;
+extern cvar_t *vr_hudDrawStatus;
 
 qboolean	scr_initialized;		// ready to draw
 
@@ -74,7 +75,7 @@ void SCR_AdjustFrom640( float *x, float *y, float *w, float *h ) {
 	xscale = cls.glconfig.vidWidth / 640.0;
 	yscale = cls.glconfig.vidHeight / 480.0;
 
-	if (vr.virtual_screen) {
+	if (vr.virtual_screen || vr_hudDrawStatus->integer != 2) {
 		if (x) {
 			*x *= xscale;
 		}
@@ -599,7 +600,8 @@ void SCR_UpdateScreen( void ) {
 		// XXX
 		int in_anaglyphMode = Cvar_VariableIntegerValue("r_anaglyphMode");
 		// if running in stereo, we need to draw the frame twice
-		if ( cls.glconfig.stereoEnabled || in_anaglyphMode) {
+		if ( qfalse )//cls.glconfig.stereoEnabled || in_anaglyphMode)
+		{
 			SCR_DrawScreenField( STEREO_LEFT );
 			SCR_DrawScreenField( STEREO_RIGHT );
 		} else {

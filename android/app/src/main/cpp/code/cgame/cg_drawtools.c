@@ -44,36 +44,36 @@ CG_AdjustFrom640
 Adjusted for resolution and screen aspect ratio
 ================
 */
-void CG_AdjustFrom640( float *x, float *y, float *w, float *h ) {
+void CG_AdjustFrom640( float *x, float *y, float *w, float *h )
+{
+	int hudDrawStatus = (int)trap_Cvar_VariableValue("vr_hudDrawStatus");
+    //If using floating HUD and we are drawing it, then no need to scale as the HUD
+    //buffer is 640x480
+    if ( hudDrawStatus == 1 && cg.drawingHUD)
+    {
+        return;
+    }
 
-	if (vr->virtual_screen ||
-		vr->weapon_zoomed)
+   if (!cg.drawingHUD)
 	{
-		// scale for screen sizes
 		*x *= cgs.screenXScale;
 		*y *= cgs.screenYScale;
 		*w *= cgs.screenXScale;
 		*h *= cgs.screenYScale;
 	}
-	else // scale to clearly visible portion of VR screen
+	else  // scale to clearly visible portion of VR screen
 	{
-		float screenXScale = cgs.screenXScale / 2.75f;
-		float screenYScale = cgs.screenYScale / 2.25f;
-
-        const auto depth = (int)trap_Cvar_VariableValue( "vr_hudDepth" );
-		int xoffset = 120 - (depth * 20);
-		if (cg.stereoView == STEREO_RIGHT) {
-			xoffset *= -1;
-		}
+		float screenXScale = cgs.screenXScale / 2.8f;
+		float screenYScale = cgs.screenYScale / 2.3f;
 
 		*x *= screenXScale;
 		*y *= screenYScale;
 		if (hudflags & HUD_FLAGS_DRAWMODEL)
 		{
-			*w *= (cgs.screenXScale * 2.0f);
+			*w *= (screenXScale * 2.0f);
 			*x -= (*w / 3);
-			*h *= (cgs.screenYScale * 2.0f);
-            *y -= (*h / 3);
+			*h *= (screenYScale * 2.0f);
+			*y -= (*h / 3);
 		}
 		else
 		{
@@ -81,8 +81,9 @@ void CG_AdjustFrom640( float *x, float *y, float *w, float *h ) {
 			*h *= screenYScale;
 		}
 
-		*x += (cg.refdef.width - (640 * screenXScale)) / 2.0f + xoffset;
-		*y += (cg.refdef.height - (480 * screenYScale)) / 2.0f - trap_Cvar_VariableValue( "vr_hudYOffset" );
+		*x += (cg.refdef.width - (640 * screenXScale)) / 2.0f;
+		*y += (cg.refdef.height - (480 * screenYScale)) / 2.0f -
+			  trap_Cvar_VariableValue("vr_hudYOffset");
 	}
 }
 

@@ -302,7 +302,7 @@ itemDef {
       		type ITEM_TYPE_MULTI
 		text "Weapon Wheel Mode:"
 		cvar "vr_weaponSelectorMode"
-		cvarFloatList { "Controller Based" 0 "HMD/Thumbstick Based" 1 }
+		cvarFloatList { "VR Style / Pointing" 0 "Classic / Thumbstick" 1 }
 		rect 30 182 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
@@ -318,7 +318,7 @@ itemDef {
       		type ITEM_TYPE_MULTI
 		text "Control Schema:"
 		cvar "vr_controlSchema"
-		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 }
+		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 "Weapon Wheel Disabled" 2 }
 		rect 30 200 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
@@ -402,10 +402,9 @@ itemDef {
 itemDef {
       		name controls				
 		group grpControls
-      		type ITEM_TYPE_MULTI
+      		type ITEM_TYPE_SLIDER
 		text "HUD Depth:"
-		cvar "vr_hudDepth"
-		cvarFloatList { "Very Close" 0 "Close" 1 "Middle" 2 "Further" 3 "Far" 4 "Distant" 5 }
+		cvarfloat "vr_hudDepth" 1 0 5
 		rect 30 331 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
@@ -418,7 +417,7 @@ itemDef {
       		name controls				
 		group grpControls
       		type ITEM_TYPE_SLIDER
-		text "HUD Y Offset:"
+		text "HUD Vertical Position:"
 		cvarfloat "vr_hudYOffset" 20 -200 200
 		rect 30 351 200 20
       		textalign ITEM_ALIGN_RIGHT

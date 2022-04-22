@@ -14,14 +14,16 @@ typedef struct {
 
     qboolean weapon_stabilised;
     qboolean weapon_zoomed;
-    qboolean show_console;
     float weapon_zoomLevel;
     qboolean right_handed;
     qboolean virtual_screen;
-    qboolean local_server; // used in bg_pmove.c
+    qboolean local_server;
+    qboolean single_player;
+    qboolean use_fake_6dof;
     vrFollowMode_t follow_mode;
     qboolean weapon_select;
     qboolean weapon_select_autoclose;
+    qboolean weapon_select_using_thumbstick;
     qboolean no_crosshair;
 
     int realign; // used to realign the fake 6DoF playspace in a multiplayer game

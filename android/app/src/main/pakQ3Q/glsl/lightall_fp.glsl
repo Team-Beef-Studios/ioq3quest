@@ -515,5 +515,10 @@ void main()
 
 #endif
 
+// HACK: use in main menu simple light model (to prevent issue with missing models textures)
+#if defined(USE_MENU_LIGHT)
+	gl_FragColor.rgb = diffuse.rgb * lightColor;
+#endif
+
 	gl_FragColor.a = alpha;
 }

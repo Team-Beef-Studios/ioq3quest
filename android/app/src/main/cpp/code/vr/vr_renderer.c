@@ -165,11 +165,23 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 	}
 }
 
+typedef void(GL_APIENTRY* PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC)(
+GLenum target,
+GLenum attachment,
+GLuint texture,
+GLint level,
+GLint baseViewIndex,
+GLsizei numViews);
+
 void VR_InitRenderer( engine_t* engine ) {
 #if ENABLE_GL_DEBUG
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(VR_GLDebugLog, 0);
 #endif
+
+    PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC glFramebufferTextureMultiviewOVR =
+            (PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC)eglGetProcAddress(
+                    "glFramebufferTextureMultiviewOVR");
 
 	int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
@@ -342,8 +354,8 @@ ovrLayerCylinder2 BuildCylinderLayer(engine_t* engine, const int textureWidth, c
 	{
 		ovrMatrix4f modelViewMatrix = ovrMatrix4f_Multiply( &tracking->Eye[eye].ViewMatrix, &cylinderTransform );
 		layer.Textures[eye].TexCoordsFromTanAngles = ovrMatrix4f_Inverse( &modelViewMatrix );
-		layer.Textures[eye].ColorSwapChain = engine->framebuffers[eye].colorTexture;
-		layer.Textures[eye].SwapChainIndex = engine->framebuffers[eye].swapchainIndex;
+		layer.Textures[eye].ColorSwapChain = engine->framebuffers.colorTexture;
+		layer.Textures[eye].SwapChainIndex = engine->framebuffers.swapchainIndex;
 
 		// Texcoord scale and bias is just a representation of the aspect ratio. The positioning
 		// of the cylinder is handled entirely by the TexCoordsFromTanAngles matrix.
@@ -382,11 +394,13 @@ void VR_DrawFrame( engine_t* engine ) {
 			vr.weapon_zoomLevel = 1.0f;
 	}
 
+    //Projection used for drawing HUD models etc
+    const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
+            30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
 	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
 			fov_x / vr.weapon_zoomLevel, fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
-	re.SetVRHeadsetParms(projectionMatrix.M,
-						 engine->appState.Renderer.FrameBuffer[0].FrameBuffers[engine->appState.Renderer.FrameBuffer[0].TextureSwapChainIndex],
-						 engine->appState.Renderer.FrameBuffer[1].FrameBuffers[engine->appState.Renderer.FrameBuffer[1].TextureSwapChainIndex]);
+	re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M,
+						 engine->appState.Renderer.FrameBuffer[0].FrameBuffers[engine->appState.Renderer.FrameBuffer[0].TextureSwapChainIndex]);
 
     GLboolean stageBoundsDirty = GL_TRUE;
     ovrApp_HandleXrEvents(&engine->appState);
@@ -589,6 +603,10 @@ void VR_DrawFrame( engine_t* engine ) {
 	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
 			fov_x / vr.weapon_zoomLevel, fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
 
+	//Projection used for drawing HUD models etc
+	const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
+			30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
+
     int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
 
@@ -615,18 +633,13 @@ void VR_DrawFrame( engine_t* engine ) {
 		frameDesc.LayerCount = 1;
 		frameDesc.Layers = layers;
 
-		const framebuffer_t* framebuffers = engine->framebuffers;
-
-        re.SetVRHeadsetParms(projectionMatrix->M,
-			framebuffers[0].framebuffers[framebuffers[0].swapchainIndex],
-			framebuffers[1].framebuffers[framebuffers[1].swapchainIndex]);
+        re.SetVRHeadsetParms(&projectionMatrix->M, monoVRMatrix->M,
+                             engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex]);
 
 		Com_Frame();
 
-		for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye) {
-			engine->framebuffers[eye].swapchainIndex = (engine->framebuffers[eye].swapchainIndex + 1) %
-				engine->framebuffers[eye].swapchainLength;
-		}
+		engine->framebuffers.swapchainIndex = (engine->framebuffers.swapchainIndex + 1) %
+			engine->framebuffers.swapchainLength;
 
 		// Hand over the eye images to the time warp.
 		vrapi_SubmitFrame2(engine->ovr, &frameDesc);		
@@ -643,27 +656,21 @@ void VR_DrawFrame( engine_t* engine ) {
 
 
         for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye) {
-			layer.Textures[eye].ColorSwapChain = engine->framebuffers[eye].colorTexture;
-			layer.Textures[eye].SwapChainIndex = engine->framebuffers[eye].swapchainIndex;
+			layer.Textures[eye].ColorSwapChain = engine->framebuffers.colorTexture;
+			layer.Textures[eye].SwapChainIndex = engine->framebuffers.swapchainIndex;
 			layer.Textures[eye].TexCoordsFromTanAngles = ovrMatrix4f_TanAngleMatrixFromProjection(&defaultProjection);
 		}
+		layer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
 
+        VR_ClearFrameBuffer(engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex], eyeW, eyeH);
 
-		const framebuffer_t* framebuffers = engine->framebuffers;
-
-        VR_ClearFrameBuffer(framebuffers[0].framebuffers[framebuffers[0].swapchainIndex], eyeW, eyeH);
-        VR_ClearFrameBuffer(framebuffers[1].framebuffers[framebuffers[1].swapchainIndex], eyeW, eyeH);
-
-		re.SetVRHeadsetParms(projectionMatrix->M,
-			framebuffers[0].framebuffers[framebuffers[0].swapchainIndex],
-			framebuffers[1].framebuffers[framebuffers[1].swapchainIndex]);
+		re.SetVRHeadsetParms(&projectionMatrix->M, monoVRMatrix->M,
+							 engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex]);
 
 		Com_Frame();
 
-		for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye) {
-			engine->framebuffers[eye].swapchainIndex = (engine->framebuffers[eye].swapchainIndex + 1) %
-				engine->framebuffers[eye].swapchainLength;
-		}
+		engine->framebuffers.swapchainIndex = (engine->framebuffers.swapchainIndex + 1) %
+			engine->framebuffers.swapchainLength;
 
 		const ovrLayerHeader2* layers[] = {
 			&layer.Header

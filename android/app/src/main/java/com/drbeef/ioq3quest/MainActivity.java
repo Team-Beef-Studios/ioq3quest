@@ -100,13 +100,16 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		//copy demo
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pak0.pk3", false);
 
-		//our special pak file
+		//our special pak files
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pakQ3Q.pk3", true);
 		copy_asset("/sdcard/ioquake3Quest/missionpack", "pakQ3Q.pk3", true);
 
+		//Copy omarlego's background image pak
+		copy_asset("/sdcard/ioquake3Quest/baseq3", "pak66.pk3", false);
+
 		//If open arena is installed then copy necessary stuff
 		if (new File("/sdcard/ioquake3Quest/baseoa").exists()) {
-			copy_asset("/sdcard/ioquake3Quest/baseoa", "autoexec.cfg", false);
+			copy_asset("/sdcard/ioquake3Quest/baseoa", "autoexec_oa.cfg", "autoexec.cfg", false);
 			copy_asset("/sdcard/ioquake3Quest/baseoa", "pakQ3Q.pk3", true);
 		}
 
@@ -136,6 +139,7 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 
 		Log.d(TAG, "setting env");
 		try {
+			//commandLineParams += " +map q3dm7";
 			setenv("commandline", commandLineParams, true);
 		} catch (Exception e) {
 		}
@@ -151,14 +155,18 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 	}
 
 	public void copy_asset(String path, String name, boolean force) {
-		File f = new File(path + "/" + name);
+		copy_asset(path, name, name, force);
+	}
+
+	public void copy_asset(String path, String name, String newName, boolean force) {
+		File f = new File(path + "/" + newName);
 		if (!f.exists() || force) {
 
 			//Ensure we have an appropriate folder
 			String fullname = path + "/" + name;
 			String directory = fullname.substring(0, fullname.lastIndexOf("/"));
 			new File(directory).mkdirs();
-			_copy_asset(name, path + "/" + name);
+			_copy_asset(name, path + "/" + newName);
 		}
 	}
 

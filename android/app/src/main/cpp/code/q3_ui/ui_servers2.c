@@ -1243,11 +1243,11 @@ static void ArenaServers_Event( void* ptr, int event ) {
 		break;
 
 	case ID_SCROLL_UP:
-		ScrollList_Key( &g_arenaservers.list, K_UPARROW );
+		ScrollList_Key( &g_arenaservers.list, K_PGUP );
 		break;
 
 	case ID_SCROLL_DOWN:
-		ScrollList_Key( &g_arenaservers.list, K_DOWNARROW );
+		ScrollList_Key( &g_arenaservers.list, K_PGDN );
 		break;
 
 	case ID_BACK:

@@ -837,7 +837,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 		DEBUGNAME("EV_CHANGE_WEAPON");
 		trap_S_StartSound (NULL, es->number, CHAN_AUTO, cgs.media.selectSound );
 		if ( clientNum == cg.predictedPlayerState.clientNum ) {
-			vr->realign = 3; // auto trigger weapon re-align in 4 frames
 			int position = vr->weapon_stabilised ? 4 : (vr->right_handed ? 1 : 2);
 			trap_HapticEvent("weapon_switch", 0, 0, 100, 0, 0);
 		}
@@ -922,7 +921,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 		trap_S_StartSound (NULL, es->number, CHAN_AUTO, cgs.media.teleInSound );
 		CG_SpawnEffect( position);
 		if (clientNum == cg.predictedPlayerState.clientNum) {
-			vr->realign = 3; // auto trigger weapon re-align in 4 frames
+			vr->realign = 3; // Initiate position reset for fake 6DoF
             trap_HapticEvent("spark", 0, 0, 80, 0, 0);
 		}
 		break;

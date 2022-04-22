@@ -410,133 +410,26 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 			ri.Error(ERR_FATAL, "RE_BeginFrame() - glGetError() failed (0x%x)!", err);
 	}
 
-	if (glConfig.stereoEnabled) {
+	{
 		if (tr.renderFbo && tr.vrParms.renderBufferOriginal == 0) {
 			tr.vrParms.renderBufferOriginal = tr.renderFbo->frameBuffer;
 		}
 
-		if ( stereoFrame == STEREO_LEFT ) {
+		{
 			if (tr.vrParms.valid == qtrue) {
 				if (tr.renderFbo) {
 					switchEyeCommand_t* sec;
 					if (!(sec = R_GetCommandBuffer(sizeof(*sec))))
 						return;
 					sec->commandId = RC_SWITCH_EYE;
-					sec->eye = tr.vrParms.renderBufferL;
+					sec->eye = tr.vrParms.renderBuffer;
 					sec->stereoFrame = stereoFrame;
 				}
 			}
-		} else if ( stereoFrame == STEREO_RIGHT ) {
-			if (tr.vrParms.valid == qtrue) {
-				if (tr.renderFbo) {
-					switchEyeCommand_t* sec;
-					if (!(sec = R_GetCommandBuffer(sizeof(*sec))))
-						return;
-					sec->commandId = RC_SWITCH_EYE;
-					sec->eye = tr.vrParms.renderBufferR;
-					sec->stereoFrame = stereoFrame;
-				}
-			}
-		} else {
-			ri.Error( ERR_FATAL, "RE_BeginFrame: Stereo is enabled, but stereoFrame was %i", stereoFrame );
-		}
-	}
-	else
-	{
-		if(r_anaglyphMode->integer)
-		{
-			if(r_anaglyphMode->modified)
-			{
-				// clear both, front and backbuffer.
-				qglColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-				backEnd.colorMask[0] = GL_FALSE;
-				backEnd.colorMask[1] = GL_FALSE;
-				backEnd.colorMask[2] = GL_FALSE;
-				backEnd.colorMask[3] = GL_FALSE;
-								
-				if (glRefConfig.framebufferObject)
-				{
-					// clear all framebuffers
-					if (tr.msaaResolveFbo)
-					{
-						FBO_Bind(tr.msaaResolveFbo);
-						qglClear(GL_COLOR_BUFFER_BIT);
-					}
-
-					if (tr.renderFbo)
-					{
-						FBO_Bind(tr.renderFbo);
-						qglClear(GL_COLOR_BUFFER_BIT);
-					}
-
-					FBO_Bind(NULL);
-				}
-
-				qglDrawBuffer(GL_FRONT);
-				qglClear(GL_COLOR_BUFFER_BIT);
-				qglDrawBuffer(GL_BACK);
-				qglClear(GL_COLOR_BUFFER_BIT);
-
-				r_anaglyphMode->modified = qfalse;
-			}
-			
-			if(stereoFrame == STEREO_LEFT)
-			{
-				if( !(cmd = R_GetCommandBuffer(sizeof(*cmd))) )
-					return;
-				
-				if( !(colcmd = R_GetCommandBuffer(sizeof(*colcmd))) )
-					return;
-			}
-			else if(stereoFrame == STEREO_RIGHT)
-			{
-				clearDepthCommand_t *cldcmd;
-				
-				if( !(cldcmd = R_GetCommandBuffer(sizeof(*cldcmd))) )
-					return;
-
-				cldcmd->commandId = RC_CLEARDEPTH;
-
-				if( !(colcmd = R_GetCommandBuffer(sizeof(*colcmd))) )
-					return;
-			}
-			else
-				ri.Error( ERR_FATAL, "RE_BeginFrame: Stereo is enabled, but stereoFrame was %i", stereoFrame );
-
-			R_SetColorMode(colcmd->rgba, stereoFrame, r_anaglyphMode->integer);
-			colcmd->commandId = RC_COLORMASK;
-		}
-		else
-		{
-			if(stereoFrame != STEREO_CENTER)
-				ri.Error( ERR_FATAL, "RE_BeginFrame: Stereo is disabled, but stereoFrame was %i", stereoFrame );
-
-			if( !(cmd = R_GetCommandBuffer(sizeof(*cmd))) )
-				return;
-		}
-
-		if(cmd)
-		{
-			cmd->commandId = RC_DRAW_BUFFER;
-
-			if(r_anaglyphMode->modified)
-			{
-				qglColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-				backEnd.colorMask[0] = 0;
-				backEnd.colorMask[1] = 0;
-				backEnd.colorMask[2] = 0;
-				backEnd.colorMask[3] = 0;
-				r_anaglyphMode->modified = qfalse;
-			}
-
-			if (!Q_stricmp(r_drawBuffer->string, "GL_FRONT"))
-				cmd->buffer = (int)GL_FRONT;
-			else
-				cmd->buffer = (int)GL_BACK;
 		}
 	}
 	
-	tr.refdef.stereoFrame = stereoFrame;
+	GLSL_PrepareUniformBuffers();
 }
 
 
@@ -579,6 +472,37 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	backEnd.pc.msec = 0;
 }
 
+void RE_HUDBufferStart( qboolean clear )
+{
+    hudBufferCommand_t	*cmd;
+
+    if ( !tr.registered ) {
+        return;
+    }
+    cmd = R_GetCommandBufferReserved( sizeof( *cmd ), 0 );
+    if ( !cmd ) {
+        return;
+    }
+    cmd->start = qtrue;
+    cmd->clear = clear;
+    cmd->commandId = RC_HUD_BUFFER;
+}
+
+void RE_HUDBufferEnd( void )
+{
+    hudBufferCommand_t	*cmd;
+
+    if ( !tr.registered ) {
+        return;
+    }
+    cmd = R_GetCommandBufferReserved( sizeof( *cmd ), 0 );
+    if ( !cmd ) {
+        return;
+    }
+    cmd->start = qfalse;
+    cmd->commandId = RC_HUD_BUFFER;
+}
+
 //#if __ANDROID__
 void R_Mat4Transpose( const float in[4][4], float* out ) {
 	int i, j;
@@ -589,12 +513,11 @@ void R_Mat4Transpose( const float in[4][4], float* out ) {
 	}
 }
 
-
-void RE_SetVRHeadsetParms( const float projectionMatrix[4][4],
-        int renderBufferL, int renderBufferR ) {
+void RE_SetVRHeadsetParms( const float projectionMatrix[4][4],  const float nonVRProjectionMatrix[4][4],
+        int renderBuffer ) {
 	R_Mat4Transpose(projectionMatrix, tr.vrParms.projection);
-	tr.vrParms.renderBufferL = renderBufferL;
-	tr.vrParms.renderBufferR = renderBufferR;
+	R_Mat4Transpose(nonVRProjectionMatrix, tr.vrParms.monoVRProjection);
+	tr.vrParms.renderBuffer = renderBuffer;
 	tr.vrParms.valid = qtrue;
 }
 //#endif

@@ -745,7 +745,7 @@ static int CG_CalcViewValues( ) {
         VectorCopy(cg.refdef.vieworg, cg.vr_vieworigin);
     }
 
-    if (!cgs.localServer && cg.stereoView == STEREO_LEFT)
+    if (vr->use_fake_6dof && !vr->virtual_screen)
     {
         vec3_t weaponorigin, weaponangles;
         CG_CalculateVRWeaponPosition(weaponorigin, weaponangles);
@@ -768,6 +768,12 @@ static int CG_CalcViewValues( ) {
 			CG_LaserSight(weaponorigin, trace.endpos, colour, 1.0f);
         }
 
+		if (cg.predictedPlayerState.pm_flags == PM_SPECTATOR)
+		{
+			//If spectating, just take the weapon angles directly
+			VectorCopy(weaponangles, vr->calculated_weaponangles);
+		}
+		else
         {
             VectorSubtract(trace.endpos, cg.refdef.vieworg, dir);
             vectoangles(dir, vr->calculated_weaponangles);
@@ -807,7 +813,7 @@ static int CG_CalcViewValues( ) {
     }
 
 	// position eye relative to origin
-	if (!cgs.localServer)
+	if (vr->use_fake_6dof && !vr->virtual_screen)
     {
 		if (vr->weapon_zoomed) {
 			//If we are zoomed, then we use the refdefViewANgles (which are the weapon angles)
@@ -998,7 +1004,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 	// this counter will be bumped for every valid scene we generate
 	cg.clientFrame++;
 
-	if (cg.stereoView == STEREO_LEFT)
+	//if (cg.stereoView == STEREO_LEFT)
 	{
 		// update cg.predictedPlayerState - only do this on the first eye render
 		CG_PredictPlayerState();

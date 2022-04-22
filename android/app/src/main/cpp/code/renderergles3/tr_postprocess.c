@@ -318,7 +318,7 @@ void RB_SunRays(FBO_t *srcFbo, ivec4_t srcBox, FBO_t *dstFbo, ivec4_t dstBox)
 		mat4_t trans, model;
 
 		Mat4Translation( backEnd.viewParms.or.origin, trans );
-		Mat4Multiply( backEnd.viewParms.world.modelMatrix, trans, model );
+		Mat4Multiply( backEnd.viewParms.world.modelView, trans, model );
 		Mat4Multiply(backEnd.viewParms.projectionMatrix, model, mvp);
 
 		dist = backEnd.viewParms.zFar / 1.75;		// div sqrt(3)
@@ -327,7 +327,6 @@ void RB_SunRays(FBO_t *srcFbo, ivec4_t srcBox, FBO_t *dstFbo, ivec4_t dstBox)
 	}
 
 	// project sun point
-	//Mat4Multiply(backEnd.viewParms.projectionMatrix, backEnd.viewParms.world.modelMatrix, mvp);
 	Mat4Transform(mvp, pos, hpos);
 
 	// transform to UV coords

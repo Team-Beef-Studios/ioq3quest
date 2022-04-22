@@ -165,7 +165,7 @@ static void CG_DrawPlayerArmorIcon( rectDef_t *rect, qboolean draw2D ) {
 	vec3_t		angles;
 	vec3_t		origin;
 
-	if ( cg_drawStatus.integer == 0 ) {
+	if ( trap_Cvar_VariableValue( "vr_hudDrawStatus" ) == 0 ) {
 		return;
 	}
 
@@ -1501,7 +1501,7 @@ void CG_DrawMedal(int ownerDraw, rectDef_t *rect, float scale, vec4_t color, qha
 void CG_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y, int ownerDraw, int ownerDrawFlags, int align, float special, float scale, vec4_t color, qhandle_t shader, int textStyle) {
 	rectDef_t rect;
 
-  if ( cg_drawStatus.integer == 0 ) {
+  if ( trap_Cvar_VariableValue( "vr_hudDrawStatus" ) == 0 ) {
 		return;
 	}
 

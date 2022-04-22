@@ -589,6 +589,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		SDL_GL_SetAttribute( SDL_GL_MULTISAMPLEBUFFERS, samples ? 1 : 0 );
 		SDL_GL_SetAttribute( SDL_GL_MULTISAMPLESAMPLES, samples );
 
+#if 0
 		if(r_stereoEnabled->integer)
 		{
 			glConfig.stereoEnabled = qtrue;
@@ -602,7 +603,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 		
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 
-#if 0 // if multisampling is enabled on X11, this causes create window to fail.
+        // if multisampling is enabled on X11, this causes create window to fail.
 		// If not allowing software GL, demand accelerated
 		if( !r_allowSoftwareGL->integer )
 			SDL_GL_SetAttribute( SDL_GL_ACCELERATED_VISUAL, 1 );
@@ -615,7 +616,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			continue;
 		}
 
-		if( fullscreen )
+		if( qfalse ) //fullscreen )
 		{
 			SDL_DisplayMode mode;
 
@@ -638,7 +639,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			}
 		}
 
-		SDL_SetWindowIcon( SDL_window, icon );
+		//SDL_SetWindowIcon( SDL_window, icon );
 
 		if (!fixedFunction)
 		{
@@ -648,7 +649,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minorVersion);
 
 			ri.Printf(PRINT_ALL, "Trying to get an OpenGL 3.2 core context\n");
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 			if ((SDL_glContext = SDL_GL_CreateContext(SDL_window)) == NULL)
@@ -1105,10 +1106,11 @@ Responsible for doing a swapbuffers
 */
 void GLimp_EndFrame( void )
 {
+#if 0
 	//swap window is implemented in VR API, no need to do it here
 	if ( Q_stricmp( r_drawBuffer->string, "GL_FRONT" ) != 0 )
 	{
-		//SDL_GL_SwapWindow( SDL_window );
+		SDL_GL_SwapWindow( SDL_window );
 	}
 
 	if( r_fullscreen->modified )
@@ -1143,4 +1145,5 @@ void GLimp_EndFrame( void )
 
 		r_fullscreen->modified = qfalse;
 	}
+#endif
 }

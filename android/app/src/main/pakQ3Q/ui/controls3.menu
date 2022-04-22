@@ -180,7 +180,7 @@ itemDef {
       		type ITEM_TYPE_MULTI
 		text "Weapon Wheel Mode:"
 		cvar "vr_weaponSelectorMode"
-		cvarFloatList { "Controller Based" 0 "HMD/Thumbstick Based" 1 }
+		cvarFloatList { "VR Style / Pointing" 0 "Classic / Thumbstick" 1 }
 		rect 99 300 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128
@@ -196,7 +196,7 @@ itemDef {
       		type ITEM_TYPE_MULTI
 		text "Control Schema:"
 		cvar "vr_controlSchema"
-		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 }
+		cvarFloatList { "Weapon Wheel on Grip" 0 "Weapon Wheel on Thumbstick" 1 "Weapon Wheel Disabled" 2 }
 		rect 99 325 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 100

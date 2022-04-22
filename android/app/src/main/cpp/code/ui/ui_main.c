@@ -3102,6 +3102,7 @@ static void UI_Update(const char *name) {
 				trap_Cvar_SetValue( "r_fastSky", 0 );
 				trap_Cvar_SetValue( "r_inGameVideo", 1 );
 				trap_Cvar_SetValue( "cg_shadows", 1 );
+				trap_Cvar_SetValue( "cg_playerShadow", 1 );
 				trap_Cvar_SetValue( "cg_brassTime", 2500 );
 				trap_Cvar_Set( "r_texturemode", "GL_LINEAR_MIPMAP_LINEAR" );
 			break;
@@ -3122,6 +3123,7 @@ static void UI_Update(const char *name) {
 				trap_Cvar_SetValue( "cg_brassTime", 2500 );
 				trap_Cvar_Set( "r_texturemode", "GL_LINEAR_MIPMAP_LINEAR" );
 				trap_Cvar_SetValue( "cg_shadows", 0 );
+				trap_Cvar_SetValue( "cg_playerShadow", 0 );
 			break;
 			case 2: // fast
 				trap_Cvar_SetValue( "r_fullScreen", 1 );
@@ -3136,6 +3138,7 @@ static void UI_Update(const char *name) {
 				trap_Cvar_Set( "ui_videomode", "640x480" );
 				trap_Cvar_SetValue( "r_texturebits", 0 );
 				trap_Cvar_SetValue( "cg_shadows", 0 );
+				trap_Cvar_SetValue( "cg_playerShadow", 0 );
 				trap_Cvar_SetValue( "r_fastSky", 1 );
 				trap_Cvar_SetValue( "r_inGameVideo", 0 );
 				trap_Cvar_SetValue( "cg_brassTime", 0 );
@@ -3154,6 +3157,7 @@ static void UI_Update(const char *name) {
 				trap_Cvar_SetValue( "r_picmip", 2 );
 				trap_Cvar_SetValue( "r_texturebits", 16 );
 				trap_Cvar_SetValue( "cg_shadows", 0 );
+				trap_Cvar_SetValue( "cg_playerShadow", 0 );
 				trap_Cvar_SetValue( "cg_brassTime", 0 );
 				trap_Cvar_SetValue( "r_fastSky", 1 );
 				trap_Cvar_SetValue( "r_inGameVideo", 0 );
@@ -3170,7 +3174,39 @@ static void UI_Update(const char *name) {
 		qboolean uturn = trap_Cvar_VariableValue( "vr_uturn" ) != 0;
 		switch (val)
 		{
-			case 0: // Default schema
+			case 0: // Default schema (weapon wheel on grip)
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", ""); // unmapped
+				if (uturn) {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn"); // u-turn
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK", ""); // unmapped
+				}
+				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+weapon_select"); // weapon selector
+				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", ""); // unmapped
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", ""); // unmapped
+				break;
+			case 1: // Weapon wheel on thumbstick - all directions as weapon select (useful for HMD wheel)
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBBACK", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", "+weapon_select");
+				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
+				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", "turnleft"); // turn left
+				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", "turnright"); // turn right
+				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "blank");
+				if (uturn) {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
+				} else {
+					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "blank");
+				}
+				break;
+			default: // Weapon wheel disabled - only prev/next weapon switch is active
 				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "turnleft"); // turn left
 				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "turnright"); // turn right
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "weapnext"); // next weapon
@@ -3179,60 +3215,29 @@ static void UI_Update(const char *name) {
 				} else {
 					trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev"); // previous weapon
 				}
-				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+weapon_select"); // weapon selector
+				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
 				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", ""); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", ""); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", ""); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", ""); // unmapped
 				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", ""); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", ""); // unmapped
-				break;
-			default: // Now we have only two schemas
-				// All directions as weapon select (useful for HMD wheel)
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBBACK", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBLEFT", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_PRIMARYTHUMBSTICK", "+weapon_select");
-				trap_Cvar_Set("vr_button_map_PRIMARYGRIP", "+alt"); // switch to alt layout
-				trap_Cvar_Set("vr_button_map_RTHUMBLEFT_ALT", "turnleft"); // turn left
-				trap_Cvar_Set("vr_button_map_RTHUMBRIGHT_ALT", "turnright"); // turn right
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARD_ALT", "weapnext");
-				if (uturn) {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
-				} else {
-					trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "weapprev");
-				}
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDRIGHT_ALT", "blank"); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKRIGHT_ALT", "blank"); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBBACKLEFT_ALT", "blank"); // unmapped
-				trap_Cvar_Set("vr_button_map_RTHUMBFORWARDLEFT_ALT", "blank"); // unmapped
 				break;
 		}
 	} else if (Q_stricmp(name, "vr_uturn") == 0) {
-		int controlSchema = (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 2;
+		int controlSchema = (int)trap_Cvar_VariableValue( "vr_controlSchema" ) % 3;
 		if (val) {
-        	if (controlSchema == 0) {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
-        	} else {
+        	if (controlSchema == 1) {
         		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "uturn");
+        	} else {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "uturn");
         	}
         } else {
-        	if (controlSchema == 0) {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "");
+        	if (controlSchema == 1) {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "blank");
+        	} else if (controlSchema == 2) {
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "weapprev");
         	} else {
-        		trap_Cvar_Set("vr_button_map_RTHUMBBACK_ALT", "");
+        		trap_Cvar_Set("vr_button_map_RTHUMBBACK", "");
         	}
         }
 	} else if (Q_stricmp(name, "vr_goreLevel") == 0) {
@@ -3256,6 +3261,15 @@ static void UI_Update(const char *name) {
 				trap_Cvar_SetValue( "com_blood", 1);
 				trap_Cvar_SetValue( "cg_gibs", 1);
 				trap_Cvar_SetValue( "cg_megagibs", 1);
+				break;
+		}
+	} else if (Q_stricmp(name, "vr_hudDrawStatus") == 0) {
+		switch (val) {
+			case 2:
+				trap_Cvar_SetValue("cg_draw3dIcons", 0);
+				break;
+			default:
+				trap_Cvar_SetValue("cg_draw3dIcons", 1);
 				break;
 		}
 	}

@@ -306,6 +306,21 @@ void FBO_Init(void)
 		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	}
 
+	{
+		tr.hudFbo = FBO_Create("_hud", tr.hudImage->width, tr.hudImage->height);
+		FBO_AttachImage(tr.hudFbo, tr.hudImage, GL_COLOR_ATTACHMENT0, 0);
+		FBO_AttachImage(tr.hudFbo, tr.hudDepthImage, GL_DEPTH_ATTACHMENT, 0);
+		R_CheckFBO(tr.hudFbo);
+
+		// clear render buffer
+		if (tr.hudFbo)
+		{
+			GL_BindFramebuffer(GL_FRAMEBUFFER, tr.hudFbo->frameBuffer);
+			qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		}
+	}
+
+
 	if (tr.screenScratchImage)
 	{
 		tr.screenScratchFbo = FBO_Create("screenScratch", tr.screenScratchImage->width, tr.screenScratchImage->height);
@@ -440,14 +455,14 @@ void FBO_Shutdown(void)
 		for(j = 0; j < glRefConfig.maxColorAttachments; j++)
 		{
 			if(fbo->colorBuffers[j])
-				qglDeleteRenderbuffers(1, &fbo->colorBuffers[j]);
+				qglDeleteTextures(1, &fbo->colorBuffers[j]);
 		}
 
 		if(fbo->depthBuffer)
-			qglDeleteRenderbuffers(1, &fbo->depthBuffer);
+			qglDeleteTextures(1, &fbo->depthBuffer);
 
 		if(fbo->stencilBuffer)
-			qglDeleteRenderbuffers(1, &fbo->stencilBuffer);
+			qglDeleteTextures(1, &fbo->stencilBuffer);
 
 		if(fbo->frameBuffer)
 			qglDeleteFramebuffers(1, &fbo->frameBuffer);
@@ -576,8 +591,9 @@ void FBO_BlitFromTexture(struct image_s *src, vec4_t inSrcTexCorners, vec2_t inS
 	GL_State( blend );
 
 	GLSL_BindProgram(shaderProgram);
-	
-	GLSL_SetUniformMat4(shaderProgram, UNIFORM_MODELVIEWPROJECTIONMATRIX, projection);
+
+	GLSL_SetUniformMat4(shaderProgram, UNIFORM_MODELMATRIX, glState.modelMatrix);
+	GLSL_BindBuffers(shaderProgram);
 	GLSL_SetUniformVec4(shaderProgram, UNIFORM_COLOR, color);
 	GLSL_SetUniformVec2(shaderProgram, UNIFORM_INVTEXRES, invTexRes);
 	GLSL_SetUniformVec2(shaderProgram, UNIFORM_AUTOEXPOSUREMINMAX, tr.refdef.autoExposureMinMax);

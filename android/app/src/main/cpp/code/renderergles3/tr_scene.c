@@ -294,6 +294,7 @@ void RE_BeginScene(const refdef_t *fd)
 	tr.refdef.height = fd->height;
 	tr.refdef.fov_x = fd->fov_x;
 	tr.refdef.fov_y = fd->fov_y;
+	tr.refdef.isHUD = fd->isHUD;
 
 	VectorCopy( fd->vieworg, tr.refdef.vieworg );
 	VectorCopy( fd->viewaxis[0], tr.refdef.viewaxis[0] );
@@ -539,16 +540,27 @@ void RE_RenderScene( const refdef_t *fd ) {
 	// convert to GL's 0-at-the-bottom space
 	//
 	Com_Memset( &parms, 0, sizeof( parms ) );
-	parms.viewportX = tr.refdef.x;
-	parms.viewportY = glConfig.vidHeight - ( tr.refdef.y + tr.refdef.height );
-	parms.viewportWidth = tr.refdef.width;
-	parms.viewportHeight = tr.refdef.height;
+
+	if (vr_hudDrawStatus->integer != 2 && tr.refdef.isHUD)
+    {
+        parms.viewportX = tr.refdef.x;
+        parms.viewportY = tr.hudImage->height - (tr.refdef.y + tr.refdef.height);
+        parms.viewportWidth = tr.refdef.width;
+        parms.viewportHeight = tr.refdef.height;
+    }
+    else
+    {
+        parms.viewportX = tr.refdef.x;
+        parms.viewportY = glConfig.vidHeight - (tr.refdef.y + tr.refdef.height);
+        parms.viewportWidth = tr.refdef.width;
+        parms.viewportHeight = tr.refdef.height;
+    }
 	parms.isPortal = qfalse;
 
 	parms.fovX = tr.refdef.fov_x;
 	parms.fovY = tr.refdef.fov_y;
 	
-	parms.stereoFrame = tr.refdef.stereoFrame;
+	//parms.stereoFrame = tr.refdef.stereoFrame;
 
 	VectorCopy( fd->vieworg, parms.or.origin );
 	VectorCopy( fd->viewaxis[0], parms.or.axis[0] );

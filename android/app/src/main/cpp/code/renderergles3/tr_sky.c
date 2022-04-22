@@ -417,29 +417,16 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 
 	// FIXME: A lot of this can probably be removed for speed, and refactored into a more convenient function
 	RB_UpdateTessVao(ATTR_POSITION | ATTR_TEXCOORD);
-/*
-	{
-		shaderProgram_t *sp = &tr.textureColorShader;
 
-		GLSL_VertexAttribsState(ATTR_POSITION | ATTR_TEXCOORD);
-		GLSL_BindProgram(sp);
-		
-		GLSL_SetUniformMat4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
-		
-		color[0] = 
-		color[1] = 
-		color[2] = tr.identityLight;
-		color[3] = 1.0f;
-		GLSL_SetUniformVec4(sp, UNIFORM_COLOR, color);
-	}
-*/
+
 	{
 		shaderProgram_t *sp = &tr.lightallShader[0];
 		vec4_t vector;
 
 		GLSL_BindProgram(sp);
-		
-		GLSL_SetUniformMat4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+
+		GLSL_SetUniformMat4(sp, UNIFORM_MODELMATRIX, glState.modelMatrix);
+		GLSL_BindBuffers(sp);
 		
 		color[0] = 
 		color[1] = 
@@ -796,15 +783,13 @@ void RB_DrawSun( float scale, shader_t *shader ) {
 		return;
 	}
 
-	//qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
-	//qglTranslatef (backEnd.viewParms.or.origin[0], backEnd.viewParms.or.origin[1], backEnd.viewParms.or.origin[2]);
 	{
 		// FIXME: this could be a lot cleaner
-		mat4_t translation, modelview;
+		mat4_t translation, modelmatrix;
 
 		Mat4Translation( backEnd.viewParms.or.origin, translation );
-		Mat4Multiply( backEnd.viewParms.world.modelMatrix, translation, modelview );
-		GL_SetModelviewMatrix( modelview, qtrue );
+		Mat4Multiply( backEnd.viewParms.world.modelMatrix, translation, modelmatrix );
+		GL_SetModelMatrix( modelmatrix );
 	}
 
 	dist = 	backEnd.viewParms.zFar / 1.75;		// div sqrt(3)
@@ -881,16 +866,16 @@ void RB_StageIteratorSky( void ) {
 			// FIXME: this could be a lot cleaner
 			mat4_t trans, product;
 
-			Mat4Copy( glState.modelview, oldmodelview );
+			Mat4Copy( glState.modelMatrix, oldmodelview );
 			Mat4Translation( backEnd.viewParms.or.origin, trans );
-			Mat4Multiply( glState.modelview, trans, product );
-			GL_SetModelviewMatrix( product, qtrue );
+			Mat4Multiply( glState.modelMatrix, trans, product );
+			GL_SetModelMatrix( product );
 
 		}
 
 		DrawSkyBox( tess.shader );
 
-		GL_SetModelviewMatrix( oldmodelview, qtrue );
+		GL_SetModelMatrix( oldmodelview );
 	}
 
 	// generate the vertexes for all the clouds, which will be drawn
