@@ -335,6 +335,7 @@ void VR_DrawFrame( engine_t* engine ) {
     frameState.next = NULL;
 
     OXR(xrWaitFrame(engine->appState.Session, &waitFrameInfo, &frameState));
+    engine->predictedDisplayTime = frameState.predictedDisplayTime;
 
     // Get the HMD pose, predicted for the middle of the time period during which
     // the new eye images will be displayed. The number of frames predicted ahead
@@ -477,7 +478,7 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.subImage.imageRect.extent.height = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Height;
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-        const XrVector3f pos = {0.0f, 0.0f, -1.0f};
+        const XrVector3f pos = {xfStageFromHead.position.x, 0.0f, xfStageFromHead.position.z - 1.0f};
         cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
         cylinder_layer.pose.position = pos;
         cylinder_layer.radius = 1.0f;

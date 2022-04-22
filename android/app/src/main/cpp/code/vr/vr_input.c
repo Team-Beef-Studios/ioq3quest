@@ -90,9 +90,7 @@ void rotateAboutOrigin(float x, float y, float rotation, vec2_t out)
 	out[1] = cosf(DEG2RAD(-rotation)) * y  -  sinf(DEG2RAD(-rotation)) * x;
 }
 
-//TODO:
-/*
-static ovrVector3f normalizeVec(ovrVector3f vec) {
+XrVector3f normalizeVec(XrVector3f vec) {
     //NOTE: leave w-component untouched
     //@@const float EPSILON = 0.000001f;
     float xxyyzz = vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
@@ -100,14 +98,13 @@ static ovrVector3f normalizeVec(ovrVector3f vec) {
     //@@    return *this; // do nothing if it is zero vector
 
     //float invLength = invSqrt(xxyyzz);
-    ovrVector3f result;
+    XrVector3f result;
     float invLength = 1.0f / sqrtf(xxyyzz);
     result.x = vec.x * invLength;
     result.y = vec.y * invLength;
     result.z = vec.z * invLength;
     return result;
 }
-*/
 
 static float length(float x, float y)
 {
@@ -124,9 +121,7 @@ void NormalizeAngles(vec3_t angles)
     while (angles[2] < -180) angles[2] += 360;
 }
 
-//TODO:
-/*
-void GetAnglesFromVectors(const ovrVector3f forward, const ovrVector3f right, const ovrVector3f up, vec3_t angles)
+void GetAnglesFromVectors(const XrVector3f forward, const XrVector3f right, const XrVector3f up, vec3_t angles)
 {
     float sr, sp, sy, cr, cp, cy;
 
@@ -175,7 +170,7 @@ void GetAnglesFromVectors(const ovrVector3f forward, const ovrVector3f right, co
     NormalizeAngles(angles);
 }
 
-void QuatToYawPitchRoll(ovrQuatf q, vec3_t rotation, vec3_t out) {
+void QuatToYawPitchRoll(XrQuaternionf q, vec3_t rotation, vec3_t out) {
 
     ovrMatrix4f mat = ovrMatrix4f_CreateFromQuaternion( &q );
 
@@ -185,25 +180,24 @@ void QuatToYawPitchRoll(ovrQuatf q, vec3_t rotation, vec3_t out) {
         mat = ovrMatrix4f_Multiply(&mat, &rot);
     }
 
-    ovrVector4f v1 = {0, 0, -1, 0};
-    ovrVector4f v2 = {1, 0, 0, 0};
-    ovrVector4f v3 = {0, 1, 0, 0};
+    XrVector4f v1 = {0, 0, -1, 0};
+    XrVector4f v2 = {1, 0, 0, 0};
+    XrVector4f v3 = {0, 1, 0, 0};
 
-    ovrVector4f forwardInVRSpace = ovrVector4f_MultiplyMatrix4f(&mat, &v1);
-    ovrVector4f rightInVRSpace = ovrVector4f_MultiplyMatrix4f(&mat, &v2);
-    ovrVector4f upInVRSpace = ovrVector4f_MultiplyMatrix4f(&mat, &v3);
+    XrVector4f forwardInVRSpace = XrVector4f_MultiplyMatrix4f(&mat, &v1);
+    XrVector4f rightInVRSpace = XrVector4f_MultiplyMatrix4f(&mat, &v2);
+    XrVector4f upInVRSpace = XrVector4f_MultiplyMatrix4f(&mat, &v3);
 
-    ovrVector3f forward = {-forwardInVRSpace.z, -forwardInVRSpace.x, forwardInVRSpace.y};
-    ovrVector3f right = {-rightInVRSpace.z, -rightInVRSpace.x, rightInVRSpace.y};
-    ovrVector3f up = {-upInVRSpace.z, -upInVRSpace.x, upInVRSpace.y};
+    XrVector3f forward = {-forwardInVRSpace.z, -forwardInVRSpace.x, forwardInVRSpace.y};
+    XrVector3f right = {-rightInVRSpace.z, -rightInVRSpace.x, rightInVRSpace.y};
+    XrVector3f up = {-upInVRSpace.z, -upInVRSpace.x, upInVRSpace.y};
 
-    ovrVector3f forwardNormal = normalizeVec(forward);
-    ovrVector3f rightNormal = normalizeVec(right);
-    ovrVector3f upNormal = normalizeVec(up);
+    XrVector3f forwardNormal = normalizeVec(forward);
+    XrVector3f rightNormal = normalizeVec(right);
+    XrVector3f upNormal = normalizeVec(up);
 
     GetAnglesFromVectors(forwardNormal, rightNormal, upNormal, out);
 }
-*/
 
 //0 = left, 1 = right
 float vibration_channel_duration[2] = {0.0f, 0.0f};
@@ -958,27 +952,15 @@ void IN_VRInputFrame( void )
 		controllerInit = qtrue;
 	}
 
-	//TODO:
-	/*
-	ovrMobile* ovr = VR_GetEngine()->ovr;
-	if (!ovr) {
-		return;
-	}
-
-    ovrResult result;
 	if (vr_extralatencymode != NULL &&
             vr_extralatencymode->integer) {
-        result = vrapi_SetExtraLatencyMode(VR_GetEngine()->ovr, VRAPI_EXTRA_LATENCY_MODE_ON);
-        assert(result == VRAPI_INITIALIZE_SUCCESS);
+        //TODO:vrapi_SetExtraLatencyMode(VR_GetEngine()->ovr, VRAPI_EXTRA_LATENCY_MODE_ON);
     }
 
 	if (vr_refreshrate != NULL && vr_refreshrate->integer)
 	{
-		vrapi_SetDisplayRefreshRate(VR_GetEngine()->ovr, (float)vr_refreshrate->integer);
+		//TODO:vrapi_SetDisplayRefreshRate(VR_GetEngine()->ovr, (float)vr_refreshrate->integer);
 	}
-
-    result = vrapi_SetClockLevels(VR_GetEngine()->ovr, 4, 4);
-    assert(result == VRAPI_INITIALIZE_SUCCESS);
 
 	vr.virtual_screen = VR_useScreenLayer();
 
@@ -990,10 +972,14 @@ void IN_VRInputFrame( void )
     {
 		// We extract Yaw, Pitch, Roll instead of directly using the orientation
 		// to allow "additional" yaw manipulation with mouse/controller.
-		const ovrQuatf quatHmd =  VR_GetEngine()->tracking.HeadPose.Pose.Orientation;
-		const ovrVector3f positionHmd = VR_GetEngine()->tracking.HeadPose.Pose.Position;
+        XrSpaceLocation loc = {};
+        loc.type = XR_TYPE_SPACE_LOCATION;
+        OXR(xrLocateSpace(VR_GetEngine()->appState.HeadSpace, VR_GetEngine()->appState.CurrentSpace, VR_GetEngine()->predictedDisplayTime, &loc));
+        XrPosef xfStageFromHead = loc.pose;
+		const XrQuaternionf quatHmd = xfStageFromHead.orientation;
+		const XrVector3f positionHmd = xfStageFromHead.position;
 		vec3_t rotation = {0, 0, 0};
-		QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
+        QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
 		VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
 
 		//Position
@@ -1014,7 +1000,8 @@ void IN_VRInputFrame( void )
 		vr.clientview_yaw_last = clientview_yaw;
 	}
 
-	ovrInputCapabilityHeader capsHeader;
+	//TODO:
+	/*ovrInputCapabilityHeader capsHeader;
 	uint32_t index = 0;
 	for (;;) {
 		ovrResult enumResult = vrapi_EnumerateInputDevices(ovr, index, &capsHeader);
@@ -1067,11 +1054,10 @@ void IN_VRInputFrame( void )
 		IN_VRController(isRight, remoteTracking);
 		IN_VRJoystick(isRight, state.Joystick.x, state.Joystick.y);
 		IN_VRTriggers(isRight, state.IndexTrigger);
-	}
+	}*/
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
-	 */
 }
 
 //#endif

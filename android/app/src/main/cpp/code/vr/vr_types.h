@@ -121,7 +121,7 @@ typedef struct {
 } ovrApp;
 
 
-typedef struct ovrMatrix4f_ {
+typedef struct {
     float M[4][4];
 } ovrMatrix4f;
 
@@ -129,6 +129,7 @@ typedef struct {
 	uint64_t frameIndex;
 	ovrApp appState;
 	ovrJava java;
+	float predictedDisplayTime;
 } engine_t;
 
 typedef enum {
@@ -157,6 +158,16 @@ void ovrFramebuffer_Release(ovrFramebuffer* frameBuffer);
 void ovrFramebuffer_SetCurrent(ovrFramebuffer* frameBuffer);
 void ovrFramebuffer_SetNone();
 
+void ovrRenderer_Create(
+		XrSession session,
+		ovrRenderer* renderer,
+		int suggestedEyeTextureWidth,
+		int suggestedEyeTextureHeight);
+void ovrRenderer_Destroy(ovrRenderer* renderer);
+
+ovrMatrix4f ovrMatrix4f_Multiply(const ovrMatrix4f* a, const ovrMatrix4f* b);
+ovrMatrix4f ovrMatrix4f_CreateRotation(const float radiansX, const float radiansY, const float radiansZ);
+ovrMatrix4f ovrMatrix4f_CreateFromQuaternion(const XrQuaternionf* q);
 ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
 		const float fovDegreesX,
 		const float fovDegreesY,
@@ -165,11 +176,6 @@ ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
 		const float nearZ,
 		const float farZ);
 
-void ovrRenderer_Create(
-		XrSession session,
-		ovrRenderer* renderer,
-		int suggestedEyeTextureWidth,
-		int suggestedEyeTextureHeight);
-void ovrRenderer_Destroy(ovrRenderer* renderer);
+XrVector4f XrVector4f_MultiplyMatrix4f(const ovrMatrix4f* a, const XrVector4f* v);
 
 #endif
