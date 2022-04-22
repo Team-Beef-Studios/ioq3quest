@@ -665,3 +665,16 @@ XrVector4f XrVector4f_MultiplyMatrix4f(const ovrMatrix4f* a, const XrVector4f* v
     out.w = a->M[3][0] * v->x + a->M[3][1] * v->y + a->M[3][2] * v->z + a->M[3][3] * v->w;
     return out;
 }
+
+/*
+================================================================================
+
+ovrTrackedController
+
+================================================================================
+*/
+
+void ovrTrackedController_Clear(ovrTrackedController* controller) {
+    controller->Active = false;
+    controller->Pose = XrPosef_Identity();
+}

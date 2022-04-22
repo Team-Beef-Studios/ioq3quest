@@ -84,6 +84,11 @@ typedef struct {
 } ovrRenderer;
 
 typedef struct {
+    GLboolean Active;
+    XrPosef Pose;
+} ovrTrackedController;
+
+typedef struct {
     GLboolean Focused;
 
     XrInstance Instance;
@@ -113,6 +118,7 @@ typedef struct {
 
     GLboolean TouchPadDownLastFrame;
     ovrRenderer Renderer;
+    ovrTrackedController TrackedController[4]; // left aim, left grip, right aim, right grip
 } ovrApp;
 
 
@@ -159,6 +165,8 @@ void ovrRenderer_Create(
 		int suggestedEyeTextureWidth,
 		int suggestedEyeTextureHeight);
 void ovrRenderer_Destroy(ovrRenderer* renderer);
+
+void ovrTrackedController_Clear(ovrTrackedController* controller);
 
 ovrMatrix4f ovrMatrix4f_Multiply(const ovrMatrix4f* a, const ovrMatrix4f* b);
 ovrMatrix4f ovrMatrix4f_CreateRotation(const float radiansX, const float radiansY, const float radiansZ);
