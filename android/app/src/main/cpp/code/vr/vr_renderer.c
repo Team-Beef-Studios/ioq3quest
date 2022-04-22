@@ -152,10 +152,8 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
         *pWidth = width = engine->appState.ViewConfigurationView[0].recommendedImageRectWidth;
         *pHeight = height = engine->appState.ViewConfigurationView[0].recommendedImageRectHeight;
         //TODO:
-        /*
-        vr.fov_x = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
-        vr.fov_y = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
-         */
+        vr.fov_x = 90;
+        vr.fov_y = 90;
 	}
 	else
 	{
@@ -294,94 +292,7 @@ void VR_DestroyRenderer( engine_t* engine ) {
     free(projections);
 }
 
-
-//TODO:
-/*
-// Assumes landscape cylinder shape.
-static ovrMatrix4f CylinderModelMatrix( const int texWidth, const int texHeight,
-										const ovrVector3f translation,
-										const float rotateYaw,
-										const float rotatePitch,
-										const float radius,
-										const float density )
-{
-	const ovrMatrix4f scaleMatrix = ovrMatrix4f_CreateScale( radius, radius * (float)texHeight * VRAPI_PI / density, radius );
-	const ovrMatrix4f transMatrix = ovrMatrix4f_CreateTranslation( translation.x, translation.y, translation.z );
-	const ovrMatrix4f rotXMatrix = ovrMatrix4f_CreateRotation( rotateYaw, 0.0f, 0.0f );
-	const ovrMatrix4f rotYMatrix = ovrMatrix4f_CreateRotation( 0.0f, rotatePitch, 0.0f );
-
-	const ovrMatrix4f m0 = ovrMatrix4f_Multiply( &transMatrix, &scaleMatrix );
-	const ovrMatrix4f m1 = ovrMatrix4f_Multiply( &rotXMatrix, &m0 );
-	const ovrMatrix4f m2 = ovrMatrix4f_Multiply( &rotYMatrix, &m1 );
-
-	return m2;
-}
-
-extern cvar_t	*vr_screen_dist;
-
-ovrLayerCylinder2 BuildCylinderLayer(engine_t* engine, const int textureWidth, const int textureHeight,
-	const ovrTracking2 * tracking, float rotatePitch )
-{
-	ovrLayerCylinder2 layer = vrapi_DefaultLayerCylinder2();
-
-	const float fadeLevel = 1.0f;
-	layer.Header.ColorScale.x =
-		layer.Header.ColorScale.y =
-		layer.Header.ColorScale.z =
-		layer.Header.ColorScale.w = fadeLevel;
-	layer.Header.SrcBlend = VRAPI_FRAME_LAYER_BLEND_SRC_ALPHA;
-	layer.Header.DstBlend = VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA;
-
-	//layer.Header.Flags = VRAPI_FRAME_LAYER_FLAG_CLIP_TO_TEXTURE_RECT;
-
-	layer.HeadPose = tracking->HeadPose;
-
-	const float density = 4500.0f;
-	const float rotateYaw = 0.0f;
-	const float radius = 12.0f;
-	const float distance = -16.0f;
-
-	const ovrVector3f translation = { 0.0f, 1.0f, distance };
-
-	ovrMatrix4f cylinderTransform = 
-		CylinderModelMatrix( textureWidth, textureHeight, translation,
-			rotateYaw, rotatePitch, radius, density );
-
-	const float circScale = density * 0.5f / textureWidth;
-	const float circBias = -circScale * ( 0.5f * ( 1.0f - 1.0f / circScale ) );
-
-	for ( int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++ )
-	{
-		ovrMatrix4f modelViewMatrix = ovrMatrix4f_Multiply( &tracking->Eye[eye].ViewMatrix, &cylinderTransform );
-		layer.Textures[eye].TexCoordsFromTanAngles = ovrMatrix4f_Inverse( &modelViewMatrix );
-		layer.Textures[eye].ColorSwapChain = engine->framebuffers.colorTexture;
-		layer.Textures[eye].SwapChainIndex = engine->framebuffers.swapchainIndex;
-
-		// Texcoord scale and bias is just a representation of the aspect ratio. The positioning
-		// of the cylinder is handled entirely by the TexCoordsFromTanAngles matrix.
-
-		const float texScaleX = circScale;
-		const float texBiasX = circBias;
-		const float texScaleY = -0.5f;
-		const float texBiasY = texScaleY * ( 0.5f * ( 1.0f - ( 1.0f / texScaleY ) ) );
-
-		layer.Textures[eye].TextureMatrix.M[0][0] = texScaleX;
-		layer.Textures[eye].TextureMatrix.M[0][2] = texBiasX;
-		layer.Textures[eye].TextureMatrix.M[1][1] = texScaleY;
-		layer.Textures[eye].TextureMatrix.M[1][2] = -texBiasY;
-
-		layer.Textures[eye].TextureRect.width = 1.0f;
-		layer.Textures[eye].TextureRect.height = 1.0f;
-	}
-
-	return layer;
-}
-*/
-
 void VR_DrawFrame( engine_t* engine ) {
-	float fov_y = 90; //TODO:
-	float fov_x = 90; //TODO:
-
 	if (vr.weapon_zoomed) {
 		vr.weapon_zoomLevel += 0.05;
 		if (vr.weapon_zoomLevel > 2.5f)
@@ -398,7 +309,7 @@ void VR_DrawFrame( engine_t* engine ) {
     const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
             30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
 	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
-			fov_x / vr.weapon_zoomLevel, fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
+            vr.fov_x / vr.weapon_zoomLevel, vr.fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
 	re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M,
 						 engine->appState.Renderer.FrameBuffer[0].FrameBuffers[engine->appState.Renderer.FrameBuffer[0].TextureSwapChainIndex]);
 
@@ -492,39 +403,32 @@ void VR_DrawFrame( engine_t* engine ) {
 
     engine->appState.LayerCount = 0;
     memset(engine->appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
-    GLboolean shouldRenderWorldLayer = GL_TRUE;
 
-    // Render the world-view layer
-    if (shouldRenderWorldLayer) {
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+        ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer[eye];
+        ovrFramebuffer_Acquire(frameBuffer);
+        ovrFramebuffer_SetCurrent(frameBuffer);
 
-        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer[eye];
-
-            ovrFramebuffer_Acquire(frameBuffer);
-
-            // Set the current framebuffer.
-            ovrFramebuffer_SetCurrent(frameBuffer);
-
-            if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
-            {
-                //Blood red.. ish
-                glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
-            }
-            else
-            {
-                //Black
-                glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-            }
-            glClear( GL_COLOR_BUFFER_BIT );
-
-            Com_Frame();
-
-            ovrFramebuffer_Resolve(frameBuffer);
-
-            ovrFramebuffer_Release(frameBuffer);
+        if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
+        {
+            //Blood red.. ish
+            glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
         }
+        else
+        {
+            //Black
+            glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+        }
+        glClear( GL_COLOR_BUFFER_BIT );
 
-        ovrFramebuffer_SetNone();
+        Com_Frame();
+
+        ovrFramebuffer_Resolve(frameBuffer);
+        ovrFramebuffer_Release(frameBuffer);
+    }
+    ovrFramebuffer_SetNone();
+
+    if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
 
         XrCompositionLayerProjection projection_layer = {};
         projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
@@ -557,6 +461,30 @@ void VR_DrawFrame( engine_t* engine ) {
         }
 
         engine->appState.Layers[engine->appState.LayerCount++].Projection = projection_layer;
+    } else {
+
+        // Build the cylinder layer
+        XrCompositionLayerCylinderKHR cylinder_layer = {};
+        cylinder_layer.type = XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR;
+        cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        cylinder_layer.space = engine->appState.LocalSpace;
+        cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
+        cylinder_layer.subImage.swapchain = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Handle;
+        cylinder_layer.subImage.imageRect.offset.x = 0;
+        cylinder_layer.subImage.imageRect.offset.y = 0;
+        cylinder_layer.subImage.imageRect.extent.width = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Width;
+        cylinder_layer.subImage.imageRect.extent.height = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Height;
+        cylinder_layer.subImage.imageArrayIndex = 0;
+        const XrVector3f axis = {0.0f, 1.0f, 0.0f};
+        const XrVector3f pos = {0.0f, 0.0f, -1.0f};
+        cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
+        cylinder_layer.pose.position = pos;
+        cylinder_layer.radius = 1.0f;
+        cylinder_layer.centralAngle = MATH_PI * 2.0f;
+        cylinder_layer.aspectRatio = 1.0f;
+
+        engine->appState.Layers[engine->appState.LayerCount++].Cylinder = cylinder_layer;
     }
 
     // Compose the layers for this frame.

@@ -23,6 +23,8 @@
 #include <openxr/openxr_oculus.h>
 #include <openxr/openxr_oculus_helpers.h>
 
+#define MATH_PI 3.14159265358979323846f
+
 #if !defined(GL_EXT_multisampled_render_to_texture)
 typedef void(GL_APIENTRY* PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)(
 GLenum target,
@@ -44,6 +46,7 @@ GLsizei samples);
 
 typedef union {
     XrCompositionLayerProjection Projection;
+    XrCompositionLayerCylinderKHR Cylinder;
 } ovrCompositorLayer_Union;
 
 enum { ovrMaxLayerCount = 16 };

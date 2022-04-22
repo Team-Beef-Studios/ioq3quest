@@ -9,11 +9,13 @@
 #include <unistd.h>
 
 static engine_t vr_engine;
+qboolean vr_initialized = qfalse;
 
 const char* const requiredExtensionNames[] = {
         XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
         XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
         XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME,
+        XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
         XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
         XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
         XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME};
@@ -48,6 +50,9 @@ cvar_t *vr_showConsoleMessages = NULL;
 
 engine_t* VR_Init( ovrJava java )
 {
+    if (vr_initialized)
+        return &vr_engine;
+
     ovrApp_Clear(&vr_engine.appState);
 
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
@@ -129,6 +134,7 @@ engine_t* VR_Init( ovrJava java )
     vr_engine.appState.SystemId = systemId;
 
     vr_engine.java = java;
+    vr_initialized = qtrue;
     return &vr_engine;
 }
 
