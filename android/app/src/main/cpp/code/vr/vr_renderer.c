@@ -151,9 +151,6 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 
         *pWidth = width = engine->appState.ViewConfigurationView[0].recommendedImageRectWidth;
         *pHeight = height = engine->appState.ViewConfigurationView[0].recommendedImageRectHeight;
-        //TODO:
-        vr.fov_x = 90;
-        vr.fov_y = 90;
 	}
 	else
 	{
@@ -374,26 +371,15 @@ void VR_DrawFrame( engine_t* engine ) {
             projections));
     //
 
-    ovrSceneMatrices sceneMatrices;
     XrPosef viewTransform[2];
-
     for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         XrPosef xfHeadFromEye = projections[eye].pose;
         XrPosef xfStageFromEye = XrPosef_Multiply(xfStageFromHead, xfHeadFromEye);
         viewTransform[eye] = XrPosef_Inverse(xfStageFromEye);
 
-        sceneMatrices.ViewMatrix[eye] =
-                XrMatrix4x4f_CreateFromRigidTransform(&viewTransform[eye]);
-
         const XrFovf fov = projections[eye].fov;
-        XrMatrix4x4f_CreateProjectionFov(
-                &sceneMatrices.ProjectionMatrix[eye],
-                fov.angleLeft,
-                fov.angleRight,
-                fov.angleUp,
-                fov.angleDown,
-                0.1f,
-                0.0f);
+        vr.fov_x = (fabs(fov.angleLeft) + fabs(fov.angleRight)) * 180.0f / M_PI;
+        vr.fov_y = (fabs(fov.angleUp) + fabs(fov.angleDown)) * 180.0f / M_PI;
     }
 
     // Set-up the compositor layers for this frame.
@@ -482,7 +468,7 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
         cylinder_layer.pose.position = pos;
         cylinder_layer.radius = 1.0f;
-        cylinder_layer.centralAngle = MATH_PI * 2.0f;
+        cylinder_layer.centralAngle = MATH_PI * 0.75f;
         cylinder_layer.aspectRatio = 1.0f;
 
         engine->appState.Layers[engine->appState.LayerCount++].Cylinder = cylinder_layer;

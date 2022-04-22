@@ -84,11 +84,6 @@ typedef struct {
 } ovrRenderer;
 
 typedef struct {
-    XrMatrix4x4f ViewMatrix[ovrMaxNumEyes];
-    XrMatrix4x4f ProjectionMatrix[ovrMaxNumEyes];
-} ovrSceneMatrices;
-
-typedef struct {
     GLboolean Focused;
 
     XrInstance Instance;
