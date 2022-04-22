@@ -23,6 +23,35 @@
 #include <openxr/openxr_oculus.h>
 #include <openxr/openxr_oculus_helpers.h>
 
+#if !defined(GL_EXT_multisampled_render_to_texture)
+typedef void(GL_APIENTRY* PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)(
+GLenum target,
+GLsizei samples,
+GLenum internalformat,
+GLsizei width,
+GLsizei height);
+typedef void(GL_APIENTRY* PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC)(
+GLenum target,
+GLenum attachment,
+GLenum textarget,
+GLuint texture,
+GLint level,
+GLsizei samples);
+#endif
+
+#define ALOGE(...) printf(__VA_ARGS__)
+#define ALOGV(...) printf(__VA_ARGS__)
+
+typedef union {
+    XrCompositionLayerProjection Projection;
+} ovrCompositorLayer_Union;
+
+enum { ovrMaxLayerCount = 16 };
+enum { ovrMaxNumEyes = 2 };
+
+#define GL(func) func;
+#define OXR(func) func;
+
 typedef struct {
 	JavaVM* Vm;
 	jobject ActivityObject;
@@ -30,31 +59,64 @@ typedef struct {
 } ovrJava;
 
 typedef struct {
-	XrSwapchain Handle;
-	uint32_t Width;
-	uint32_t Height;
+    XrSwapchain Handle;
+    uint32_t Width;
+    uint32_t Height;
 } ovrSwapChain;
 
 typedef struct {
-	int Width;
-	int Height;
-	int Multisamples;
-	uint32_t TextureSwapChainLength;
-	uint32_t TextureSwapChainIndex;
-	ovrSwapChain ColorSwapChain;
-	XrSwapchainImageOpenGLESKHR* ColorSwapChainImage;
-	GLuint* DepthBuffers;
-	GLuint* FrameBuffers;
+    int Width;
+    int Height;
+    int Multisamples;
+    uint32_t TextureSwapChainLength;
+    uint32_t TextureSwapChainIndex;
+    ovrSwapChain ColorSwapChain;
+    XrSwapchainImageOpenGLESKHR* ColorSwapChainImage;
+    GLuint* DepthBuffers;
+    GLuint* FrameBuffers;
 } ovrFramebuffer;
 
 typedef struct {
-	ovrFramebuffer FrameBuffer[XR_EYES_COUNT];
+    ovrFramebuffer FrameBuffer[ovrMaxNumEyes];
 } ovrRenderer;
 
 typedef struct {
-	XrMatrix4x4f ViewMatrix[XR_EYES_COUNT];
-	XrMatrix4x4f ProjectionMatrix[XR_EYES_COUNT];
+    XrMatrix4x4f ViewMatrix[ovrMaxNumEyes];
+    XrMatrix4x4f ProjectionMatrix[ovrMaxNumEyes];
 } ovrSceneMatrices;
+
+typedef struct {
+    GLboolean Focused;
+
+    XrInstance Instance;
+    XrSession Session;
+    XrViewConfigurationProperties ViewportConfig;
+    XrViewConfigurationView ViewConfigurationView[ovrMaxNumEyes];
+    XrSystemId SystemId;
+    XrSpace HeadSpace;
+    XrSpace LocalSpace;
+    XrSpace StageSpace;
+    XrSpace FakeStageSpace;
+    XrSpace CurrentSpace;
+    GLboolean SessionActive;
+
+    float* SupportedDisplayRefreshRates;
+    uint32_t RequestedDisplayRefreshRateIndex;
+    uint32_t NumSupportedDisplayRefreshRates;
+    PFN_xrGetDisplayRefreshRateFB pfnGetDisplayRefreshRate;
+    PFN_xrRequestDisplayRefreshRateFB pfnRequestDisplayRefreshRate;
+
+    int SwapInterval;
+    // These threads will be marked as performance threads.
+    int MainThreadTid;
+    int RenderThreadTid;
+    ovrCompositorLayer_Union Layers[ovrMaxLayerCount];
+    int LayerCount;
+
+    GLboolean TouchPadDownLastFrame;
+    ovrRenderer Renderer;
+} ovrApp;
+
 
 typedef struct ovrMatrix4f_ {
     float M[4][4];
@@ -62,13 +124,8 @@ typedef struct ovrMatrix4f_ {
 
 typedef struct {
 	uint64_t frameIndex;
+	ovrApp appState;
 	ovrJava java;
-	ovrRenderer renderer;
-	XrInstance instance;
-	XrSession session;
-	XrSystemId systemId;
-	XrSpace stageSpace;
-    GLboolean sessionActive;
 } engine_t;
 
 typedef enum {
@@ -87,46 +144,16 @@ typedef enum {
 	VRFM_QUERY		= 99	//Used to query which mode is active
 } vrFollowMode_t;
 
-//ovrFramebuffer
-void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer);
-GLboolean ovrFramebuffer_Create(
-		XrSession session,
-		ovrFramebuffer* frameBuffer,
-		const GLenum colorFormat,
-		const int width,
-		const int height,
-		const int multisamples);
-void ovrFramebuffer_Destroy(ovrFramebuffer* frameBuffer);
+void ovrApp_Clear(ovrApp* app);
+void ovrApp_Destroy(ovrApp* app);
+void ovrApp_HandleXrEvents(ovrApp* app);
+
+void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer);
+void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer);
+void ovrFramebuffer_Release(ovrFramebuffer* frameBuffer);
 void ovrFramebuffer_SetCurrent(ovrFramebuffer* frameBuffer);
 void ovrFramebuffer_SetNone();
-void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer);
-void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer);
-void ovrFramebuffer_Release(ovrFramebuffer* frameBuffer);
 
-//ovrRenderer
-void ovrRenderer_Clear(ovrRenderer* renderer);
-void ovrRenderer_Create(
-		XrSession session,
-		ovrRenderer* renderer,
-		int suggestedEyeTextureWidth,
-		int suggestedEyeTextureHeight);
-void ovrRenderer_Destroy(ovrRenderer* renderer);
-void ovrRenderer_SetFoveation(
-		XrInstance* instance,
-		XrSession* session,
-		ovrRenderer* renderer,
-		XrFoveationLevelFB level,
-		float verticalOffset,
-		XrFoveationDynamicFB dynamic);
-
-//ovrMatrix4f
-ovrMatrix4f ovrMatrix4f_CreateProjection(
-		const float minX,
-		const float maxX,
-		float const minY,
-		const float maxY,
-		const float nearZ,
-		const float farZ);
 ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
 		const float fovDegreesX,
 		const float fovDegreesY,
@@ -134,5 +161,12 @@ ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
 		const float offsetY,
 		const float nearZ,
 		const float farZ);
+
+void ovrRenderer_Create(
+		XrSession session,
+		ovrRenderer* renderer,
+		int suggestedEyeTextureWidth,
+		int suggestedEyeTextureHeight);
+void ovrRenderer_Destroy(ovrRenderer* renderer);
 
 #endif

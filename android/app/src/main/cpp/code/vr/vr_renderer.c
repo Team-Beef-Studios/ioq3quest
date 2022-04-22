@@ -18,9 +18,27 @@
 #include <GLES3/gl32.h>
 #endif
 
-#define SUPER_SAMPLE  1.15f
-
 extern vr_clientinfo_t vr;
+
+XrView* projections;
+GLboolean stageSupported = GL_FALSE;
+
+void VR_UpdateStageBounds(ovrApp* pappState) {
+    XrExtent2Df stageBounds = {};
+
+    XrResult result;
+    OXR(result = xrGetReferenceSpaceBoundsRect(
+            pappState->Session, XR_REFERENCE_SPACE_TYPE_STAGE, &stageBounds));
+    if (result != XR_SUCCESS) {
+        ALOGV("Stage bounds query failed: using small defaults");
+        stageBounds.width = 1.0f;
+        stageBounds.height = 1.0f;
+
+        pappState->CurrentSpace = pappState->FakeStageSpace;
+    }
+
+    ALOGV("Stage bounds: width = %f, depth %f", stageBounds.width, stageBounds.height);
+}
 
 
 void APIENTRY VR_GLDebugLog(GLenum source, GLenum type, GLuint id,
@@ -60,14 +78,84 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 	
 	if (engine)
 	{
-		//TODO:
-		/*
-		*pWidth = width = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * SUPER_SAMPLE;
-		*pHeight = height = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * SUPER_SAMPLE;
+        // Enumerate the viewport configurations.
+        uint32_t viewportConfigTypeCount = 0;
+        OXR(xrEnumerateViewConfigurations(
+                engine->appState.Instance, engine->appState.SystemId, 0, &viewportConfigTypeCount, NULL));
 
-		vr.fov_x = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
-		vr.fov_y = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
-		 */
+        XrViewConfigurationType* viewportConfigurationTypes =
+                (XrViewConfigurationType*)malloc(viewportConfigTypeCount * sizeof(XrViewConfigurationType));
+
+        OXR(xrEnumerateViewConfigurations(
+                engine->appState.Instance,
+                engine->appState.SystemId,
+                viewportConfigTypeCount,
+                &viewportConfigTypeCount,
+                viewportConfigurationTypes));
+
+        ALOGV("Available Viewport Configuration Types: %d", viewportConfigTypeCount);
+
+        for (uint32_t i = 0; i < viewportConfigTypeCount; i++) {
+            const XrViewConfigurationType viewportConfigType = viewportConfigurationTypes[i];
+
+            ALOGV(
+                    "Viewport configuration type %d : %s",
+                    viewportConfigType,
+                    viewportConfigType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO ? "Selected" : "");
+
+            XrViewConfigurationProperties viewportConfig;
+            viewportConfig.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES;
+            OXR(xrGetViewConfigurationProperties(
+                    engine->appState.Instance, engine->appState.SystemId, viewportConfigType, &viewportConfig));
+            ALOGV(
+                    "FovMutable=%s ConfigurationType %d",
+                    viewportConfig.fovMutable ? "true" : "false",
+                    viewportConfig.viewConfigurationType);
+
+            uint32_t viewCount;
+            OXR(xrEnumerateViewConfigurationViews(
+                    engine->appState.Instance, engine->appState.SystemId, viewportConfigType, 0, &viewCount, NULL));
+
+            if (viewCount > 0) {
+                XrViewConfigurationView* elements =
+                        (XrViewConfigurationView*)malloc(viewCount * sizeof(XrViewConfigurationView));
+
+                for (uint32_t e = 0; e < viewCount; e++) {
+                    elements[e].type = XR_TYPE_VIEW_CONFIGURATION_VIEW;
+                    elements[e].next = NULL;
+                }
+
+                OXR(xrEnumerateViewConfigurationViews(
+                        engine->appState.Instance,
+                        engine->appState.SystemId,
+                        viewportConfigType,
+                        viewCount,
+                        &viewCount,
+                        elements));
+
+                // Cache the view config properties for the selected config type.
+                if (viewportConfigType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
+                    assert(viewCount == ovrMaxNumEyes);
+                    for (uint32_t e = 0; e < viewCount; e++) {
+                        engine->appState.ViewConfigurationView[e] = elements[e];
+                    }
+                }
+
+                free(elements);
+            } else {
+                ALOGE("Empty viewport configuration type: %d", viewCount);
+            }
+        }
+
+        free(viewportConfigurationTypes);
+
+        *pWidth = width = engine->appState.ViewConfigurationView[0].recommendedImageRectWidth;
+        *pHeight = height = engine->appState.ViewConfigurationView[0].recommendedImageRectHeight;
+        //TODO:
+        /*
+        vr.fov_x = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
+        vr.fov_y = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
+         */
 	}
 	else
 	{
@@ -75,10 +163,6 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 		*pWidth = width;
 		*pHeight = height;
 	}
-
-	//TODO:remove hardcoded values
-	*pWidth = 3664 / 2;
-	*pHeight = 1920;
 }
 
 void VR_InitRenderer( engine_t* engine ) {
@@ -89,33 +173,113 @@ void VR_InitRenderer( engine_t* engine ) {
 
 	int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
-	ovrRenderer_Create(engine->session, &engine->renderer, eyeW, eyeH);
-	ovrRenderer_SetFoveation(
-			&engine->instance,
-			&engine->session,
-			&engine->renderer,
-			XR_FOVEATION_LEVEL_HIGH_FB,
-			0,
-			XR_FOVEATION_DYNAMIC_DISABLED_FB);
 
-	XrReferenceSpaceCreateInfo spaceCreateInfo = {};
-	spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
-	spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
-	spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
-	spaceCreateInfo.poseInReferenceSpace.position.y = 0.0f;
-	xrCreateReferenceSpace(engine->session, &spaceCreateInfo, &engine->stageSpace);
+    // Get the viewport configuration info for the chosen viewport configuration type.
+    engine->appState.ViewportConfig.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES;
+
+    OXR(xrGetViewConfigurationProperties(
+            engine->appState.Instance, engine->appState.SystemId, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, &engine->appState.ViewportConfig));
+
+    // Get the supported display refresh rates for the system.
+    {
+        PFN_xrEnumerateDisplayRefreshRatesFB pfnxrEnumerateDisplayRefreshRatesFB = NULL;
+        OXR(xrGetInstanceProcAddr(
+                engine->appState.Instance,
+                "xrEnumerateDisplayRefreshRatesFB",
+                (PFN_xrVoidFunction*)(&pfnxrEnumerateDisplayRefreshRatesFB)));
+
+        OXR(pfnxrEnumerateDisplayRefreshRatesFB(
+                engine->appState.Session, 0, &engine->appState.NumSupportedDisplayRefreshRates, NULL));
+
+        engine->appState.SupportedDisplayRefreshRates =
+                (float*)malloc(engine->appState.NumSupportedDisplayRefreshRates * sizeof(float));
+        OXR(pfnxrEnumerateDisplayRefreshRatesFB(
+                engine->appState.Session,
+                engine->appState.NumSupportedDisplayRefreshRates,
+                &engine->appState.NumSupportedDisplayRefreshRates,
+                engine->appState.SupportedDisplayRefreshRates));
+        ALOGV("Supported Refresh Rates:");
+        for (uint32_t i = 0; i < engine->appState.NumSupportedDisplayRefreshRates; i++) {
+            ALOGV("%d:%f", i, engine->appState.SupportedDisplayRefreshRates[i]);
+        }
+
+        OXR(xrGetInstanceProcAddr(
+                engine->appState.Instance,
+                "xrGetDisplayRefreshRateFB",
+                (PFN_xrVoidFunction*)(&engine->appState.pfnGetDisplayRefreshRate)));
+
+        float currentDisplayRefreshRate = 0.0f;
+        OXR(engine->appState.pfnGetDisplayRefreshRate(engine->appState.Session, &currentDisplayRefreshRate));
+        ALOGV("Current System Display Refresh Rate: %f", currentDisplayRefreshRate);
+
+        OXR(xrGetInstanceProcAddr(
+                engine->appState.Instance,
+                "xrRequestDisplayRefreshRateFB",
+                (PFN_xrVoidFunction*)(&engine->appState.pfnRequestDisplayRefreshRate)));
+
+        // Test requesting the system default.
+        OXR(engine->appState.pfnRequestDisplayRefreshRate(engine->appState.Session, 0.0f));
+        ALOGV("Requesting system default display refresh rate");
+    }
+
+    uint32_t numOutputSpaces = 0;
+    OXR(xrEnumerateReferenceSpaces(engine->appState.Session, 0, &numOutputSpaces, NULL));
+
+    XrReferenceSpaceType* referenceSpaces =
+            (XrReferenceSpaceType*)malloc(numOutputSpaces * sizeof(XrReferenceSpaceType));
+
+    OXR(xrEnumerateReferenceSpaces(
+            engine->appState.Session, numOutputSpaces, &numOutputSpaces, referenceSpaces));
+
+    for (uint32_t i = 0; i < numOutputSpaces; i++) {
+        if (referenceSpaces[i] == XR_REFERENCE_SPACE_TYPE_STAGE) {
+            stageSupported = GL_TRUE;
+            break;
+        }
+    }
+
+    free(referenceSpaces);
+
+    // Create a space to the first path
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
+    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
+    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.HeadSpace));
+
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.LocalSpace));
+
+    // Create a default stage space to use if SPACE_TYPE_STAGE is not
+    // supported, or calls to xrGetReferenceSpaceBoundsRect fail.
+    {
+        spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+        spaceCreateInfo.poseInReferenceSpace.position.y = -1.6750f;
+        OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.FakeStageSpace));
+        ALOGV("Created fake stage space from local space with offset");
+        engine->appState.CurrentSpace = engine->appState.FakeStageSpace;
+    }
+
+    if (stageSupported) {
+        spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
+        spaceCreateInfo.poseInReferenceSpace.position.y = 0.0f;
+        OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.StageSpace));
+        ALOGV("Created stage space");
+        engine->appState.CurrentSpace = engine->appState.StageSpace;
+    }
+
+    projections = (XrView*)(malloc(ovrMaxNumEyes * sizeof(XrView)));
+
+    ovrRenderer_Create(
+            engine->appState.Session,
+            &engine->appState.Renderer,
+            engine->appState.ViewConfigurationView[0].recommendedImageRectWidth,
+            engine->appState.ViewConfigurationView[0].recommendedImageRectHeight);
 }
 
 void VR_DestroyRenderer( engine_t* engine ) {
-	xrDestroySpace(engine->stageSpace);
-	ovrRenderer_Destroy(&engine->renderer);
-}
-
-
-void VR_ReInitRenderer()
-{
-    VR_DestroyRenderer( VR_GetEngine() );
-    VR_InitRenderer( VR_GetEngine() );
+    ovrRenderer_Destroy(&engine->appState.Renderer);
+    free(projections);
 }
 
 
@@ -202,88 +366,7 @@ ovrLayerCylinder2 BuildCylinderLayer(engine_t* engine, const int textureWidth, c
 }
 */
 
-void VR_ClearFrameBuffer( int width, int height )
-{
-
-    glEnable( GL_SCISSOR_TEST );
-    glViewport( 0, 0, width, height );
-
-	if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
-	{
-		//Blood red.. ish
-		glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
-	}
-	else
-	{
-		//Black
-		glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-	}
-
-    glScissor( 0, 0, width, height );
-    glClear( GL_COLOR_BUFFER_BIT );
-
-    glScissor( 0, 0, 0, 0 );
-    glDisable( GL_SCISSOR_TEST );
-}
-
 void VR_DrawFrame( engine_t* engine ) {
-	XrEventDataBuffer eventDataBuffer = {};
-
-	// Poll for events
-	for (;;) {
-		XrEventDataBaseHeader *baseEventHeader = (XrEventDataBaseHeader * )(&eventDataBuffer);
-		baseEventHeader->type = XR_TYPE_EVENT_DATA_BUFFER;
-		baseEventHeader->next = NULL;
-		if (xrPollEvent(engine->instance, &eventDataBuffer) != XR_SUCCESS) {
-			break;
-		}
-		if (baseEventHeader->type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
-			const XrEventDataSessionStateChanged* session_state_changed_event =
-					(XrEventDataSessionStateChanged*)(baseEventHeader);
-			switch (session_state_changed_event->state) {
-				case XR_SESSION_STATE_READY:
-					if (!engine->sessionActive) {
-						XrSessionBeginInfo sessionBeginInfo;
-						memset(&sessionBeginInfo, 0, sizeof(sessionBeginInfo));
-						sessionBeginInfo.type = XR_TYPE_SESSION_BEGIN_INFO;
-						sessionBeginInfo.next = NULL;
-						sessionBeginInfo.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-						if (xrBeginSession(engine->session, &sessionBeginInfo) != XR_SUCCESS) {
-							Com_Printf("xrBeginSession failed");
-							exit(1);
-						}
-						engine->sessionActive = GL_TRUE;
-					}
-					break;
-				case XR_SESSION_STATE_STOPPING:
-					if (engine->sessionActive) {
-						xrEndSession(engine->session);
-						engine->sessionActive = GL_FALSE;
-					}
-					break;
-			}
-		}
-	}
-
-	if (!engine->sessionActive) {
-		return;
-	}
-
-	// NOTE: OpenXR does not use the concept of frame indices. Instead,
-	// XrWaitFrame returns the predicted display time.
-	XrFrameWaitInfo waitFrameInfo = {};
-	waitFrameInfo.type = XR_TYPE_FRAME_WAIT_INFO;
-	waitFrameInfo.next = NULL;
-	XrFrameState frameState = {};
-	frameState.type = XR_TYPE_FRAME_STATE;
-	frameState.next = NULL;
-	xrWaitFrame(engine->session, &waitFrameInfo, &frameState);
-
-	XrFrameBeginInfo beginFrameDesc = {};
-	beginFrameDesc.type = XR_TYPE_FRAME_BEGIN_INFO;
-	beginFrameDesc.next = NULL;
-	xrBeginFrame(engine->session, &beginFrameDesc);
-
 	float fov_y = 90; //TODO:
 	float fov_x = 90; //TODO:
 
@@ -302,87 +385,180 @@ void VR_DrawFrame( engine_t* engine ) {
 	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
 			fov_x / vr.weapon_zoomLevel, fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
 	re.SetVRHeadsetParms(projectionMatrix.M,
-						 engine->renderer.FrameBuffer[0].FrameBuffers[engine->renderer.FrameBuffer[0].TextureSwapChainIndex],
-						 engine->renderer.FrameBuffer[1].FrameBuffers[engine->renderer.FrameBuffer[1].TextureSwapChainIndex]);
+						 engine->appState.Renderer.FrameBuffer[0].FrameBuffers[engine->appState.Renderer.FrameBuffer[0].TextureSwapChainIndex],
+						 engine->appState.Renderer.FrameBuffer[1].FrameBuffers[engine->appState.Renderer.FrameBuffer[1].TextureSwapChainIndex]);
 
-	for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
-		ovrFramebuffer* frameBuffer = &engine->renderer.FrameBuffer[eye];
-		ovrFramebuffer_Acquire(frameBuffer);
-		ovrFramebuffer_SetCurrent(frameBuffer);
+    GLboolean stageBoundsDirty = GL_TRUE;
+    ovrApp_HandleXrEvents(&engine->appState);
+    if (engine->appState.SessionActive == GL_FALSE) {
+        return;
+    }
 
-		VR_ClearFrameBuffer(frameBuffer->Width, frameBuffer->Height);
-		Com_Frame();
+    if (stageBoundsDirty) {
+        VR_UpdateStageBounds(&engine->appState);
+        stageBoundsDirty = GL_FALSE;
+    }
 
-		ovrFramebuffer_Resolve(frameBuffer);
-		ovrFramebuffer_Release(frameBuffer);
-	}
-	ovrFramebuffer_SetNone();
+    // NOTE: OpenXR does not use the concept of frame indices. Instead,
+    // XrWaitFrame returns the predicted display time.
+    XrFrameWaitInfo waitFrameInfo = {};
+    waitFrameInfo.type = XR_TYPE_FRAME_WAIT_INFO;
+    waitFrameInfo.next = NULL;
 
-	// Compose the layers for this frame.
-	XrCompositionLayerProjectionView projection_layer_elements[XR_EYES_COUNT] = {};
-	XrCompositionLayerProjection projection_layer = {};
-	projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
-	projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-	projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
-	projection_layer.space = engine->stageSpace;
-	projection_layer.viewCount = XR_EYES_COUNT;
-	projection_layer.views = projection_layer_elements;
+    XrFrameState frameState = {};
+    frameState.type = XR_TYPE_FRAME_STATE;
+    frameState.next = NULL;
 
-	XrPosef viewTransform[2];
-	ovrSceneMatrices sceneMatrices;
-	XrView* projections = (XrView*)(malloc(XR_EYES_COUNT * sizeof(XrView)));
-	for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
-		XrPosef xfHeadFromEye = projections[eye].pose;
-		//XrPosef xfStageFromEye = XrPosef_Multiply(xfStageFromHead, xfHeadFromEye);
-		viewTransform[eye] = XrPosef_Inverse(xfHeadFromEye); //TODO:there should be xfStageFromEye as parameter
+    OXR(xrWaitFrame(engine->appState.Session, &waitFrameInfo, &frameState));
 
-		sceneMatrices.ViewMatrix[eye] =
-				XrMatrix4x4f_CreateFromRigidTransform(&viewTransform[eye]);
-		const XrFovf fov = projections[eye].fov;
-		XrMatrix4x4f_CreateProjectionFov(
-				&sceneMatrices.ProjectionMatrix[eye],
-				fov.angleLeft,
-				fov.angleRight,
-				fov.angleUp,
-				fov.angleDown,
-				0.1f,
-				0.0f);
-	}
+    // Get the HMD pose, predicted for the middle of the time period during which
+    // the new eye images will be displayed. The number of frames predicted ahead
+    // depends on the pipeline depth of the engine and the synthesis rate.
+    // The better the prediction, the less black will be pulled in at the edges.
+    XrFrameBeginInfo beginFrameDesc = {};
+    beginFrameDesc.type = XR_TYPE_FRAME_BEGIN_INFO;
+    beginFrameDesc.next = NULL;
+    OXR(xrBeginFrame(engine->appState.Session, &beginFrameDesc));
 
-	for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
-		ovrFramebuffer* frameBuffer = &engine->renderer.FrameBuffer[eye];
+    XrSpaceLocation loc = {};
+    loc.type = XR_TYPE_SPACE_LOCATION;
+    OXR(xrLocateSpace(
+            engine->appState.HeadSpace, engine->appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
+    XrPosef xfStageFromHead = loc.pose;
+    OXR(xrLocateSpace(
+            engine->appState.HeadSpace, engine->appState.LocalSpace, frameState.predictedDisplayTime, &loc));
 
-		memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
-		projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+    XrViewLocateInfo projectionInfo = {};
+    projectionInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
+    projectionInfo.viewConfigurationType = engine->appState.ViewportConfig.viewConfigurationType;
+    projectionInfo.displayTime = frameState.predictedDisplayTime;
+    projectionInfo.space = engine->appState.HeadSpace;
 
-		projection_layer_elements[eye].pose = XrPosef_Inverse(viewTransform[eye]);
-		projection_layer_elements[eye].fov = projections[eye].fov;
+    XrViewState viewState = {XR_TYPE_VIEW_STATE, NULL};
 
-		memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
-		projection_layer_elements[eye].subImage.swapchain = frameBuffer->ColorSwapChain.Handle;
-		projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
-		projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
-		projection_layer_elements[eye].subImage.imageRect.extent.width =
-				frameBuffer->ColorSwapChain.Width;
-		projection_layer_elements[eye].subImage.imageRect.extent.height =
-				frameBuffer->ColorSwapChain.Height;
-		projection_layer_elements[eye].subImage.imageArrayIndex = 0;
-	}
+    uint32_t projectionCapacityInput = ovrMaxNumEyes;
+    uint32_t projectionCountOutput = projectionCapacityInput;
 
+    OXR(xrLocateViews(
+            engine->appState.Session,
+            &projectionInfo,
+            &viewState,
+            projectionCapacityInput,
+            &projectionCountOutput,
+            projections));
+    //
 
-	// Compose the layers for this frame.
-	const XrCompositionLayerBaseHeader* layers[1] = {};
-	layers[0] = (const XrCompositionLayerBaseHeader*)&projection_layer;
+    ovrSceneMatrices sceneMatrices;
+    XrPosef viewTransform[2];
 
-	XrFrameEndInfo endFrameInfo = {};
-	endFrameInfo.type = XR_TYPE_FRAME_END_INFO;
-	endFrameInfo.displayTime = frameState.predictedDisplayTime;
-	endFrameInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-	endFrameInfo.layerCount = 1;
-	endFrameInfo.layers = layers;
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+        XrPosef xfHeadFromEye = projections[eye].pose;
+        XrPosef xfStageFromEye = XrPosef_Multiply(xfStageFromHead, xfHeadFromEye);
+        viewTransform[eye] = XrPosef_Inverse(xfStageFromEye);
 
-	xrEndFrame(engine->session, &endFrameInfo);
-	free(projections);
+        sceneMatrices.ViewMatrix[eye] =
+                XrMatrix4x4f_CreateFromRigidTransform(&viewTransform[eye]);
+
+        const XrFovf fov = projections[eye].fov;
+        XrMatrix4x4f_CreateProjectionFov(
+                &sceneMatrices.ProjectionMatrix[eye],
+                fov.angleLeft,
+                fov.angleRight,
+                fov.angleUp,
+                fov.angleDown,
+                0.1f,
+                0.0f);
+    }
+
+    // Set-up the compositor layers for this frame.
+    // NOTE: Multiple independent layers are allowed, but they need to be added
+    // in a depth consistent order.
+
+    XrCompositionLayerProjectionView projection_layer_elements[2] = {};
+
+    engine->appState.LayerCount = 0;
+    memset(engine->appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
+    GLboolean shouldRenderWorldLayer = GL_TRUE;
+
+    // Render the world-view layer
+    if (shouldRenderWorldLayer) {
+
+        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer[eye];
+
+            ovrFramebuffer_Acquire(frameBuffer);
+
+            // Set the current framebuffer.
+            ovrFramebuffer_SetCurrent(frameBuffer);
+
+            if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
+            {
+                //Blood red.. ish
+                glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
+            }
+            else
+            {
+                //Black
+                glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+            }
+            glClear( GL_COLOR_BUFFER_BIT );
+
+            Com_Frame();
+
+            ovrFramebuffer_Resolve(frameBuffer);
+
+            ovrFramebuffer_Release(frameBuffer);
+        }
+
+        ovrFramebuffer_SetNone();
+
+        XrCompositionLayerProjection projection_layer = {};
+        projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+        projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+        projection_layer.space = engine->appState.CurrentSpace;
+        projection_layer.viewCount = ovrMaxNumEyes;
+        projection_layer.views = projection_layer_elements;
+
+        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer[eye];
+
+            memset(
+                    &projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
+            projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+
+            projection_layer_elements[eye].pose = XrPosef_Inverse(viewTransform[eye]);
+            projection_layer_elements[eye].fov = projections[eye].fov;
+
+            memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
+            projection_layer_elements[eye].subImage.swapchain =
+                    frameBuffer->ColorSwapChain.Handle;
+            projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
+            projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
+            projection_layer_elements[eye].subImage.imageRect.extent.width =
+                    frameBuffer->ColorSwapChain.Width;
+            projection_layer_elements[eye].subImage.imageRect.extent.height =
+                    frameBuffer->ColorSwapChain.Height;
+            projection_layer_elements[eye].subImage.imageArrayIndex = 0;
+        }
+
+        engine->appState.Layers[engine->appState.LayerCount++].Projection = projection_layer;
+    }
+
+    // Compose the layers for this frame.
+    const XrCompositionLayerBaseHeader* layers[ovrMaxLayerCount] = {};
+    for (int i = 0; i < engine->appState.LayerCount; i++) {
+        layers[i] = (const XrCompositionLayerBaseHeader*)&engine->appState.Layers[i];
+    }
+
+    XrFrameEndInfo endFrameInfo = {};
+    endFrameInfo.type = XR_TYPE_FRAME_END_INFO;
+    endFrameInfo.displayTime = frameState.predictedDisplayTime;
+    endFrameInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+    endFrameInfo.layerCount = engine->appState.LayerCount;
+    endFrameInfo.layers = layers;
+
+    OXR(xrEndFrame(engine->appState.Session, &endFrameInfo));
 
 	//TODO
 	/*

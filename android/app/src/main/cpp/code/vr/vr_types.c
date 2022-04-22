@@ -14,133 +14,11 @@ Copyright : Copyright (c) Facebook Technologies, LLC and its affiliates. All rig
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <sys/prctl.h>
-#include <android/log.h>
 #include <assert.h>
 
-//ID engines common
-#include "../qcommon/q_shared.h"
-#include "../qcommon/qcommon.h"
-
-#if !defined(EGL_OPENGL_ES3_BIT_KHR)
-#define EGL_OPENGL_ES3_BIT_KHR 0x0040
-#endif
-
-// EXT_texture_border_clamp
-#ifndef GL_CLAMP_TO_BORDER
-#define GL_CLAMP_TO_BORDER 0x812D
-#endif
-
-#ifndef GL_TEXTURE_BORDER_COLOR
-#define GL_TEXTURE_BORDER_COLOR 0x1004
-#endif
-
-#if !defined(GL_EXT_multisampled_render_to_texture)
-typedef void(GL_APIENTRY* PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)(
-GLenum target,
-        GLsizei samples,
-GLenum internalformat,
-        GLsizei width,
-GLsizei height);
-typedef void(GL_APIENTRY* PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC)(
-GLenum target,
-        GLenum attachment,
-GLenum textarget,
-        GLuint texture,
-GLint level,
-        GLsizei samples);
-#endif
-
-// GL_EXT_texture_cube_map_array
-#if !defined(GL_TEXTURE_CUBE_MAP_ARRAY)
-#define GL_TEXTURE_CUBE_MAP_ARRAY 0x9009
-#endif
-
-
-#define MATH_PI 3.14159265358979323846f
-
-#define GL(func) func;
-#define OXR(func) func;
-#define OVR_LOG_TAG "XrCompositor"
-
-#define ALOGE(...) Com_Printf(__VA_ARGS__)
-#define ALOGV(...) Com_Printf(__VA_ARGS__)
-
-const int CPU_LEVEL = 2;
-const int GPU_LEVEL = 3;
 const int NUM_MULTI_SAMPLES = 4;
-
-typedef union {
-    XrCompositionLayerProjection Projection;
-    XrCompositionLayerQuad Quad;
-    XrCompositionLayerCylinderKHR Cylinder;
-    XrCompositionLayerCubeKHR Cube;
-    XrCompositionLayerEquirect2KHR Equirect2;
-} ovrCompositorLayer_Union;
-
-/*
-================================================================================
-
-OpenGL-ES Utility Functions
-
-================================================================================
-*/
-
-const char* EglErrorString(const EGLint error) {
-    switch (error) {
-        case EGL_SUCCESS:
-            return "EGL_SUCCESS";
-        case EGL_NOT_INITIALIZED:
-            return "EGL_NOT_INITIALIZED";
-        case EGL_BAD_ACCESS:
-            return "EGL_BAD_ACCESS";
-        case EGL_BAD_ALLOC:
-            return "EGL_BAD_ALLOC";
-        case EGL_BAD_ATTRIBUTE:
-            return "EGL_BAD_ATTRIBUTE";
-        case EGL_BAD_CONTEXT:
-            return "EGL_BAD_CONTEXT";
-        case EGL_BAD_CONFIG:
-            return "EGL_BAD_CONFIG";
-        case EGL_BAD_CURRENT_SURFACE:
-            return "EGL_BAD_CURRENT_SURFACE";
-        case EGL_BAD_DISPLAY:
-            return "EGL_BAD_DISPLAY";
-        case EGL_BAD_SURFACE:
-            return "EGL_BAD_SURFACE";
-        case EGL_BAD_MATCH:
-            return "EGL_BAD_MATCH";
-        case EGL_BAD_PARAMETER:
-            return "EGL_BAD_PARAMETER";
-        case EGL_BAD_NATIVE_PIXMAP:
-            return "EGL_BAD_NATIVE_PIXMAP";
-        case EGL_BAD_NATIVE_WINDOW:
-            return "EGL_BAD_NATIVE_WINDOW";
-        case EGL_CONTEXT_LOST:
-            return "EGL_CONTEXT_LOST";
-        default:
-            return "unknown";
-    }
-}
-
-const char* GlFrameBufferStatusString(GLenum status) {
-    switch (status) {
-        case GL_FRAMEBUFFER_UNDEFINED:
-            return "GL_FRAMEBUFFER_UNDEFINED";
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-            return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
-        case GL_FRAMEBUFFER_UNSUPPORTED:
-            return "GL_FRAMEBUFFER_UNSUPPORTED";
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-            return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
-        default:
-            return "unknown";
-    }
-}
 
 /*
 ================================================================================
@@ -149,6 +27,7 @@ ovrFramebuffer
 
 ================================================================================
 */
+
 
 void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer) {
     frameBuffer->Width = 0;
@@ -164,7 +43,7 @@ void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer) {
     frameBuffer->FrameBuffers = NULL;
 }
 
-GLboolean ovrFramebuffer_Create(
+bool ovrFramebuffer_Create(
         XrSession session,
         ovrFramebuffer* frameBuffer,
         const GLenum colorFormat,
@@ -300,8 +179,7 @@ GLboolean ovrFramebuffer_Create(
             GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
             if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
                 ALOGE(
-                        "Incomplete frame buffer object: %s",
-                        GlFrameBufferStatusString(renderFramebufferStatus));
+                        "Incomplete frame buffer object: %d", renderFramebufferStatus);
                 return false;
             }
         } else {
@@ -325,8 +203,7 @@ GLboolean ovrFramebuffer_Create(
             GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
             if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
                 ALOGE(
-                        "Incomplete frame buffer object: %s",
-                        GlFrameBufferStatusString(renderFramebufferStatus));
+                        "Incomplete frame buffer object: %d", renderFramebufferStatus);
                 return false;
             }
         }
@@ -360,8 +237,6 @@ void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer) {
     // Discard the depth buffer, so the tiler won't need to write it back out to memory.
     const GLenum depthAttachment[1] = {GL_DEPTH_ATTACHMENT};
     glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, depthAttachment);
-
-    // We now let the resolve happen implicitly.
 }
 
 void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer) {
@@ -400,7 +275,7 @@ ovrRenderer
 */
 
 void ovrRenderer_Clear(ovrRenderer* renderer) {
-    for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         ovrFramebuffer_Clear(&renderer->FrameBuffer[eye]);
     }
 }
@@ -411,7 +286,7 @@ void ovrRenderer_Create(
         int suggestedEyeTextureWidth,
         int suggestedEyeTextureHeight) {
     // Create the frame buffers.
-    for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         ovrFramebuffer_Create(
                 session,
                 &renderer->FrameBuffer[eye],
@@ -423,63 +298,199 @@ void ovrRenderer_Create(
 }
 
 void ovrRenderer_Destroy(ovrRenderer* renderer) {
-    for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         ovrFramebuffer_Destroy(&renderer->FrameBuffer[eye]);
     }
 }
 
-void ovrRenderer_SetFoveation(
-        XrInstance* instance,
-        XrSession* session,
-        ovrRenderer* renderer,
-        XrFoveationLevelFB level,
-        float verticalOffset,
-        XrFoveationDynamicFB dynamic) {
-    PFN_xrCreateFoveationProfileFB pfnCreateFoveationProfileFB;
-    OXR(xrGetInstanceProcAddr(
-            *instance,
-            "xrCreateFoveationProfileFB",
-            (PFN_xrVoidFunction*)(&pfnCreateFoveationProfileFB)));
+/*
+================================================================================
 
-    PFN_xrDestroyFoveationProfileFB pfnDestroyFoveationProfileFB;
-    OXR(xrGetInstanceProcAddr(
-            *instance,
-            "xrDestroyFoveationProfileFB",
-            (PFN_xrVoidFunction*)(&pfnDestroyFoveationProfileFB)));
+ovrApp
 
-    PFN_xrUpdateSwapchainFB pfnUpdateSwapchainFB;
-    OXR(xrGetInstanceProcAddr(
-            *instance, "xrUpdateSwapchainFB", (PFN_xrVoidFunction*)(&pfnUpdateSwapchainFB)));
+================================================================================
+*/
 
-    for (int eye = 0; eye < XR_EYES_COUNT; eye++) {
-        XrFoveationLevelProfileCreateInfoFB levelProfileCreateInfo;
-        memset(&levelProfileCreateInfo, 0, sizeof(levelProfileCreateInfo));
-        levelProfileCreateInfo.type = XR_TYPE_FOVEATION_LEVEL_PROFILE_CREATE_INFO_FB;
-        levelProfileCreateInfo.level = level;
-        levelProfileCreateInfo.verticalOffset = verticalOffset;
-        levelProfileCreateInfo.dynamic = dynamic;
+void ovrApp_Clear(ovrApp* app) {
+    app->Focused = false;
+    app->Instance = XR_NULL_HANDLE;
+    app->Session = XR_NULL_HANDLE;
+    memset(&app->ViewportConfig, 0, sizeof(XrViewConfigurationProperties));
+    memset(&app->ViewConfigurationView, 0, ovrMaxNumEyes * sizeof(XrViewConfigurationView));
+    app->SystemId = XR_NULL_SYSTEM_ID;
+    app->HeadSpace = XR_NULL_HANDLE;
+    app->LocalSpace = XR_NULL_HANDLE;
+    app->StageSpace = XR_NULL_HANDLE;
+    app->FakeStageSpace = XR_NULL_HANDLE;
+    app->CurrentSpace = XR_NULL_HANDLE;
+    app->SessionActive = false;
+    app->SupportedDisplayRefreshRates = NULL;
+    app->RequestedDisplayRefreshRateIndex = 0;
+    app->NumSupportedDisplayRefreshRates = 0;
+    app->pfnGetDisplayRefreshRate = NULL;
+    app->pfnRequestDisplayRefreshRate = NULL;
+    app->SwapInterval = 1;
+    memset(app->Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
+    app->LayerCount = 0;
+    app->MainThreadTid = 0;
+    app->RenderThreadTid = 0;
+    app->TouchPadDownLastFrame = false;
 
-        XrFoveationProfileCreateInfoFB profileCreateInfo;
-        memset(&profileCreateInfo, 0, sizeof(profileCreateInfo));
-        profileCreateInfo.type = XR_TYPE_FOVEATION_PROFILE_CREATE_INFO_FB;
-        profileCreateInfo.next = &levelProfileCreateInfo;
+    ovrRenderer_Clear(&app->Renderer);
+}
 
-        XrFoveationProfileFB foveationProfile;
+void ovrApp_Destroy(ovrApp* app) {
+    if (app->SupportedDisplayRefreshRates != NULL) {
+        free(app->SupportedDisplayRefreshRates);
+    }
 
-        pfnCreateFoveationProfileFB(*session, &profileCreateInfo, &foveationProfile);
+    ovrApp_Clear(app);
+}
 
-        XrSwapchainStateFoveationFB foveationUpdateState;
-        memset(&foveationUpdateState, 0, sizeof(foveationUpdateState));
-        foveationUpdateState.type = XR_TYPE_SWAPCHAIN_STATE_FOVEATION_FB;
-        foveationUpdateState.profile = foveationProfile;
+void ovrApp_HandleSessionStateChanges(ovrApp* app, XrSessionState state) {
+    if (state == XR_SESSION_STATE_READY) {
+        assert(app->SessionActive == false);
 
-        pfnUpdateSwapchainFB(
-                renderer->FrameBuffer[eye].ColorSwapChain.Handle,
-                (XrSwapchainStateBaseHeaderFB*)(&foveationUpdateState));
+        XrSessionBeginInfo sessionBeginInfo;
+        memset(&sessionBeginInfo, 0, sizeof(sessionBeginInfo));
+        sessionBeginInfo.type = XR_TYPE_SESSION_BEGIN_INFO;
+        sessionBeginInfo.next = NULL;
+        sessionBeginInfo.primaryViewConfigurationType = app->ViewportConfig.viewConfigurationType;
 
-        pfnDestroyFoveationProfileFB(foveationProfile);
+        XrResult result;
+        OXR(result = xrBeginSession(app->Session, &sessionBeginInfo));
+
+        app->SessionActive = (result == XR_SUCCESS);
+
+        // Set session state once we have entered VR mode and have a valid session object.
+        if (app->SessionActive) {
+            XrPerfSettingsLevelEXT cpuPerfLevel = XR_PERF_SETTINGS_LEVEL_BOOST_EXT;
+            XrPerfSettingsLevelEXT gpuPerfLevel = XR_PERF_SETTINGS_LEVEL_BOOST_EXT;
+
+            PFN_xrPerfSettingsSetPerformanceLevelEXT pfnPerfSettingsSetPerformanceLevelEXT = NULL;
+            OXR(xrGetInstanceProcAddr(
+                    app->Instance,
+                    "xrPerfSettingsSetPerformanceLevelEXT",
+                    (PFN_xrVoidFunction*)(&pfnPerfSettingsSetPerformanceLevelEXT)));
+
+            OXR(pfnPerfSettingsSetPerformanceLevelEXT(
+                    app->Session, XR_PERF_SETTINGS_DOMAIN_CPU_EXT, cpuPerfLevel));
+            OXR(pfnPerfSettingsSetPerformanceLevelEXT(
+                    app->Session, XR_PERF_SETTINGS_DOMAIN_GPU_EXT, gpuPerfLevel));
+
+            PFN_xrSetAndroidApplicationThreadKHR pfnSetAndroidApplicationThreadKHR = NULL;
+            OXR(xrGetInstanceProcAddr(
+                    app->Instance,
+                    "xrSetAndroidApplicationThreadKHR",
+                    (PFN_xrVoidFunction*)(&pfnSetAndroidApplicationThreadKHR)));
+
+            OXR(pfnSetAndroidApplicationThreadKHR(
+                    app->Session, XR_ANDROID_THREAD_TYPE_APPLICATION_MAIN_KHR, app->MainThreadTid));
+            OXR(pfnSetAndroidApplicationThreadKHR(
+                    app->Session, XR_ANDROID_THREAD_TYPE_RENDERER_MAIN_KHR, app->RenderThreadTid));
+        }
+    } else if (state == XR_SESSION_STATE_STOPPING) {
+        assert(app->SessionActive);
+
+        OXR(xrEndSession(app->Session));
+        app->SessionActive = false;
     }
 }
+
+void ovrApp_HandleXrEvents(ovrApp* app) {
+    XrEventDataBuffer eventDataBuffer = {};
+
+    // Poll for events
+    for (;;) {
+        XrEventDataBaseHeader* baseEventHeader = (XrEventDataBaseHeader*)(&eventDataBuffer);
+        baseEventHeader->type = XR_TYPE_EVENT_DATA_BUFFER;
+        baseEventHeader->next = NULL;
+        XrResult r;
+        OXR(r = xrPollEvent(app->Instance, &eventDataBuffer));
+        if (r != XR_SUCCESS) {
+            break;
+        }
+
+        switch (baseEventHeader->type) {
+            case XR_TYPE_EVENT_DATA_EVENTS_LOST:
+                ALOGV("xrPollEvent: received XR_TYPE_EVENT_DATA_EVENTS_LOST event");
+                break;
+            case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
+                const XrEventDataInstanceLossPending* instance_loss_pending_event =
+                        (XrEventDataInstanceLossPending*)(baseEventHeader);
+                ALOGV(
+                        "xrPollEvent: received XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING event: time %f",
+                        FromXrTime(instance_loss_pending_event->lossTime));
+            } break;
+            case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+                ALOGV("xrPollEvent: received XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED event");
+                break;
+            case XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT: {
+                const XrEventDataPerfSettingsEXT* perf_settings_event =
+                        (XrEventDataPerfSettingsEXT*)(baseEventHeader);
+                ALOGV(
+                        "xrPollEvent: received XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT event: type %d subdomain %d : level %d -> level %d",
+                        perf_settings_event->type,
+                        perf_settings_event->subDomain,
+                        perf_settings_event->fromLevel,
+                        perf_settings_event->toLevel);
+            } break;
+            case XR_TYPE_EVENT_DATA_DISPLAY_REFRESH_RATE_CHANGED_FB: {
+                const XrEventDataDisplayRefreshRateChangedFB* refresh_rate_changed_event =
+                        (XrEventDataDisplayRefreshRateChangedFB*)(baseEventHeader);
+                ALOGV(
+                        "xrPollEvent: received XR_TYPE_EVENT_DATA_DISPLAY_REFRESH_RATE_CHANGED_FB event: fromRate %f -> toRate %f",
+                        refresh_rate_changed_event->fromDisplayRefreshRate,
+                        refresh_rate_changed_event->toDisplayRefreshRate);
+            } break;
+            case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING: {
+                XrEventDataReferenceSpaceChangePending* ref_space_change_event =
+                        (XrEventDataReferenceSpaceChangePending*)(baseEventHeader);
+                ALOGV(
+                        "xrPollEvent: received XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING event: changed space: %d for session %p at time %f",
+                        ref_space_change_event->referenceSpaceType,
+                        (void*)ref_space_change_event->session,
+                        FromXrTime(ref_space_change_event->changeTime));
+            } break;
+            case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+                const XrEventDataSessionStateChanged* session_state_changed_event =
+                        (XrEventDataSessionStateChanged*)(baseEventHeader);
+                ALOGV(
+                        "xrPollEvent: received XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: %d for session %p at time %f",
+                        session_state_changed_event->state,
+                        (void*)session_state_changed_event->session,
+                        FromXrTime(session_state_changed_event->time));
+
+                switch (session_state_changed_event->state) {
+                    case XR_SESSION_STATE_FOCUSED:
+                        app->Focused = true;
+                        break;
+                    case XR_SESSION_STATE_VISIBLE:
+                        app->Focused = false;
+                        break;
+                    case XR_SESSION_STATE_READY:
+                    case XR_SESSION_STATE_STOPPING:
+                        ovrApp_HandleSessionStateChanges(app, session_state_changed_event->state);
+                        break;
+                    default:
+                        break;
+                }
+            } break;
+            default:
+                ALOGV("xrPollEvent: Unknown event");
+                break;
+        }
+    }
+}
+
+/*
+================================================================================
+
+ovrMatrix4f
+
+================================================================================
+*/
+
 
 ovrMatrix4f ovrMatrix4f_CreateProjection(
         const float minX,

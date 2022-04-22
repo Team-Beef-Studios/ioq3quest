@@ -6,24 +6,19 @@
 //#if __ANDROID__
 
 #include <assert.h>
+#include <unistd.h>
 
 static engine_t vr_engine;
 
 const char* const requiredExtensionNames[] = {
-		XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
-		XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
-		XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME,
-		XR_KHR_COMPOSITION_LAYER_CUBE_EXTENSION_NAME,
-		XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
-		XR_KHR_COMPOSITION_LAYER_EQUIRECT2_EXTENSION_NAME,
-		XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
-		XR_FB_COLOR_SPACE_EXTENSION_NAME,
-		XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
-		XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME,
-		XR_FB_FOVEATION_EXTENSION_NAME,
-		XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME};
+        XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
+        XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
+        XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME,
+        XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
+        XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
+        XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME};
 const uint32_t numRequiredExtensions =
-		sizeof(requiredExtensionNames) / sizeof(requiredExtensionNames[0]);
+        sizeof(requiredExtensionNames) / sizeof(requiredExtensionNames[0]);
 
 cvar_t *vr_worldscale = NULL;
 cvar_t *vr_hudDepth = NULL;
@@ -50,7 +45,7 @@ cvar_t *vr_goreLevel = NULL;
 
 engine_t* VR_Init( ovrJava java )
 {
-    memset(&vr_engine, 0, sizeof(vr_engine));
+    ovrApp_Clear(&vr_engine.appState);
 
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
     xrGetInstanceProcAddr(
@@ -84,20 +79,51 @@ engine_t* VR_Init( ovrJava java )
     instanceCreateInfo.enabledApiLayerNames = NULL;
     instanceCreateInfo.enabledExtensionCount = numRequiredExtensions;
     instanceCreateInfo.enabledExtensionNames = requiredExtensionNames;
-    if (xrCreateInstance(&instanceCreateInfo, &vr_engine.instance) != XR_SUCCESS) {
-        Com_Printf("xrCreateInstance failed");
+
+    XrResult initResult;
+    OXR(initResult = xrCreateInstance(&instanceCreateInfo, &vr_engine.appState.Instance));
+    if (initResult != XR_SUCCESS) {
+        ALOGE("Failed to create XR instance: %d.", initResult);
         exit(1);
     }
+
+    XrInstanceProperties instanceInfo;
+    instanceInfo.type = XR_TYPE_INSTANCE_PROPERTIES;
+    instanceInfo.next = NULL;
+    OXR(xrGetInstanceProperties(vr_engine.appState.Instance, &instanceInfo));
+    ALOGV(
+            "Runtime %s: Version : %u.%u.%u",
+            instanceInfo.runtimeName,
+            XR_VERSION_MAJOR(instanceInfo.runtimeVersion),
+            XR_VERSION_MINOR(instanceInfo.runtimeVersion),
+            XR_VERSION_PATCH(instanceInfo.runtimeVersion));
 
     XrSystemGetInfo systemGetInfo;
     memset(&systemGetInfo, 0, sizeof(systemGetInfo));
     systemGetInfo.type = XR_TYPE_SYSTEM_GET_INFO;
     systemGetInfo.next = NULL;
     systemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-    if (xrGetSystem(vr_engine.instance, &systemGetInfo, &vr_engine.systemId) != XR_SUCCESS) {
-        Com_Printf("xrGetSystem failed");
+
+    XrSystemId systemId;
+    OXR(initResult = xrGetSystem(vr_engine.appState.Instance, &systemGetInfo, &systemId));
+    if (initResult != XR_SUCCESS) {
+        ALOGE("Failed to get system.");
         exit(1);
     }
+
+    // Get the graphics requirements.
+    PFN_xrGetOpenGLESGraphicsRequirementsKHR pfnGetOpenGLESGraphicsRequirementsKHR = NULL;
+    OXR(xrGetInstanceProcAddr(
+            vr_engine.appState.Instance,
+            "xrGetOpenGLESGraphicsRequirementsKHR",
+            (PFN_xrVoidFunction*)(&pfnGetOpenGLESGraphicsRequirementsKHR)));
+
+    XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {};
+    graphicsRequirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR;
+    OXR(pfnGetOpenGLESGraphicsRequirementsKHR(vr_engine.appState.Instance, systemId, &graphicsRequirements));
+
+    vr_engine.appState.MainThreadTid = gettid();
+    vr_engine.appState.SystemId = systemId;
 
     vr_engine.java = java;
     return &vr_engine;
@@ -224,26 +250,17 @@ void VR_InitCvars( void )
 void VR_Destroy( engine_t* engine )
 {
     if (engine == &vr_engine) {
-        xrDestroyInstance(engine->instance);
+        xrDestroyInstance(engine->appState.Instance);
+        ovrApp_Destroy(&engine->appState);
     }
 }
 
 void VR_EnterVR( engine_t* engine, ovrJava java ) {
 
-    if (engine->session) {
+    if (engine->appState.Session) {
         Com_Printf("VR_EnterVR called with existing session");
         return;
     }
-
-    // Get the graphics requirements.
-    PFN_xrGetOpenGLESGraphicsRequirementsKHR pfnGetOpenGLESGraphicsRequirementsKHR = NULL;
-    xrGetInstanceProcAddr(
-            engine->instance,
-            "xrGetOpenGLESGraphicsRequirementsKHR",
-            (PFN_xrVoidFunction*)(&pfnGetOpenGLESGraphicsRequirementsKHR));
-    XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {};
-    graphicsRequirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR;
-    pfnGetOpenGLESGraphicsRequirementsKHR(engine->instance, engine->systemId, &graphicsRequirements);
 
     // Create the OpenXR Session.
     XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {};
@@ -258,17 +275,29 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
     sessionCreateInfo.type = XR_TYPE_SESSION_CREATE_INFO;
     sessionCreateInfo.next = &graphicsBindingAndroidGLES;
     sessionCreateInfo.createFlags = 0;
-    sessionCreateInfo.systemId = engine->systemId;
-    if (xrCreateSession(engine->instance, &sessionCreateInfo, &engine->session) != XR_SUCCESS) {
-        Com_Printf("xrCreateSession failed");
+    sessionCreateInfo.systemId = engine->appState.SystemId;
+
+    XrResult initResult;
+    OXR(initResult = xrCreateSession(engine->appState.Instance, &sessionCreateInfo, &engine->appState.Session));
+    if (initResult != XR_SUCCESS) {
+        ALOGE("Failed to create XR session: %d.", initResult);
         exit(1);
     }
 }
 
 void VR_LeaveVR( engine_t* engine ) {
-    if (engine->session) {
-        xrDestroySession(engine->session);
-        engine->session = NULL;
+    if (engine->appState.Session) {
+        OXR(xrDestroySpace(engine->appState.HeadSpace));
+        OXR(xrDestroySpace(engine->appState.LocalSpace));
+        // StageSpace is optional.
+        if (engine->appState.StageSpace != XR_NULL_HANDLE) {
+            OXR(xrDestroySpace(engine->appState.StageSpace));
+        }
+        OXR(xrDestroySpace(engine->appState.FakeStageSpace));
+        engine->appState.CurrentSpace = XR_NULL_HANDLE;
+        OXR(xrDestroySession(engine->appState.Session));
+        OXR(xrDestroyInstance(engine->appState.Instance));
+        engine->appState.Session = NULL;
     }
 }
 
