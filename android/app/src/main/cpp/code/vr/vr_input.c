@@ -425,7 +425,7 @@ void VR_HapticEvent(const char* event, int position, int flags, int intensity, f
 
     engine_t* engine = VR_GetEngine();
     jstring StringArg1 = (*(engine->java.Env))->NewStringUTF(engine->java.Env, event);
-    (*(engine->java.Env))->CallVoidMethod(engine->java.Env, engine->java.ActivityObject, android_haptic_event, StringArg1, position, flags, intensity * vr_hapticIntensity->value, angle, yHeight);
+    (*(engine->java.Env))->CallVoidMethod(engine->java.Env, engine->java.ActivityObject, android_haptic_event, StringArg1, position, flags, (int)(intensity * vr_hapticIntensity->value), angle, yHeight);
 
     //Controller Haptic Support
     int weaponFireChannel = vr.weapon_stabilised ? 3 : (vr_righthanded->integer ? 2 : 1);

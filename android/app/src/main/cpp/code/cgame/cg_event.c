@@ -1217,6 +1217,10 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 			trap_S_StartSound(NULL, es->number, CHAN_VOICE, CG_CustomSound(es->number, va("*death%i.wav", event - EV_DEATH1 + 1)));
 		}
 
+		if(es->clientNum == cg.snap->ps.clientNum)
+		{
+			trap_HapticEvent("fireball", 0, 0, 100, 0, 0);
+		}
 		break;
 
 
