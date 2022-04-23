@@ -464,11 +464,11 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.subImage.imageRect.extent.height = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Height;
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-        const XrVector3f pos = {xfStageFromHead.position.x, 0.0f, xfStageFromHead.position.z - 1.0f};
+        const XrVector3f pos = {xfStageFromHead.position.x, -0.25f, xfStageFromHead.position.z - 1.0f};
         cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
         cylinder_layer.pose.position = pos;
         cylinder_layer.radius = 1.0f;
-        cylinder_layer.centralAngle = MATH_PI * 0.75f;
+        cylinder_layer.centralAngle = MATH_PI * 0.5f;
         cylinder_layer.aspectRatio = 1.0f;
 
         engine->appState.Layers[engine->appState.LayerCount++].Cylinder = cylinder_layer;
