@@ -23,10 +23,13 @@ XrPath leftHandPath;
 XrPath rightHandPath;
 XrAction aimPoseAction;
 XrAction gripPoseAction;
+XrAction indexLeftAction;
+XrAction indexRightAction;
 XrAction toggleAction;
 XrAction moveOnXAction;
 XrAction moveOnYAction;
-XrAction moveOnJoystickAction;
+XrAction moveOnLeftJoystickAction;
+XrAction moveOnRightJoystickAction;
 XrAction thumbstickClickAction;
 XrAction vibrateLeftToggle;
 XrAction vibrateRightToggle;
@@ -38,8 +41,6 @@ XrSpace rightControllerAimSpace = XR_NULL_HANDLE;
 XrSpace leftControllerGripSpace = XR_NULL_HANDLE;
 XrSpace rightControllerGripSpace = XR_NULL_HANDLE;
 qboolean useSimpleProfile = qfalse;
-float appCylPositionX = 0.0f;
-float appCylPositionY = 0.0f;
 
 typedef struct {
     XrSpaceLocation loc;
@@ -258,12 +259,22 @@ static void VR_processHaptics() {
     float frametime = timestamp - lastFrameTime;
     lastFrameTime = timestamp;
 
-    //TODO:
-    /*for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 2; ++i) {
         if (vibration_channel_duration[i] > 0.0f ||
             vibration_channel_duration[i] == -1.0f) {
-            vrapi_SetHapticVibrationSimple(VR_GetEngine()->ovr, controllerIDs[i],
-                                           vibration_channel_intensity[i]);
+
+            // fire haptics using output action
+            XrHapticVibration vibration = {};
+            vibration.type = XR_TYPE_HAPTIC_VIBRATION;
+            vibration.next = NULL;
+            vibration.amplitude = vibration_channel_intensity[i];
+            vibration.duration = ToXrTime(vibration_channel_duration[i]);
+            vibration.frequency = 3000;
+            XrHapticActionInfo hapticActionInfo = {};
+            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
+            hapticActionInfo.next = NULL;
+            hapticActionInfo.action = i == 0 ? vibrateLeftFeedback : vibrateRightFeedback;
+            OXR(xrApplyHapticFeedback(VR_GetEngine()->appState.Session, &hapticActionInfo, (const XrHapticBaseHeader*)&vibration));
 
             if (vibration_channel_duration[i] != -1.0f) {
                 vibration_channel_duration[i] -= frametime;
@@ -274,9 +285,14 @@ static void VR_processHaptics() {
                 }
             }
         } else {
-            vrapi_SetHapticVibrationSimple(VR_GetEngine()->ovr, controllerIDs[i], 0.0f);
+            // Stop haptics
+            XrHapticActionInfo hapticActionInfo = {};
+            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
+            hapticActionInfo.next = NULL;
+            hapticActionInfo.action = i == 0 ? vibrateLeftFeedback : vibrateRightFeedback;
+            OXR(xrStopHapticFeedback(VR_GetEngine()->appState.Session, &hapticActionInfo));
         }
-    }*/
+    }
 }
 
 static qboolean IN_GetInputAction(const char* inputName, char* action)
@@ -625,10 +641,13 @@ void IN_VRInit( void )
 
     // Actions
     runningActionSet = CreateActionSet(1, "running_action_set", "Action Set used on main loop");
+    indexLeftAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "index_left", "Index left", 0, NULL);
+    indexRightAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "index_right", "Index right", 0, NULL);
     toggleAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "toggle", "Toggle", 0, NULL);
     moveOnXAction = CreateAction(runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "move_on_x", "Move on X", 0, NULL);
     moveOnYAction = CreateAction(runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "move_on_y", "Move on Y", 0, NULL);
-    moveOnJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_joy", "Move on Joy", 0, NULL);
+    moveOnLeftJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_left_joy", "Move on left Joy", 0, NULL);
+    moveOnRightJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_right_joy", "Move on right Joy", 0, NULL);
     thumbstickClickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_click", "Thumbstick Click", 0, NULL);
     XrAction vibrateLeftToggle = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "vibrate_left", "Vibrate Left Controller", 0, NULL);
     XrAction vibrateRightToggle = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "vibrate_right", "Vibrate Right Controller", 0, NULL);
@@ -702,16 +721,16 @@ void IN_VRInit( void )
 
         {
             if (interactionProfilePath == interactionProfilePathTouch) {
-                bindings[currBinding++] = ActionSuggestedBinding(toggleAction, "/user/hand/left/input/trigger");
-                bindings[currBinding++] = ActionSuggestedBinding(toggleAction, "/user/hand/right/input/trigger");
+                bindings[currBinding++] = ActionSuggestedBinding(indexLeftAction, "/user/hand/left/input/trigger");
+                bindings[currBinding++] = ActionSuggestedBinding(indexRightAction, "/user/hand/right/input/trigger");
                 bindings[currBinding++] = ActionSuggestedBinding(toggleAction, "/user/hand/left/input/x/click");
                 bindings[currBinding++] = ActionSuggestedBinding(toggleAction, "/user/hand/right/input/a/click");
                 bindings[currBinding++] = ActionSuggestedBinding(moveOnXAction, "/user/hand/left/input/squeeze/value");
                 bindings[currBinding++] = ActionSuggestedBinding(moveOnXAction, "/user/hand/right/input/squeeze/value");
                 bindings[currBinding++] = ActionSuggestedBinding(moveOnYAction, "/user/hand/left/input/trigger/value");
                 bindings[currBinding++] = ActionSuggestedBinding(moveOnYAction, "/user/hand/right/input/trigger/value");
-                bindings[currBinding++] = ActionSuggestedBinding(moveOnJoystickAction, "/user/hand/left/input/thumbstick");
-                bindings[currBinding++] = ActionSuggestedBinding(moveOnJoystickAction, "/user/hand/right/input/thumbstick");
+                bindings[currBinding++] = ActionSuggestedBinding(moveOnLeftJoystickAction, "/user/hand/left/input/thumbstick");
+                bindings[currBinding++] = ActionSuggestedBinding(moveOnRightJoystickAction, "/user/hand/right/input/thumbstick");
                 bindings[currBinding++] = ActionSuggestedBinding(thumbstickClickAction, "/user/hand/left/input/thumbstick/click");
                 bindings[currBinding++] = ActionSuggestedBinding(thumbstickClickAction, "/user/hand/right/input/thumbstick/click");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftToggle, "/user/hand/left/input/y/click");
@@ -725,8 +744,8 @@ void IN_VRInit( void )
             }
 
             if (interactionProfilePath == interactionProfilePathKHRSimple) {
-                bindings[currBinding++] = ActionSuggestedBinding(toggleAction, "/user/hand/left/input/select/click");
-                bindings[currBinding++] = ActionSuggestedBinding(toggleAction, "/user/hand/right/input/select/click");
+                bindings[currBinding++] = ActionSuggestedBinding(indexLeftAction, "/user/hand/left/input/select/click");
+                bindings[currBinding++] = ActionSuggestedBinding(indexRightAction, "/user/hand/right/input/select/click");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftToggle, "/user/hand/left/input/menu/click");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateRightToggle, "/user/hand/right/input/menu/click");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftFeedback, "/user/hand/left/output/haptic");
@@ -746,22 +765,17 @@ void IN_VRInit( void )
         suggestedBindings.countSuggestedBindings = currBinding;
         OXR(xrSuggestInteractionProfileBindings(engine->appState.Instance, &suggestedBindings));
 
-        // Attach to session
-        XrSessionActionSetsAttachInfo attachInfo = {};
-        attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
-        attachInfo.next = NULL;
-        attachInfo.countActionSets = 1;
-        attachInfo.actionSets = &runningActionSet;
-        OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
-
         // Enumerate actions
         XrPath actionPathsBuffer[16];
         char stringBuffer[256];
         XrAction actionsToEnumerate[] = {
+                indexLeftAction,
+                indexRightAction,
                 toggleAction,
                 moveOnXAction,
                 moveOnYAction,
-                moveOnJoystickAction,
+                moveOnLeftJoystickAction,
+                moveOnRightJoystickAction,
                 thumbstickClickAction,
                 vibrateLeftToggle,
                 vibrateRightToggle,
@@ -823,43 +837,26 @@ void IN_VRInit( void )
     }
 }
 
-//TODO:
-/*
-static void IN_VRController( qboolean isRightController, ovrTracking remoteTracking )
+static void IN_VRController( qboolean isRightController, XrPosef pose )
 {
-    if (isRightController == (vr_righthanded->integer != 0))
-	{
-		//Set gun angles - We need to calculate all those we might need (including adjustments) for the client to then take its pick
-		vec3_t rotation = {0};
-		rotation[PITCH] = vr_weaponPitch->value;
-		QuatToYawPitchRoll(remoteTracking.HeadPose.Pose.Orientation, rotation, vr.weaponangles);
+    //Set gun angles - We need to calculate all those we might need (including adjustments) for the client to then take its pick
+    vec3_t rotation = {0};
+    if (isRightController != (vr_righthanded->integer != 0))
+        QuatToYawPitchRoll(pose.orientation, rotation, vr.offhandangles2); // used for off-hand direction mode
+    rotation[PITCH] = vr_weaponPitch->value;
+    QuatToYawPitchRoll(pose.orientation, rotation, vr.weaponangles);
 
-		VectorSubtract(vr.weaponangles_last, vr.weaponangles, vr.weaponangles_delta);
-		VectorCopy(vr.weaponangles, vr.weaponangles_last);
+    VectorSubtract(vr.weaponangles_last, vr.weaponangles, vr.weaponangles_delta);
+    VectorCopy(vr.weaponangles, vr.weaponangles_last);
 
-		///Weapon location relative to view
-		vr.weaponposition[0] = remoteTracking.HeadPose.Pose.Position.x;
-		vr.weaponposition[1] = remoteTracking.HeadPose.Pose.Position.y + vr_heightAdjust->value;
-		vr.weaponposition[2] = remoteTracking.HeadPose.Pose.Position.z;
+    ///Weapon location relative to view
+    vr.weaponposition[0] = pose.position.x;
+    vr.weaponposition[1] = pose.position.y + vr_heightAdjust->value;
+    vr.weaponposition[2] = pose.position.z;
 
-		VectorCopy(vr.weaponoffset_last[1], vr.weaponoffset_last[0]);
-		VectorCopy(vr.weaponoffset, vr.weaponoffset_last[1]);
-		VectorSubtract(vr.weaponposition, vr.hmdposition, vr.weaponoffset);
-	} else {
-        vec3_t rotation = {0};
-        QuatToYawPitchRoll(remoteTracking.HeadPose.Pose.Orientation, rotation, vr.offhandangles2); // used for off-hand direction mode
-        rotation[PITCH] = vr_weaponPitch->value;
-        QuatToYawPitchRoll(remoteTracking.HeadPose.Pose.Orientation, rotation, vr.offhandangles);
-
-        ///location relative to view
-        vr.offhandposition[0] = remoteTracking.HeadPose.Pose.Position.x;
-        vr.offhandposition[1] = remoteTracking.HeadPose.Pose.Position.y + vr_heightAdjust->value;
-        vr.offhandposition[2] = remoteTracking.HeadPose.Pose.Position.z;
-
-        VectorCopy(vr.offhandoffset_last[1], vr.offhandoffset_last[0]);
-        VectorCopy(vr.offhandoffset, vr.offhandoffset_last[1]);
-        VectorSubtract(vr.offhandposition, vr.hmdposition, vr.offhandoffset);
-	}
+    VectorCopy(vr.weaponoffset_last[1], vr.weaponoffset_last[0]);
+    VectorCopy(vr.weaponoffset, vr.weaponoffset_last[1]);
+    VectorSubtract(vr.weaponposition, vr.hmdposition, vr.weaponoffset);
 
 	if (vr.virtual_screen || cl.snap.ps.pm_type == PM_INTERMISSION)
     {
@@ -911,7 +908,6 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
         }
     }
 }
-*/
 
 static qboolean IN_VRJoystickUse8WayMapping( void ) {
     char action[256];
@@ -1378,7 +1374,16 @@ void IN_VRInputFrame( void )
     }
 
     // OpenXR input
+    engine_t* engine = VR_GetEngine();
     {
+        // Attach to session
+        XrSessionActionSetsAttachInfo attachInfo = {};
+        attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
+        attachInfo.next = NULL;
+        attachInfo.countActionSets = 1;
+        attachInfo.actionSets = &runningActionSet;
+        OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
+
         // sync action data
         XrActiveActionSet activeActionSet = {};
         activeActionSet.actionSet = runningActionSet;
@@ -1389,7 +1394,7 @@ void IN_VRInputFrame( void )
         syncInfo.next = NULL;
         syncInfo.countActiveActionSets = 1;
         syncInfo.activeActionSets = &activeActionSet;
-        OXR(xrSyncActions(VR_GetEngine()->appState.Session, &syncInfo));
+        OXR(xrSyncActions(engine->appState.Session, &syncInfo));
 
         // query input action states
         XrActionStateGetInfo getInfo = {};
@@ -1402,77 +1407,20 @@ void IN_VRInputFrame( void )
         XrActionStateBoolean vibrateRightState = GetActionStateBoolean(vibrateRightToggle);
         XrActionStateBoolean thumbstickClickState = GetActionStateBoolean(thumbstickClickAction);
 
-        // Update app logic based on input
-        if (toggleState.changedSinceLastSync) {
-            // Also stop haptics
-            XrHapticActionInfo hapticActionInfo = {};
-            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
-            hapticActionInfo.next = NULL;
-            hapticActionInfo.action = vibrateLeftFeedback;
-            OXR(xrStopHapticFeedback(VR_GetEngine()->appState.Session, &hapticActionInfo));
-            hapticActionInfo.action = vibrateRightFeedback;
-            OXR(xrStopHapticFeedback(VR_GetEngine()->appState.Session, &hapticActionInfo));
-        }
-
+        //TODO:remove (this is just a rest of sample code)
         if (thumbstickClickState.changedSinceLastSync &&
             thumbstickClickState.currentState == XR_TRUE) {
             float currentRefreshRate = 0.0f;
-            OXR(VR_GetEngine()->appState.pfnGetDisplayRefreshRate(VR_GetEngine()->appState.Session, &currentRefreshRate));
+            OXR(engine->appState.pfnGetDisplayRefreshRate(engine->appState.Session, &currentRefreshRate));
             ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
 
-            const int requestedRateIndex = VR_GetEngine()->appState.RequestedDisplayRefreshRateIndex++ %
-                    VR_GetEngine()->appState.NumSupportedDisplayRefreshRates;
+            const int requestedRateIndex = engine->appState.RequestedDisplayRefreshRateIndex++ %
+                    engine->appState.NumSupportedDisplayRefreshRates;
 
             const float requestRefreshRate =
-                    VR_GetEngine()->appState.SupportedDisplayRefreshRates[requestedRateIndex];
+                    engine->appState.SupportedDisplayRefreshRates[requestedRateIndex];
             ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
-            OXR(VR_GetEngine()->appState.pfnRequestDisplayRefreshRate(VR_GetEngine()->appState.Session, requestRefreshRate));
-        }
-
-        // The KHR simple profile doesn't have these actions, so the getters will fail
-        // and flood the log with errors.
-        if (useSimpleProfile == qfalse) {
-            XrActionStateVector2f moveJoystickState = GetActionStateVector2(moveOnJoystickAction);
-            if (moveJoystickState.changedSinceLastSync) {
-                appCylPositionX = moveJoystickState.currentState.x;
-                appCylPositionY = moveJoystickState.currentState.y;
-            }
-        }
-
-
-        // Haptics
-        // NOTE: using the values from the example in the spec
-        if (vibrateLeftState.changedSinceLastSync && vibrateLeftState.currentState) {
-            ALOGV("Firing Haptics on L ... ");
-            // fire haptics using output action
-            XrHapticVibration vibration = {};
-            vibration.type = XR_TYPE_HAPTIC_VIBRATION;
-            vibration.next = NULL;
-            vibration.amplitude = 0.5;
-            vibration.duration = ToXrTime(0.5); // half a second
-            vibration.frequency = 3000;
-            XrHapticActionInfo hapticActionInfo = {};
-            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
-            hapticActionInfo.next = NULL;
-            hapticActionInfo.action = vibrateLeftFeedback;
-            OXR(xrApplyHapticFeedback(
-                    VR_GetEngine()->appState.Session, &hapticActionInfo, (const XrHapticBaseHeader*)&vibration));
-        }
-        if (vibrateRightState.changedSinceLastSync && vibrateRightState.currentState) {
-            ALOGV("Firing Haptics on R ... ");
-            // fire haptics using output action
-            XrHapticVibration vibration = {};
-            vibration.type = XR_TYPE_HAPTIC_VIBRATION;
-            vibration.next = NULL;
-            vibration.amplitude = 0.5;
-            vibration.duration = XR_MIN_HAPTIC_DURATION;
-            vibration.frequency = 3000;
-            XrHapticActionInfo hapticActionInfo = {};
-            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
-            hapticActionInfo.next = NULL;
-            hapticActionInfo.action = vibrateRightFeedback;
-            OXR(xrApplyHapticFeedback(
-                    VR_GetEngine()->appState.Session, &hapticActionInfo, (const XrHapticBaseHeader*)&vibration));
+            OXR(engine->appState.pfnRequestDisplayRefreshRate(engine->appState.Session, requestRefreshRate));
         }
     }
 
@@ -1487,27 +1435,6 @@ void IN_VRInputFrame( void )
 		++index;
 		
 		if (capsHeader.Type != ovrControllerType_TrackedRemote) {
-			continue;
-		}
-
-		ovrInputTrackedRemoteCapabilities caps;
-		caps.Header = capsHeader;
-		ovrResult capsResult = vrapi_GetInputDeviceCapabilities(ovr, &caps.Header);
-		if (capsResult < 0) {
-			continue;
-		}
-
-		ovrInputStateTrackedRemote state;
-		state.Header.ControllerType = ovrControllerType_TrackedRemote;
-		ovrResult stateResult = vrapi_GetCurrentInputState(ovr, capsHeader.DeviceID, &state.Header);
-		if (stateResult < 0) {
-			continue;
-		}
-
-		ovrTracking remoteTracking;
-		stateResult = vrapi_GetInputTrackingState(ovr, capsHeader.DeviceID, VR_GetEngine()->predictedDisplayTime,
-											 &remoteTracking);
-		if (stateResult < 0) {
 			continue;
 		}
 
@@ -1527,10 +1454,27 @@ void IN_VRInputFrame( void )
 		}
 
         IN_VRButtons(isRight, state.Buttons);
-		IN_VRController(isRight, remoteTracking);
-		IN_VRJoystick(isRight, state.Joystick.x, state.Joystick.y);
-		IN_VRTriggers(isRight, state.IndexTrigger);
 	}*/
+
+    //index finger click
+    XrActionStateBoolean indexState;
+    indexState = GetActionStateBoolean(indexLeftAction);
+    IN_VRTriggers(qfalse, indexState.currentState ? 1 : 0);
+    indexState = GetActionStateBoolean(indexRightAction);
+    IN_VRTriggers(qtrue, indexState.currentState ? 1 : 0);
+
+    //thumbstick
+    XrActionStateVector2f moveJoystickState;
+    moveJoystickState = GetActionStateVector2(moveOnLeftJoystickAction);
+    IN_VRJoystick(qfalse, moveJoystickState.currentState.x, moveJoystickState.currentState.y);
+    moveJoystickState = GetActionStateVector2(moveOnRightJoystickAction);
+    IN_VRJoystick(qtrue, moveJoystickState.currentState.x, moveJoystickState.currentState.y);
+
+    //controller pose
+    if (engine->appState.TrackedController[0].Active)
+        IN_VRController(qfalse, engine->appState.TrackedController[0].Pose);
+    if (engine->appState.TrackedController[2].Active)
+        IN_VRController(qtrue, engine->appState.TrackedController[2].Pose);
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
