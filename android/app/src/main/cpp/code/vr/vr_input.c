@@ -649,10 +649,10 @@ void IN_VRInit( void )
     moveOnLeftJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_left_joy", "Move on left Joy", 0, NULL);
     moveOnRightJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_right_joy", "Move on right Joy", 0, NULL);
     thumbstickClickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_click", "Thumbstick Click", 0, NULL);
-    XrAction vibrateLeftToggle = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "vibrate_left", "Vibrate Left Controller", 0, NULL);
-    XrAction vibrateRightToggle = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "vibrate_right", "Vibrate Right Controller", 0, NULL);
-    XrAction vibrateLeftFeedback = CreateAction(runningActionSet, XR_ACTION_TYPE_VIBRATION_OUTPUT, "vibrate_left_feedback", "Vibrate Left Controller Feedback", 0, NULL);
-    XrAction vibrateRightFeedback = CreateAction(runningActionSet, XR_ACTION_TYPE_VIBRATION_OUTPUT, "vibrate_right_feedback", "Vibrate Right Controller Feedback", 0, NULL);
+    vibrateLeftToggle = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "vibrate_left", "Vibrate Left Controller", 0, NULL);
+    vibrateRightToggle = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "vibrate_right", "Vibrate Right Controller", 0, NULL);
+    vibrateLeftFeedback = CreateAction(runningActionSet, XR_ACTION_TYPE_VIBRATION_OUTPUT, "vibrate_left_feedback", "Vibrate Left Controller Feedback", 0, NULL);
+    vibrateRightFeedback = CreateAction(runningActionSet, XR_ACTION_TYPE_VIBRATION_OUTPUT, "vibrate_right_feedback", "Vibrate Right Controller Feedback", 0, NULL);
 
     OXR(xrStringToPath(engine->appState.Instance, "/user/hand/left", &leftHandPath));
     OXR(xrStringToPath(engine->appState.Instance, "/user/hand/right", &rightHandPath));
@@ -1288,15 +1288,15 @@ void IN_VRInputFrame( void )
 		memset(&rightController, 0, sizeof(rightController));
 		controllerInit = qtrue;
 	}
+	engine_t* engine = VR_GetEngine();
 
 	if (vr_extralatencymode != NULL &&
             vr_extralatencymode->integer) {
         //TODO:vrapi_SetExtraLatencyMode(VR_GetEngine()->ovr, VRAPI_EXTRA_LATENCY_MODE_ON);
     }
 
-	if (vr_refreshrate != NULL && vr_refreshrate->integer)
-	{
-		//TODO:vrapi_SetDisplayRefreshRate(VR_GetEngine()->ovr, (float)vr_refreshrate->integer);
+	if (vr_refreshrate != NULL && vr_refreshrate->integer) {
+        OXR(engine->appState.pfnRequestDisplayRefreshRate(engine->appState.Session, (float)vr_refreshrate->integer));
 	}
 
 	vr.virtual_screen = VR_useScreenLayer();
@@ -1374,7 +1374,6 @@ void IN_VRInputFrame( void )
     }
 
     // OpenXR input
-    engine_t* engine = VR_GetEngine();
     {
         // Attach to session
         XrSessionActionSetsAttachInfo attachInfo = {};
@@ -1406,22 +1405,6 @@ void IN_VRInputFrame( void )
         XrActionStateBoolean vibrateLeftState = GetActionStateBoolean(vibrateLeftToggle);
         XrActionStateBoolean vibrateRightState = GetActionStateBoolean(vibrateRightToggle);
         XrActionStateBoolean thumbstickClickState = GetActionStateBoolean(thumbstickClickAction);
-
-        //TODO:remove (this is just a rest of sample code)
-        if (thumbstickClickState.changedSinceLastSync &&
-            thumbstickClickState.currentState == XR_TRUE) {
-            float currentRefreshRate = 0.0f;
-            OXR(engine->appState.pfnGetDisplayRefreshRate(engine->appState.Session, &currentRefreshRate));
-            ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
-
-            const int requestedRateIndex = engine->appState.RequestedDisplayRefreshRateIndex++ %
-                    engine->appState.NumSupportedDisplayRefreshRates;
-
-            const float requestRefreshRate =
-                    engine->appState.SupportedDisplayRefreshRates[requestedRateIndex];
-            ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
-            OXR(engine->appState.pfnRequestDisplayRefreshRate(engine->appState.Session, requestRefreshRate));
-        }
     }
 
 	//TODO:
