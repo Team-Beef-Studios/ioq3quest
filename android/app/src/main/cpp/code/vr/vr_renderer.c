@@ -160,23 +160,11 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 	}
 }
 
-typedef void(GL_APIENTRY* PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC)(
-GLenum target,
-GLenum attachment,
-GLuint texture,
-GLint level,
-GLint baseViewIndex,
-GLsizei numViews);
-
 void VR_InitRenderer( engine_t* engine ) {
 #if ENABLE_GL_DEBUG
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(VR_GLDebugLog, 0);
 #endif
-
-    PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC glFramebufferTextureMultiviewOVR =
-            (PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC)eglGetProcAddress(
-                    "glFramebufferTextureMultiviewOVR");
 
 	int eyeW, eyeH;
     VR_GetResolution(engine, &eyeW, &eyeH);
@@ -308,7 +296,7 @@ void VR_DrawFrame( engine_t* engine ) {
 	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
             vr.fov_x / vr.weapon_zoomLevel, vr.fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
 	re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M,
-						 engine->appState.Renderer.FrameBuffer[0].FrameBuffers[engine->appState.Renderer.FrameBuffer[0].TextureSwapChainIndex]);
+						 engine->appState.Renderer.FrameBuffer.FrameBuffers[engine->appState.Renderer.FrameBuffer.TextureSwapChainIndex]);
 
     GLboolean stageBoundsDirty = GL_TRUE;
     ovrApp_HandleXrEvents(&engine->appState);
@@ -391,28 +379,24 @@ void VR_DrawFrame( engine_t* engine ) {
     engine->appState.LayerCount = 0;
     memset(engine->appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
 
-    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-        ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer[eye];
-        ovrFramebuffer_Acquire(frameBuffer);
-        ovrFramebuffer_SetCurrent(frameBuffer);
-
-        if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
-        {
-            //Blood red.. ish
-            glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
-        }
-        else
-        {
-            //Black
-            glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-        }
-        glClear( GL_COLOR_BUFFER_BIT );
-
-        Com_Frame();
-
-        ovrFramebuffer_Resolve(frameBuffer);
-        ovrFramebuffer_Release(frameBuffer);
+    if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
+    {
+        //Blood red.. ish
+        glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
     }
+    else
+    {
+        //Black
+        glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+    }
+    glClear( GL_COLOR_BUFFER_BIT );
+
+    ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
+    ovrFramebuffer_Acquire(frameBuffer);
+    ovrFramebuffer_SetCurrent(frameBuffer);
+    Com_Frame();
+    ovrFramebuffer_Resolve(frameBuffer);
+    ovrFramebuffer_Release(frameBuffer);
     ovrFramebuffer_SetNone();
 
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
@@ -426,7 +410,7 @@ void VR_DrawFrame( engine_t* engine ) {
         projection_layer.views = projection_layer_elements;
 
         for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer[eye];
+            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
 
             memset(
                     &projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
@@ -457,11 +441,11 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.space = engine->appState.LocalSpace;
         cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
         memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
-        cylinder_layer.subImage.swapchain = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Handle;
+        cylinder_layer.subImage.swapchain = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Handle;
         cylinder_layer.subImage.imageRect.offset.x = 0;
         cylinder_layer.subImage.imageRect.offset.y = 0;
-        cylinder_layer.subImage.imageRect.extent.width = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Width;
-        cylinder_layer.subImage.imageRect.extent.height = engine->appState.Renderer.FrameBuffer[0].ColorSwapChain.Height;
+        cylinder_layer.subImage.imageRect.extent.width = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Width;
+        cylinder_layer.subImage.imageRect.extent.height = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Height;
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
         const XrVector3f pos = {xfStageFromHead.position.x, -0.25f, xfStageFromHead.position.z - 1.0f};

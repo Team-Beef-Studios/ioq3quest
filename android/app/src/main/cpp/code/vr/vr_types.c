@@ -275,9 +275,7 @@ ovrRenderer
 */
 
 void ovrRenderer_Clear(ovrRenderer* renderer) {
-    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-        ovrFramebuffer_Clear(&renderer->FrameBuffer[eye]);
-    }
+    ovrFramebuffer_Clear(&renderer->FrameBuffer);
 }
 
 void ovrRenderer_Create(
@@ -286,21 +284,17 @@ void ovrRenderer_Create(
         int suggestedEyeTextureWidth,
         int suggestedEyeTextureHeight) {
     // Create the frame buffers.
-    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-        ovrFramebuffer_Create(
-                session,
-                &renderer->FrameBuffer[eye],
-                GL_SRGB8_ALPHA8,
-                suggestedEyeTextureWidth,
-                suggestedEyeTextureHeight,
-                NUM_MULTI_SAMPLES);
-    }
+    ovrFramebuffer_Create(
+            session,
+            &renderer->FrameBuffer,
+            GL_SRGB8_ALPHA8,
+            suggestedEyeTextureWidth,
+            suggestedEyeTextureHeight,
+            NUM_MULTI_SAMPLES);
 }
 
 void ovrRenderer_Destroy(ovrRenderer* renderer) {
-    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-        ovrFramebuffer_Destroy(&renderer->FrameBuffer[eye]);
-    }
+    ovrFramebuffer_Destroy(&renderer->FrameBuffer);
 }
 
 /*

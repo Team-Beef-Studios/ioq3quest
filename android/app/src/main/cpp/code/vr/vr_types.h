@@ -80,7 +80,7 @@ typedef struct {
 } ovrFramebuffer;
 
 typedef struct {
-    ovrFramebuffer FrameBuffer[ovrMaxNumEyes];
+    ovrFramebuffer FrameBuffer;
 } ovrRenderer;
 
 typedef struct {
