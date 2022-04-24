@@ -234,7 +234,6 @@ void QuatToYawPitchRoll(XrQuaternionf q, vec3_t rotation, vec3_t out) {
 //0 = left, 1 = right
 float vibration_channel_duration[2] = {0.0f, 0.0f};
 float vibration_channel_intensity[2] = {0.0f, 0.0f};
-//TODO:ovrDeviceID controllerIDs[2];
 
 void VR_Vibrate( int duration, int chan, float intensity )
 {

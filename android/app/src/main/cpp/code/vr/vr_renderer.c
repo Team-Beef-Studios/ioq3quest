@@ -295,8 +295,6 @@ void VR_DrawFrame( engine_t* engine ) {
             30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
 	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
             vr.fov_x / vr.weapon_zoomLevel, vr.fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
-	re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M,
-						 engine->appState.Renderer.FrameBuffer.FrameBuffers[engine->appState.Renderer.FrameBuffer.TextureSwapChainIndex]);
 
     GLboolean stageBoundsDirty = GL_TRUE;
     ovrApp_HandleXrEvents(&engine->appState);
@@ -394,6 +392,8 @@ void VR_DrawFrame( engine_t* engine ) {
     ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
     ovrFramebuffer_Acquire(frameBuffer);
     ovrFramebuffer_SetCurrent(frameBuffer);
+    re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M,
+                         engine->appState.Renderer.FrameBuffer.FrameBuffers[engine->appState.Renderer.FrameBuffer.TextureSwapChainIndex]);
     Com_Frame();
     ovrFramebuffer_Resolve(frameBuffer);
     ovrFramebuffer_Release(frameBuffer);

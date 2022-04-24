@@ -287,7 +287,7 @@ void ovrRenderer_Create(
     ovrFramebuffer_Create(
             session,
             &renderer->FrameBuffer,
-            GL_SRGB8_ALPHA8,
+            GL_RGBA8,
             suggestedEyeTextureWidth,
             suggestedEyeTextureHeight,
             NUM_MULTI_SAMPLES);
