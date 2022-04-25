@@ -21,7 +21,6 @@
 extern vr_clientinfo_t vr;
 
 XrView* projections;
-GLboolean stageSupported = GL_FALSE;
 
 void VR_UpdateStageBounds(ovrApp* pappState) {
     XrExtent2Df stageBounds = {};
@@ -226,6 +225,7 @@ void VR_InitRenderer( engine_t* engine ) {
     OXR(xrEnumerateReferenceSpaces(
             engine->appState.Session, numOutputSpaces, &numOutputSpaces, referenceSpaces));
 
+    GLboolean stageSupported = GL_FALSE;
     for (uint32_t i = 0; i < numOutputSpaces; i++) {
         if (referenceSpaces[i] == XR_REFERENCE_SPACE_TYPE_STAGE) {
             stageSupported = GL_TRUE;
@@ -272,9 +272,16 @@ void VR_InitRenderer( engine_t* engine ) {
             engine->appState.ViewConfigurationView[0].recommendedImageRectHeight);
 }
 
-void VR_DestroyRenderer( engine_t* engine ) {
+void VR_DestroyRenderer( engine_t* engine )
+{
     ovrRenderer_Destroy(&engine->appState.Renderer);
     free(projections);
+}
+
+void VR_ReInitRenderer()
+{
+    VR_DestroyRenderer( VR_GetEngine() );
+    VR_InitRenderer( VR_GetEngine() );
 }
 
 void VR_DrawFrame( engine_t* engine ) {
@@ -435,6 +442,8 @@ void VR_DrawFrame( engine_t* engine ) {
     } else {
 
         // Build the cylinder layer
+        int width = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Width;
+        int height = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Height;
         XrCompositionLayerCylinderKHR cylinder_layer = {};
         cylinder_layer.type = XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR;
         cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
@@ -444,16 +453,16 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.subImage.swapchain = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Handle;
         cylinder_layer.subImage.imageRect.offset.x = 0;
         cylinder_layer.subImage.imageRect.offset.y = 0;
-        cylinder_layer.subImage.imageRect.extent.width = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Width;
-        cylinder_layer.subImage.imageRect.extent.height = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Height;
+        cylinder_layer.subImage.imageRect.extent.width = width;
+        cylinder_layer.subImage.imageRect.extent.height = height;
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-        const XrVector3f pos = {xfStageFromHead.position.x, -0.25f, xfStageFromHead.position.z - 1.0f};
+        const XrVector3f pos = {xfStageFromHead.position.x, -0.25f, xfStageFromHead.position.z - 4.0f};
         cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
         cylinder_layer.pose.position = pos;
-        cylinder_layer.radius = 1.0f;
+        cylinder_layer.radius = 12.0f;
         cylinder_layer.centralAngle = MATH_PI * 0.5f;
-        cylinder_layer.aspectRatio = 1.0f;
+        cylinder_layer.aspectRatio = (float)height / width / 0.75f;
 
         engine->appState.Layers[engine->appState.LayerCount++].Cylinder = cylinder_layer;
     }

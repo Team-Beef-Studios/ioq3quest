@@ -25,22 +25,6 @@
 
 #define MATH_PI 3.14159265358979323846f
 
-#if !defined(GL_EXT_multisampled_render_to_texture)
-typedef void(GL_APIENTRY* PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)(
-GLenum target,
-GLsizei samples,
-GLenum internalformat,
-GLsizei width,
-GLsizei height);
-typedef void(GL_APIENTRY* PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC)(
-GLenum target,
-GLenum attachment,
-GLenum textarget,
-GLuint texture,
-GLint level,
-GLsizei samples);
-#endif
-
 #define ALOGE(...) printf(__VA_ARGS__)
 #define ALOGV(...) printf(__VA_ARGS__)
 
@@ -70,7 +54,6 @@ typedef struct {
 typedef struct {
     int Width;
     int Height;
-    int Multisamples;
     uint32_t TextureSwapChainLength;
     uint32_t TextureSwapChainIndex;
     ovrSwapChain ColorSwapChain;

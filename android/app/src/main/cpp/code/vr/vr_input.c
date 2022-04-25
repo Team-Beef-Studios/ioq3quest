@@ -43,6 +43,7 @@ XrSpace leftControllerAimSpace = XR_NULL_HANDLE;
 XrSpace rightControllerAimSpace = XR_NULL_HANDLE;
 XrSpace leftControllerGripSpace = XR_NULL_HANDLE;
 XrSpace rightControllerGripSpace = XR_NULL_HANDLE;
+qboolean inputInitialized = qfalse;
 qboolean useSimpleProfile = qfalse;
 
 typedef struct {
@@ -635,6 +636,9 @@ XrActionStateVector2f GetActionStateVector2(XrAction action) {
 
 void IN_VRInit( void )
 {
+    if (inputInitialized)
+        return;
+
 	memset(&vr, 0, sizeof(vr));
 
 	engine_t *engine = VR_GetEngine();
@@ -842,6 +846,7 @@ void IN_VRInit( void )
             }
         }
     }
+    inputInitialized = qtrue;
 }
 
 static void IN_VRController( qboolean isRightController, XrPosef pose )
