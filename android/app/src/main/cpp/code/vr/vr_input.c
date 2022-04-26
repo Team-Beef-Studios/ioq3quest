@@ -1103,8 +1103,8 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
             else
             {
 				//Positional movement speed correction for when we are not hitting target framerate
-				//TODO:int refresh = vrapi_GetSystemPropertyInt(&(VR_GetEngine()->java), VRAPI_SYS_PROP_DISPLAY_REFRESH_RATE);
-				int refresh = 72;
+				float refresh;
+				VR_GetEngine()->appState.pfnGetDisplayRefreshRate(VR_GetEngine()->appState.Session, &refresh);
 				float multiplier = (float)((1000.0 / refresh) / (in_vrEventTime - lastframetime));
 
 				float factor = (refresh / 72.0F) * 10.0f; // adjust positional factor based on refresh rate

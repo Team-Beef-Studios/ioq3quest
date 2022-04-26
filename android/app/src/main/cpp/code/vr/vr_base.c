@@ -18,7 +18,9 @@ const char* const requiredExtensionNames[] = {
         XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
         XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
         XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
-        XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME};
+        XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME,
+        XR_FB_FOVEATION_EXTENSION_NAME,
+        XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME};
 const uint32_t numRequiredExtensions =
         sizeof(requiredExtensionNames) / sizeof(requiredExtensionNames[0]);
 

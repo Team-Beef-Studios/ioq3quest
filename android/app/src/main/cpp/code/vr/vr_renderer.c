@@ -270,6 +270,14 @@ void VR_InitRenderer( engine_t* engine ) {
             &engine->appState.Renderer,
             engine->appState.ViewConfigurationView[0].recommendedImageRectWidth,
             engine->appState.ViewConfigurationView[0].recommendedImageRectHeight);
+
+    ovrRenderer_SetFoveation(
+            &engine->appState.Instance,
+            &engine->appState.Session,
+            &engine->appState.Renderer,
+            XR_FOVEATION_LEVEL_HIGH_FB,
+            0,
+            XR_FOVEATION_DYNAMIC_DISABLED_FB);
 }
 
 void VR_DestroyRenderer( engine_t* engine )
@@ -282,6 +290,29 @@ void VR_ReInitRenderer()
 {
     VR_DestroyRenderer( VR_GetEngine() );
     VR_InitRenderer( VR_GetEngine() );
+}
+
+void VR_ClearFrameBuffer( int width, int height)
+{
+    glEnable( GL_SCISSOR_TEST );
+    glViewport( 0, 0, width, height );
+
+    if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
+    {
+        //Blood red.. ish
+        glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
+    }
+    else
+    {
+        //Black
+        glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+    }
+
+    glScissor( 0, 0, width, height );
+    glClear( GL_COLOR_BUFFER_BIT );
+
+    glScissor( 0, 0, 0, 0 );
+    glDisable( GL_SCISSOR_TEST );
 }
 
 void VR_DrawFrame( engine_t* engine ) {
@@ -375,38 +406,38 @@ void VR_DrawFrame( engine_t* engine ) {
         vr.fov_y = (fabs(fov.angleUp) + fabs(fov.angleDown)) * 180.0f / M_PI;
     }
 
-    // Set-up the compositor layers for this frame.
-    // NOTE: Multiple independent layers are allowed, but they need to be added
-    // in a depth consistent order.
-
-    XrCompositionLayerProjectionView projection_layer_elements[2] = {};
-
     engine->appState.LayerCount = 0;
     memset(engine->appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
 
-    if (Cvar_VariableIntegerValue("vr_thirdPersonSpectator"))
-    {
-        //Blood red.. ish
-        glClearColor( 0.12f, 0.0f, 0.05f, 1.0f );
-    }
-    else
-    {
-        //Black
-        glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-    }
-    glClear( GL_COLOR_BUFFER_BIT );
-
     ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
+    int swapchainIndex = engine->appState.Renderer.FrameBuffer.TextureSwapChainIndex;
+    int glFramebuffer = engine->appState.Renderer.FrameBuffer.FrameBuffers[swapchainIndex];
+    re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M, glFramebuffer);
+
     ovrFramebuffer_Acquire(frameBuffer);
     ovrFramebuffer_SetCurrent(frameBuffer);
-    re.SetVRHeadsetParms(projectionMatrix.M, monoVRMatrix.M,
-                         engine->appState.Renderer.FrameBuffer.FrameBuffers[engine->appState.Renderer.FrameBuffer.TextureSwapChainIndex]);
+    VR_ClearFrameBuffer(frameBuffer->ColorSwapChain.Width, frameBuffer->ColorSwapChain.Height);
     Com_Frame();
-    ovrFramebuffer_Resolve(frameBuffer);
-    ovrFramebuffer_Release(frameBuffer);
-    ovrFramebuffer_SetNone();
 
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
+
+        XrCompositionLayerProjectionView projection_layer_elements[2] = {};
+        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
+
+            memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
+            projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+            projection_layer_elements[eye].pose = XrPosef_Inverse(viewTransform[eye]);
+            projection_layer_elements[eye].fov = projections[eye].fov;
+
+            memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
+            projection_layer_elements[eye].subImage.swapchain = frameBuffer->ColorSwapChain.Handle;
+            projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
+            projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
+            projection_layer_elements[eye].subImage.imageRect.extent.width = frameBuffer->ColorSwapChain.Width;
+            projection_layer_elements[eye].subImage.imageRect.extent.height = frameBuffer->ColorSwapChain.Height;
+            projection_layer_elements[eye].subImage.imageArrayIndex = eye;
+        }
 
         XrCompositionLayerProjection projection_layer = {};
         projection_layer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
@@ -415,28 +446,6 @@ void VR_DrawFrame( engine_t* engine ) {
         projection_layer.space = engine->appState.CurrentSpace;
         projection_layer.viewCount = ovrMaxNumEyes;
         projection_layer.views = projection_layer_elements;
-
-        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-            ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
-
-            memset(
-                    &projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
-            projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-
-            projection_layer_elements[eye].pose = XrPosef_Inverse(viewTransform[eye]);
-            projection_layer_elements[eye].fov = projections[eye].fov;
-
-            memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
-            projection_layer_elements[eye].subImage.swapchain =
-                    frameBuffer->ColorSwapChain.Handle;
-            projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
-            projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
-            projection_layer_elements[eye].subImage.imageRect.extent.width =
-                    frameBuffer->ColorSwapChain.Width;
-            projection_layer_elements[eye].subImage.imageRect.extent.height =
-                    frameBuffer->ColorSwapChain.Height;
-            projection_layer_elements[eye].subImage.imageArrayIndex = 0;
-        }
 
         engine->appState.Layers[engine->appState.LayerCount++].Projection = projection_layer;
     } else {
@@ -481,4 +490,7 @@ void VR_DrawFrame( engine_t* engine ) {
     endFrameInfo.layers = layers;
 
     OXR(xrEndFrame(engine->appState.Session, &endFrameInfo));
+    ovrFramebuffer_Resolve(frameBuffer);
+    ovrFramebuffer_Release(frameBuffer);
+    ovrFramebuffer_SetNone();
 }

@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
 	VR_InitRenderer(engine);
 
 	qboolean hasFocus = qtrue;
-    qboolean paused = qfalse;
+	qboolean paused = qfalse;
 	while (1) {
 		if (hasFocus != g_HasFocus) {
 			hasFocus = g_HasFocus;

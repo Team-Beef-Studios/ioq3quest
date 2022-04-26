@@ -10,7 +10,6 @@
 #endif
 
 //OpenXR
-#define XR_EYES_COUNT 2
 #define XR_USE_GRAPHICS_API_OPENGL_ES 1
 #define XR_USE_PLATFORM_ANDROID 1
 #include <EGL/egl.h>
@@ -33,7 +32,7 @@ typedef union {
     XrCompositionLayerCylinderKHR Cylinder;
 } ovrCompositorLayer_Union;
 
-enum { ovrMaxLayerCount = 16 };
+enum { ovrMaxLayerCount = 1 };
 enum { ovrMaxNumEyes = 2 };
 
 #define GL(func) func;
@@ -174,6 +173,13 @@ void ovrRenderer_Create(
 		int suggestedEyeTextureWidth,
 		int suggestedEyeTextureHeight);
 void ovrRenderer_Destroy(ovrRenderer* renderer);
+void ovrRenderer_SetFoveation(
+		XrInstance* instance,
+		XrSession* session,
+		ovrRenderer* renderer,
+		XrFoveationLevelFB level,
+		float verticalOffset,
+		XrFoveationDynamicFB dynamic);
 
 void ovrTrackedController_Clear(ovrTrackedController* controller);
 
