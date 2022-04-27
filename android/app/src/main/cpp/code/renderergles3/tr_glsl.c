@@ -68,6 +68,7 @@ typedef enum {
 	HUDBUFFER_ORTHO_PROJECTION, // Orthographic projection and no stereo view for the HUD buffer
 	STEREO_ORTHO_PROJECTION, // Orthographic projection with a slight stereo offset per eye for the static hud
 	VR_PROJECTION,
+	MIRROR_VR_PROJECTION, // For mirrors etc
 	MONO_VR_PROJECTION,
 
 	PROJECTION_COUNT
@@ -226,6 +227,7 @@ static void GLSL_ViewMatricesUniformBuffer(const float eyeView[32], const float 
                 Mat4Translation( translate, viewMatrices + 16 );
             }
             break;
+            case MIRROR_VR_PROJECTION:
             case VR_PROJECTION:
             {
                 Mat4Copy(eyeView, viewMatrices);
@@ -1683,7 +1685,6 @@ void GLSL_ShutdownGPUShaders(void)
 	qglDeleteBuffers(PROJECTION_COUNT, projectionMatricesBuffer);
 }
 
-
 void GLSL_PrepareUniformBuffers(void)
 {
     int width, height;
@@ -1715,6 +1716,10 @@ void GLSL_PrepareUniformBuffers(void)
     GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[VR_PROJECTION],
             tr.vrParms.projection);
 
+    //Mirror VR projection matrix
+	GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[MIRROR_VR_PROJECTION],
+                                         tr.vrParms.mirrorProjection);
+
     //Used for drawing models
     GLSL_ProjectionMatricesUniformBuffer(projectionMatricesBuffer[MONO_VR_PROJECTION],
                                          tr.vrParms.monoVRProjection);
@@ -1740,6 +1745,11 @@ void GLSL_BindProgram(shaderProgram_t * program)
 
 static GLuint GLSL_CalculateProjection() {
     GLuint result =  glState.isDrawingHUD ? MONO_VR_PROJECTION : VR_PROJECTION;
+
+    if (backEnd.viewParms.isPortal)
+	{
+    	result = MIRROR_VR_PROJECTION;
+	}
 
     if (Mat4Compare(&orthoProjectionMatrix, glState.projection))
     {

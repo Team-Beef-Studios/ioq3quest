@@ -320,6 +320,11 @@ engine_t* VR_GetEngine( void ) {
 	return &vr_engine;
 }
 
+int VR_isPauseable( void )
+{
+	return ( clc.state == CA_ACTIVE) && !Cvar_VariableValue ("cl_paused");
+}
+
 int VR_useScreenLayer( void )
 {
 	//intermission is never full screen

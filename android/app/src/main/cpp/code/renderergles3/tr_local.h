@@ -851,6 +851,7 @@ typedef struct {
 typedef struct {
 	qboolean	valid;
 	float		projection[16];
+	float		mirrorProjection[16];
 	float		monoVRProjection[16];
 	int			renderBuffer;
 	int			renderBufferOriginal;

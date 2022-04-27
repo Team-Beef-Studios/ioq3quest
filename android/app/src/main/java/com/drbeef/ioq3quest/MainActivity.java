@@ -104,9 +104,6 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pakQ3Q.pk3", true);
 		copy_asset("/sdcard/ioquake3Quest/missionpack", "pakQ3Q.pk3", true);
 
-		//Copy omarlego's background image pak
-		copy_asset("/sdcard/ioquake3Quest/baseq3", "pak66.pk3", false);
-
 		//If open arena is installed then copy necessary stuff
 		if (new File("/sdcard/ioquake3Quest/baseoa").exists()) {
 			copy_asset("/sdcard/ioquake3Quest/baseoa", "autoexec_oa.cfg", "autoexec.cfg", false);

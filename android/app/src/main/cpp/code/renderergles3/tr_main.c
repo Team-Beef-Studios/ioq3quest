@@ -783,6 +783,8 @@ void R_SetupProjectionZ(viewParms_t *dest)
 		float	plane2[4];
 		vec4_t q, c;
 
+		Mat4Copy(tr.vrParms.projection, tr.vrParms.mirrorProjection);
+
 		// transform portal plane into camera space
 		plane[0] = dest->portalPlane.normal[0];
 		plane[1] = dest->portalPlane.normal[1];
@@ -803,11 +805,10 @@ void R_SetupProjectionZ(viewParms_t *dest)
 
 		VectorScale4(plane2, 2.0f / DotProduct4(plane2, q), c);
 
-		dest->projectionMatrix[2]  = c[0];
-		dest->projectionMatrix[6]  = c[1];
-		dest->projectionMatrix[10] = c[2] + 1.0f;
-		dest->projectionMatrix[14] = c[3];
-
+		tr.vrParms.mirrorProjection[2]  = c[0];
+		tr.vrParms.mirrorProjection[6]  = c[1];
+		tr.vrParms.mirrorProjection[10] = c[2] + 1.0f;
+		tr.vrParms.mirrorProjection[14] = c[3];
 	}
 
 }
