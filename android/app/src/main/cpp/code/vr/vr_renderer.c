@@ -419,6 +419,12 @@ void VR_DrawFrame( engine_t* engine ) {
     VR_ClearFrameBuffer(frameBuffer->ColorSwapChain.Width, frameBuffer->ColorSwapChain.Height);
     Com_Frame();
 
+    // Clear the alpha channel, other way OpenXR would not transfer the framebuffer fully
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
 
         XrCompositionLayerProjectionView projection_layer_elements[2] = {};
