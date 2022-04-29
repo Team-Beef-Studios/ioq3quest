@@ -425,6 +425,10 @@ void VR_DrawFrame( engine_t* engine ) {
     glClear(GL_COLOR_BUFFER_BIT);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
+    ovrFramebuffer_Resolve(frameBuffer);
+    ovrFramebuffer_Release(frameBuffer);
+    ovrFramebuffer_SetNone();
+
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
 
         XrCompositionLayerProjectionView projection_layer_elements[2] = {};
@@ -496,7 +500,6 @@ void VR_DrawFrame( engine_t* engine ) {
     endFrameInfo.layers = layers;
 
     OXR(xrEndFrame(engine->appState.Session, &endFrameInfo));
-    ovrFramebuffer_Resolve(frameBuffer);
-    ovrFramebuffer_Release(frameBuffer);
-    ovrFramebuffer_SetNone();
+    frameBuffer->TextureSwapChainIndex++;
+    frameBuffer->TextureSwapChainIndex %= frameBuffer->TextureSwapChainLength;
 }
