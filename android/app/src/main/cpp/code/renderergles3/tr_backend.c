@@ -1770,12 +1770,8 @@ const void* RB_HUDBuffer( const void* data ) {
 			qglBindRenderbuffer(GL_RENDERBUFFER, 0);
 			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
 									tr.hudImage->texnum, 0);
-
-			// Attach combined depth+stencil
-			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-									   tr.hudDepthImage->texnum);
-			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-									   tr.hudDepthImage->texnum);
+			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+									tr.hudDepthImage->texnum, 0);
 
 			GLenum result = qglCheckFramebufferStatus(GL_FRAMEBUFFER);
 			if (result != GL_FRAMEBUFFER_COMPLETE)
