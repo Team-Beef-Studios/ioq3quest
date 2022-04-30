@@ -270,14 +270,6 @@ void VR_InitRenderer( engine_t* engine ) {
             &engine->appState.Renderer,
             engine->appState.ViewConfigurationView[0].recommendedImageRectWidth,
             engine->appState.ViewConfigurationView[0].recommendedImageRectHeight);
-
-    ovrRenderer_SetFoveation(
-            &engine->appState.Instance,
-            &engine->appState.Session,
-            &engine->appState.Renderer,
-            XR_FOVEATION_LEVEL_HIGH_FB,
-            0,
-            XR_FOVEATION_DYNAMIC_DISABLED_FB);
 }
 
 void VR_DestroyRenderer( engine_t* engine )

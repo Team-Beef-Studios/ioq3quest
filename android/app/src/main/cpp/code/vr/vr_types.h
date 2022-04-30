@@ -173,13 +173,6 @@ void ovrRenderer_Create(
 		int suggestedEyeTextureWidth,
 		int suggestedEyeTextureHeight);
 void ovrRenderer_Destroy(ovrRenderer* renderer);
-void ovrRenderer_SetFoveation(
-		XrInstance* instance,
-		XrSession* session,
-		ovrRenderer* renderer,
-		XrFoveationLevelFB level,
-		float verticalOffset,
-		XrFoveationDynamicFB dynamic);
 
 void ovrTrackedController_Clear(ovrTrackedController* controller);
 
