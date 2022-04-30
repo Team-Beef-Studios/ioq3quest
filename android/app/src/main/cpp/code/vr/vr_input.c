@@ -306,12 +306,6 @@ static qboolean IN_SendInputAction(const char* action, qboolean inputActive, flo
                 vr.weapon_stabilised =  qfalse;
             }
         }
-        //Special case for moveup as we can send a space key instead allowing us to skip
-        //server search in the server menu
-        else if (strcmp(action, "+moveup") == 0)
-        {
-            Com_QueueEvent(in_vrEventTime, SE_KEY, K_SPACE, inputActive, 0, NULL);
-        }
         else if (strcmp(action, "+weapon_select") == 0)
         {
             vr.weapon_select = inputActive;
@@ -899,12 +893,31 @@ static void IN_VRButtons( qboolean isRightController, uint32_t buttons )
                 Cbuf_AddText("cmd team spectator\n");
             }
         }
+        else if (VR_useScreenLayer() || cl.snap.ps.pm_type == PM_INTERMISSION)
+        {
+            // Skip server search in the server menu
+            if (!IN_InputActivated(&controller->buttons, ovrButton_A)) {
+                IN_ActivateInput(&controller->buttons, ovrButton_A);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_SPACE, qtrue, 0, NULL);
+            }
+        }
         else
         {
             IN_HandleActiveInput(&controller->buttons, ovrButton_A, "A", 0, qfalse);
         }
     } else {
-       IN_HandleInactiveInput(&controller->buttons, ovrButton_A, "A", 0, qfalse);
+        if (VR_useScreenLayer() || cl.snap.ps.pm_type == PM_INTERMISSION)
+        {
+            // Skip server search in the server menu
+            if (IN_InputActivated(&controller->buttons, ovrButton_A)) {
+                IN_DeactivateInput(&controller->buttons, ovrButton_A);
+                Com_QueueEvent(in_vrEventTime, SE_KEY, K_SPACE, qfalse, 0, NULL);
+            }
+        }
+        else
+        {
+            IN_HandleInactiveInput(&controller->buttons, ovrButton_A, "A", 0, qfalse);
+        }
     }
 
     if (buttons & ovrButton_B) {
