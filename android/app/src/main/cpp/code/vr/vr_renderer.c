@@ -394,8 +394,9 @@ void VR_DrawFrame( engine_t* engine ) {
     vr.fov_y = (fabs(fov.angleUp) + fabs(fov.angleDown)) * 180.0f / M_PI;
 
     //Projection used for drawing HUD models etc
+    float hudScale = M_PI * 15.0f / 180.0f;
     const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
-            30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
+            -hudScale, hudScale, hudScale, -hudScale, 1.0f, 0.0f );
     const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
             fov.angleLeft / vr.weapon_zoomLevel,
             fov.angleRight / vr.weapon_zoomLevel,
