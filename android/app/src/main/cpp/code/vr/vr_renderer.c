@@ -479,7 +479,7 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.pose.position = pos;
         cylinder_layer.radius = 12.0f;
         cylinder_layer.centralAngle = MATH_PI * 0.5f;
-        cylinder_layer.aspectRatio = (float)height / width / 0.75f;
+        cylinder_layer.aspectRatio = width / (float)height / 0.75f;
 
         engine->appState.Layers[engine->appState.LayerCount++].Cylinder = cylinder_layer;
     }
