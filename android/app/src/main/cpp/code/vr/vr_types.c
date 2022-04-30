@@ -465,82 +465,76 @@ ovrMatrix4f
 ================================================================================
 */
 
-
-ovrMatrix4f ovrMatrix4f_CreateProjection(
-        const float minX,
-        const float maxX,
-        float const minY,
-        const float maxY,
+ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
+        const float angleLeft,
+        const float angleRight,
+        const float angleUp,
+        const float angleDown,
         const float nearZ,
         const float farZ) {
-    const float width = maxX - minX;
-    const float height = maxY - minY;
-    const float offsetZ = nearZ; // set to zero for a [0,1] clip space
 
-    ovrMatrix4f out;
+    const float tanAngleLeft = tanf(angleLeft);
+    const float tanAngleRight = tanf(angleRight);
+
+    const float tanAngleDown = tanf(angleDown);
+    const float tanAngleUp = tanf(angleUp);
+
+    const float tanAngleWidth = tanAngleRight - tanAngleLeft;
+
+    // Set to tanAngleDown - tanAngleUp for a clip space with positive Y
+    // down (Vulkan). Set to tanAngleUp - tanAngleDown for a clip space with
+    // positive Y up (OpenGL / D3D / Metal).
+    const float tanAngleHeight = tanAngleUp - tanAngleDown;
+
+    // Set to nearZ for a [-1,1] Z clip space (OpenGL / OpenGL ES).
+    // Set to zero for a [0,1] Z clip space (Vulkan / D3D / Metal).
+    const float offsetZ = nearZ;
+
+    ovrMatrix4f result;
     if (farZ <= nearZ) {
         // place the far plane at infinity
-        out.M[0][0] = 2 * nearZ / width;
-        out.M[0][1] = 0;
-        out.M[0][2] = (maxX + minX) / width;
-        out.M[0][3] = 0;
+        result.M[0][0] = 2 / tanAngleWidth;
+        result.M[0][1] = 0;
+        result.M[0][2] = (tanAngleRight + tanAngleLeft) / tanAngleWidth;
+        result.M[0][3] = 0;
 
-        out.M[1][0] = 0;
-        out.M[1][1] = 2 * nearZ / height;
-        out.M[1][2] = (maxY + minY) / height;
-        out.M[1][3] = 0;
+        result.M[1][0] = 0;
+        result.M[1][1] = 2 / tanAngleHeight;
+        result.M[1][2] = (tanAngleUp + tanAngleDown) / tanAngleHeight;
+        result.M[1][3] = 0;
 
-        out.M[2][0] = 0;
-        out.M[2][1] = 0;
-        out.M[2][2] = -1;
-        out.M[2][3] = -(nearZ + offsetZ);
+        result.M[2][0] = 0;
+        result.M[2][1] = 0;
+        result.M[2][2] = -1;
+        result.M[2][3] = -(nearZ + offsetZ);
 
-        out.M[3][0] = 0;
-        out.M[3][1] = 0;
-        out.M[3][2] = -1;
-        out.M[3][3] = 0;
+        result.M[3][0] = 0;
+        result.M[3][1] = 0;
+        result.M[3][2] = -1;
+        result.M[3][3] = 0;
     } else {
         // normal projection
-        out.M[0][0] = 2 * nearZ / width;
-        out.M[0][1] = 0;
-        out.M[0][2] = (maxX + minX) / width;
-        out.M[0][3] = 0;
+        result.M[0][0] = 2 / tanAngleWidth;
+        result.M[0][1] = 0;
+        result.M[0][2] = (tanAngleRight + tanAngleLeft) / tanAngleWidth;
+        result.M[0][3] = 0;
 
-        out.M[1][0] = 0;
-        out.M[1][1] = 2 * nearZ / height;
-        out.M[1][2] = (maxY + minY) / height;
-        out.M[1][3] = 0;
+        result.M[1][0] = 0;
+        result.M[1][1] = 2 / tanAngleHeight;
+        result.M[1][2] = (tanAngleUp + tanAngleDown) / tanAngleHeight;
+        result.M[1][3] = 0;
 
-        out.M[2][0] = 0;
-        out.M[2][1] = 0;
-        out.M[2][2] = -(farZ + offsetZ) / (farZ - nearZ);
-        out.M[2][3] = -(farZ * (nearZ + offsetZ)) / (farZ - nearZ);
+        result.M[2][0] = 0;
+        result.M[2][1] = 0;
+        result.M[2][2] = -(farZ + offsetZ) / (farZ - nearZ);
+        result.M[2][3] = -(farZ * (nearZ + offsetZ)) / (farZ - nearZ);
 
-        out.M[3][0] = 0;
-        out.M[3][1] = 0;
-        out.M[3][2] = -1;
-        out.M[3][3] = 0;
+        result.M[3][0] = 0;
+        result.M[3][1] = 0;
+        result.M[3][2] = -1;
+        result.M[3][3] = 0;
     }
-    return out;
-}
-
-ovrMatrix4f ovrMatrix4f_CreateProjectionFov(
-        const float fovDegreesX,
-        const float fovDegreesY,
-        const float offsetX,
-        const float offsetY,
-        const float nearZ,
-        const float farZ) {
-    const float halfWidth = nearZ * tanf(fovDegreesX * (M_PI / 180.0f * 0.5f));
-    const float halfHeight = nearZ * tanf(fovDegreesY * (M_PI / 180.0f * 0.5f));
-
-    const float minX = offsetX - halfWidth;
-    const float maxX = offsetX + halfWidth;
-
-    const float minY = offsetY - halfHeight;
-    const float maxY = offsetY + halfHeight;
-
-    return ovrMatrix4f_CreateProjection(minX, maxX, minY, maxY, nearZ, farZ);
+    return result;
 }
 
 ovrMatrix4f ovrMatrix4f_CreateFromQuaternion(const XrQuaternionf* q) {

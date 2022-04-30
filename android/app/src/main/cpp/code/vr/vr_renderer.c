@@ -328,12 +328,6 @@ void VR_DrawFrame( engine_t* engine ) {
 			vr.weapon_zoomLevel = 1.0f;
 	}
 
-    //Projection used for drawing HUD models etc
-    const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
-            30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
-	const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
-            vr.fov_x / vr.weapon_zoomLevel, vr.fov_y / vr.weapon_zoomLevel, 0.0f, 0.0f, 1.0f, 0.0f );
-
     GLboolean stageBoundsDirty = GL_TRUE;
     ovrApp_HandleXrEvents(&engine->appState);
     if (engine->appState.SessionActive == GL_FALSE) {
@@ -395,16 +389,27 @@ void VR_DrawFrame( engine_t* engine ) {
             projections));
     //
 
+    XrFovf fov;
     XrPosef viewTransform[2];
     for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         XrPosef xfHeadFromEye = projections[eye].pose;
         XrPosef xfStageFromEye = XrPosef_Multiply(xfStageFromHead, xfHeadFromEye);
         viewTransform[eye] = XrPosef_Inverse(xfStageFromEye);
 
-        const XrFovf fov = projections[eye].fov;
-        vr.fov_x = (fabs(fov.angleLeft) + fabs(fov.angleRight)) * 180.0f / M_PI;
-        vr.fov_y = (fabs(fov.angleUp) + fabs(fov.angleDown)) * 180.0f / M_PI;
+        fov = projections[eye].fov;
     }
+    vr.fov_x = (fabs(fov.angleLeft) + fabs(fov.angleRight)) * 180.0f / M_PI;
+    vr.fov_y = (fabs(fov.angleUp) + fabs(fov.angleDown)) * 180.0f / M_PI;
+
+    //Projection used for drawing HUD models etc
+    const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
+            30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
+    const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(
+            fov.angleLeft / vr.weapon_zoomLevel,
+            fov.angleRight / vr.weapon_zoomLevel,
+            fov.angleUp / vr.weapon_zoomLevel,
+            fov.angleDown / vr.weapon_zoomLevel,
+            1.0f, 0.0f );
 
     engine->appState.LayerCount = 0;
     memset(engine->appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
@@ -438,7 +443,7 @@ void VR_DrawFrame( engine_t* engine ) {
             memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
             projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
             projection_layer_elements[eye].pose = XrPosef_Inverse(viewTransform[eye]);
-            projection_layer_elements[eye].fov = projections[eye].fov;
+            projection_layer_elements[eye].fov = fov;
 
             memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
             projection_layer_elements[eye].subImage.swapchain = frameBuffer->ColorSwapChain.Handle;
