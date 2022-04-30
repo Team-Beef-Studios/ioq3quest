@@ -426,9 +426,9 @@ void VR_DrawFrame( engine_t* engine ) {
     ovrFramebuffer_Release(frameBuffer);
     ovrFramebuffer_SetNone();
 
+    XrCompositionLayerProjectionView projection_layer_elements[2] = {};
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
 
-        XrCompositionLayerProjectionView projection_layer_elements[2] = {};
         for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
             ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
 
