@@ -366,7 +366,6 @@ void VR_DrawFrame( engine_t* engine ) {
     OXR(xrLocateSpace(
             engine->appState.HeadSpace, engine->appState.LocalSpace, frameState.predictedDisplayTime, &loc));
 
-
     {
         // We extract Yaw, Pitch, Roll instead of directly using the orientation
         // to allow "additional" yaw manipulation with mouse/controller.
