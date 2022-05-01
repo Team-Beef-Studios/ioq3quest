@@ -281,7 +281,8 @@ LOKISETUPDIR=misc/setup
 NSISDIR=misc/nsis
 SDLHDIR=$(MOUNT_DIR)/SDL2
 LIBSDIR=$(MOUNT_DIR)/libs
-VRAPIDIR=$(MOUNT_DIR)/VrApi
+OPENXRDIR=$(MOUNT_DIR)/OpenXR
+OPENXRSDKDIR=$(MOUNT_DIR)/OpenXR-SDK
 
 bin_path=$(shell which $(1) 2> /dev/null)
 
@@ -468,11 +469,11 @@ ifeq ($(PLATFORM),android)
   RENDERER_LIBS += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
   CLIENT_EXTRA_FILES += $(LIBSDIR)/android/arm64-v8a/libSDL2.so
 
-  # VrApi
-  BASE_CFLAGS += -I$(VRAPIDIR)/Include
-  CLIENT_LIBS += $(VRAPIDIR)/Libs/Android/arm64-v8a/Release/libvrapi.so
-  RENDERER_LIBS += $(VRAPIDIR)/Libs/Android/arm64-v8a/Release/libvrapi.so
-  CLIENT_EXTRA_FILES += $(VRAPIDIR)/Libs/Android/arm64-v8a/Release/libvrapi.so
+  # OpenXR
+  BASE_CFLAGS += -I$(OPENXRDIR)/Include -I$(OPENXRSDKDIR)/include
+  CLIENT_LIBS += $(OPENXRDIR)/Libs/Android/arm64-v8a/Release/libopenxr_loader.so
+  RENDERER_LIBS += $(OPENXRDIR)/Libs/Android/arm64-v8a/Release/libopenxr_loader.so
+  CLIENT_EXTRA_FILES += $(OPENXRDIR)/Libs/Android/arm64-v8a/Release/libopenxr_loader.so
 else # ifeq Android
 
 #############################################################################
@@ -1819,6 +1820,7 @@ Q3OBJ = \
   $(B)/client/vr_base.o \
   $(B)/client/vr_input.o \
   $(B)/client/vr_renderer.o \
+  $(B)/client/vr_types.o \
   \
   $(B)/client/con_log.o \
   $(B)/client/sys_autoupdater.o \

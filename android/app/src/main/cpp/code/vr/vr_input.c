@@ -7,8 +7,6 @@
 #include "../client/keycodes.h"
 #include "../client/client.h"
 #include "vr_base.h"
-#include "../VrApi/Include/VrApi_Input.h"
-#include "../VrApi/Include/VrApi_Helpers.h"
 #include "vr_clientinfo.h"
 
 #include <unistd.h>
@@ -19,6 +17,39 @@
 #else
 #	include <SDL.h>
 #endif
+
+//OpenXR
+XrPath leftHandPath;
+XrPath rightHandPath;
+XrAction aimPoseAction;
+XrAction gripPoseAction;
+XrAction indexLeftAction;
+XrAction indexRightAction;
+XrAction menuAction;
+XrAction buttonAAction;
+XrAction buttonBAction;
+XrAction buttonXAction;
+XrAction buttonYAction;
+XrAction gripLeftAction;
+XrAction gripRightAction;
+XrAction moveOnLeftJoystickAction;
+XrAction moveOnRightJoystickAction;
+XrAction thumbstickLeftClickAction;
+XrAction thumbstickRightClickAction;
+XrAction vibrateLeftFeedback;
+XrAction vibrateRightFeedback;
+XrActionSet runningActionSet;
+XrSpace leftControllerAimSpace = XR_NULL_HANDLE;
+XrSpace rightControllerAimSpace = XR_NULL_HANDLE;
+XrSpace leftControllerGripSpace = XR_NULL_HANDLE;
+XrSpace rightControllerGripSpace = XR_NULL_HANDLE;
+qboolean inputInitialized = qfalse;
+qboolean useSimpleProfile = qfalse;
+
+typedef struct {
+    XrSpaceLocation loc;
+    XrSpaceVelocity vel;
+} LocVel;
 
 enum {
 	VR_TOUCH_AXIS_UP = 1 << 0,
@@ -92,7 +123,7 @@ void rotateAboutOrigin(float x, float y, float rotation, vec2_t out)
 	out[1] = cosf(DEG2RAD(-rotation)) * y  -  sinf(DEG2RAD(-rotation)) * x;
 }
 
-static ovrVector3f normalizeVec(ovrVector3f vec) {
+XrVector3f normalizeVec(XrVector3f vec) {
     //NOTE: leave w-component untouched
     //@@const float EPSILON = 0.000001f;
     float xxyyzz = vec.x*vec.x + vec.y*vec.y + vec.z*vec.z;
@@ -100,7 +131,7 @@ static ovrVector3f normalizeVec(ovrVector3f vec) {
     //@@    return *this; // do nothing if it is zero vector
 
     //float invLength = invSqrt(xxyyzz);
-    ovrVector3f result;
+    XrVector3f result;
     float invLength = 1.0f / sqrtf(xxyyzz);
     result.x = vec.x * invLength;
     result.y = vec.y * invLength;
@@ -123,7 +154,7 @@ void NormalizeAngles(vec3_t angles)
     while (angles[2] < -180) angles[2] += 360;
 }
 
-void GetAnglesFromVectors(const ovrVector3f forward, const ovrVector3f right, const ovrVector3f up, vec3_t angles)
+void GetAnglesFromVectors(const XrVector3f forward, const XrVector3f right, const XrVector3f up, vec3_t angles)
 {
     float sr, sp, sy, cr, cp, cy;
 
@@ -172,7 +203,7 @@ void GetAnglesFromVectors(const ovrVector3f forward, const ovrVector3f right, co
     NormalizeAngles(angles);
 }
 
-void QuatToYawPitchRoll(ovrQuatf q, vec3_t rotation, vec3_t out) {
+void QuatToYawPitchRoll(XrQuaternionf q, vec3_t rotation, vec3_t out) {
 
     ovrMatrix4f mat = ovrMatrix4f_CreateFromQuaternion( &q );
 
@@ -182,21 +213,21 @@ void QuatToYawPitchRoll(ovrQuatf q, vec3_t rotation, vec3_t out) {
         mat = ovrMatrix4f_Multiply(&mat, &rot);
     }
 
-    ovrVector4f v1 = {0, 0, -1, 0};
-    ovrVector4f v2 = {1, 0, 0, 0};
-    ovrVector4f v3 = {0, 1, 0, 0};
+    XrVector4f v1 = {0, 0, -1, 0};
+    XrVector4f v2 = {1, 0, 0, 0};
+    XrVector4f v3 = {0, 1, 0, 0};
 
-    ovrVector4f forwardInVRSpace = ovrVector4f_MultiplyMatrix4f(&mat, &v1);
-    ovrVector4f rightInVRSpace = ovrVector4f_MultiplyMatrix4f(&mat, &v2);
-    ovrVector4f upInVRSpace = ovrVector4f_MultiplyMatrix4f(&mat, &v3);
+    XrVector4f forwardInVRSpace = XrVector4f_MultiplyMatrix4f(&mat, &v1);
+    XrVector4f rightInVRSpace = XrVector4f_MultiplyMatrix4f(&mat, &v2);
+    XrVector4f upInVRSpace = XrVector4f_MultiplyMatrix4f(&mat, &v3);
 
-    ovrVector3f forward = {-forwardInVRSpace.z, -forwardInVRSpace.x, forwardInVRSpace.y};
-    ovrVector3f right = {-rightInVRSpace.z, -rightInVRSpace.x, rightInVRSpace.y};
-    ovrVector3f up = {-upInVRSpace.z, -upInVRSpace.x, upInVRSpace.y};
+    XrVector3f forward = {-forwardInVRSpace.z, -forwardInVRSpace.x, forwardInVRSpace.y};
+    XrVector3f right = {-rightInVRSpace.z, -rightInVRSpace.x, rightInVRSpace.y};
+    XrVector3f up = {-upInVRSpace.z, -upInVRSpace.x, upInVRSpace.y};
 
-    ovrVector3f forwardNormal = normalizeVec(forward);
-    ovrVector3f rightNormal = normalizeVec(right);
-    ovrVector3f upNormal = normalizeVec(up);
+    XrVector3f forwardNormal = normalizeVec(forward);
+    XrVector3f rightNormal = normalizeVec(right);
+    XrVector3f upNormal = normalizeVec(up);
 
     GetAnglesFromVectors(forwardNormal, rightNormal, upNormal, out);
 }
@@ -204,7 +235,6 @@ void QuatToYawPitchRoll(ovrQuatf q, vec3_t rotation, vec3_t out) {
 //0 = left, 1 = right
 float vibration_channel_duration[2] = {0.0f, 0.0f};
 float vibration_channel_intensity[2] = {0.0f, 0.0f};
-ovrDeviceID controllerIDs[2];
 
 void VR_Vibrate( int duration, int chan, float intensity )
 {
@@ -235,8 +265,19 @@ static void VR_processHaptics() {
     for (int i = 0; i < 2; ++i) {
         if (vibration_channel_duration[i] > 0.0f ||
             vibration_channel_duration[i] == -1.0f) {
-            vrapi_SetHapticVibrationSimple(VR_GetEngine()->ovr, controllerIDs[i],
-                                           vibration_channel_intensity[i]);
+
+            // fire haptics using output action
+            XrHapticVibration vibration = {};
+            vibration.type = XR_TYPE_HAPTIC_VIBRATION;
+            vibration.next = NULL;
+            vibration.amplitude = vibration_channel_intensity[i];
+            vibration.duration = ToXrTime(vibration_channel_duration[i]);
+            vibration.frequency = 3000;
+            XrHapticActionInfo hapticActionInfo = {};
+            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
+            hapticActionInfo.next = NULL;
+            hapticActionInfo.action = i == 0 ? vibrateLeftFeedback : vibrateRightFeedback;
+            OXR(xrApplyHapticFeedback(VR_GetEngine()->appState.Session, &hapticActionInfo, (const XrHapticBaseHeader*)&vibration));
 
             if (vibration_channel_duration[i] != -1.0f) {
                 vibration_channel_duration[i] -= frametime;
@@ -247,7 +288,12 @@ static void VR_processHaptics() {
                 }
             }
         } else {
-            vrapi_SetHapticVibrationSimple(VR_GetEngine()->ovr, controllerIDs[i], 0.0f);
+            // Stop haptics
+            XrHapticActionInfo hapticActionInfo = {};
+            hapticActionInfo.type = XR_TYPE_HAPTIC_ACTION_INFO;
+            hapticActionInfo.next = NULL;
+            hapticActionInfo.action = i == 0 ? vibrateLeftFeedback : vibrateRightFeedback;
+            OXR(xrStopHapticFeedback(VR_GetEngine()->appState.Session, &hapticActionInfo));
         }
     }
 }
@@ -474,50 +520,370 @@ void VR_HapticEvent(const char* event, int position, int flags, int intensity, f
     }
 }
 
+XrSpace CreateActionSpace(XrAction poseAction, XrPath subactionPath) {
+    XrActionSpaceCreateInfo asci = {};
+    asci.type = XR_TYPE_ACTION_SPACE_CREATE_INFO;
+    asci.action = poseAction;
+    asci.poseInActionSpace.orientation.w = 1.0f;
+    asci.subactionPath = subactionPath;
+    XrSpace actionSpace = XR_NULL_HANDLE;
+    OXR(xrCreateActionSpace(VR_GetEngine()->appState.Session, &asci, &actionSpace));
+    return actionSpace;
+}
+
+XrActionSuggestedBinding ActionSuggestedBinding(XrAction action, const char* bindingString) {
+    XrActionSuggestedBinding asb;
+    asb.action = action;
+    XrPath bindingPath;
+    OXR(xrStringToPath(VR_GetEngine()->appState.Instance, bindingString, &bindingPath));
+    asb.binding = bindingPath;
+    return asb;
+}
+
+XrActionSet CreateActionSet(int priority, const char* name, const char* localizedName) {
+    XrActionSetCreateInfo asci = {};
+    asci.type = XR_TYPE_ACTION_SET_CREATE_INFO;
+    asci.next = NULL;
+    asci.priority = priority;
+    strcpy(asci.actionSetName, name);
+    strcpy(asci.localizedActionSetName, localizedName);
+    XrActionSet actionSet = XR_NULL_HANDLE;
+    OXR(xrCreateActionSet(VR_GetEngine()->appState.Instance, &asci, &actionSet));
+    return actionSet;
+}
+
+XrAction CreateAction(
+        XrActionSet actionSet,
+        XrActionType type,
+        const char* actionName,
+        const char* localizedName,
+        int countSubactionPaths,
+        XrPath* subactionPaths) {
+    ALOGV("CreateAction %s, %" PRIi32, actionName, countSubactionPaths);
+
+    XrActionCreateInfo aci = {};
+    aci.type = XR_TYPE_ACTION_CREATE_INFO;
+    aci.next = NULL;
+    aci.actionType = type;
+    if (countSubactionPaths > 0) {
+        aci.countSubactionPaths = countSubactionPaths;
+        aci.subactionPaths = subactionPaths;
+    }
+    strcpy(aci.actionName, actionName);
+    strcpy(aci.localizedActionName, localizedName ? localizedName : actionName);
+    XrAction action = XR_NULL_HANDLE;
+    OXR(xrCreateAction(actionSet, &aci, &action));
+    return action;
+}
+
+qboolean ActionPoseIsActive(XrAction action, XrPath subactionPath) {
+    XrActionStateGetInfo getInfo = {};
+    getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+    getInfo.action = action;
+    getInfo.subactionPath = subactionPath;
+
+    XrActionStatePose state = {};
+    state.type = XR_TYPE_ACTION_STATE_POSE;
+    OXR(xrGetActionStatePose(VR_GetEngine()->appState.Session, &getInfo, &state));
+    return state.isActive != XR_FALSE;
+}
+
+LocVel GetSpaceLocVel(XrSpace space, XrTime time) {
+    LocVel lv = {{}};
+    lv.loc.type = XR_TYPE_SPACE_LOCATION;
+    lv.loc.next = &lv.vel;
+    lv.vel.type = XR_TYPE_SPACE_VELOCITY;
+    OXR(xrLocateSpace(space, VR_GetEngine()->appState.CurrentSpace, time, &lv.loc));
+    lv.loc.next = NULL; // pointer no longer valid or necessary
+    return lv;
+}
+
+XrActionStateFloat GetActionStateFloat(XrAction action) {
+    XrActionStateGetInfo getInfo = {};
+    getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+    getInfo.action = action;
+
+    XrActionStateFloat state = {};
+    state.type = XR_TYPE_ACTION_STATE_FLOAT;
+
+    OXR(xrGetActionStateFloat(VR_GetEngine()->appState.Session, &getInfo, &state));
+    return state;
+}
+
+XrActionStateBoolean GetActionStateBoolean(XrAction action) {
+    XrActionStateGetInfo getInfo = {};
+    getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+    getInfo.action = action;
+
+    XrActionStateBoolean state = {};
+    state.type = XR_TYPE_ACTION_STATE_BOOLEAN;
+
+    OXR(xrGetActionStateBoolean(VR_GetEngine()->appState.Session, &getInfo, &state));
+    return state;
+}
+
+XrActionStateVector2f GetActionStateVector2(XrAction action) {
+    XrActionStateGetInfo getInfo = {};
+    getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+    getInfo.action = action;
+
+    XrActionStateVector2f state = {};
+    state.type = XR_TYPE_ACTION_STATE_VECTOR2F;
+
+    OXR(xrGetActionStateVector2f(VR_GetEngine()->appState.Session, &getInfo, &state));
+    return state;
+}
+
 void IN_VRInit( void )
 {
+    if (inputInitialized)
+        return;
+
 	memset(&vr, 0, sizeof(vr));
 
 	engine_t *engine = VR_GetEngine();
     callbackClass = (*engine->java.Env)->GetObjectClass(engine->java.Env, engine->java.ActivityObject);
     android_haptic_event = (*engine->java.Env)->GetMethodID(engine->java.Env, callbackClass, "haptic_event","(Ljava/lang/String;IIIFF)V");
+
+    // Actions
+    runningActionSet = CreateActionSet(1, "running_action_set", "Action Set used on main loop");
+    indexLeftAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "index_left", "Index left", 0, NULL);
+    indexRightAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "index_right", "Index right", 0, NULL);
+    menuAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "menu_action", "Menu", 0, NULL);
+    buttonAAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "button_a", "Button A", 0, NULL);
+    buttonBAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "button_b", "Button B", 0, NULL);
+    buttonXAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "button_x", "Button X", 0, NULL);
+    buttonYAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "button_y", "Button Y", 0, NULL);
+    gripLeftAction = CreateAction(runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "grip_left", "Grip left", 0, NULL);
+    gripRightAction = CreateAction(runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "grip_right", "Grip right", 0, NULL);
+    moveOnLeftJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_left_joy", "Move on left Joy", 0, NULL);
+    moveOnRightJoystickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_right_joy", "Move on right Joy", 0, NULL);
+    thumbstickLeftClickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_left", "Thumbstick left", 0, NULL);
+    thumbstickRightClickAction = CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "thumbstick_right", "Thumbstick right", 0, NULL);
+    vibrateLeftFeedback = CreateAction(runningActionSet, XR_ACTION_TYPE_VIBRATION_OUTPUT, "vibrate_left_feedback", "Vibrate Left Controller Feedback", 0, NULL);
+    vibrateRightFeedback = CreateAction(runningActionSet, XR_ACTION_TYPE_VIBRATION_OUTPUT, "vibrate_right_feedback", "Vibrate Right Controller Feedback", 0, NULL);
+
+    OXR(xrStringToPath(engine->appState.Instance, "/user/hand/left", &leftHandPath));
+    OXR(xrStringToPath(engine->appState.Instance, "/user/hand/right", &rightHandPath));
+    XrPath handSubactionPaths[2] = {leftHandPath, rightHandPath};
+    aimPoseAction = CreateAction(runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "aim_pose", NULL, 2, &handSubactionPaths[0]);
+    gripPoseAction = CreateAction(runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "grip_pose", NULL, 2, &handSubactionPaths[0]);
+
+    XrPath interactionProfilePath = XR_NULL_PATH;
+    XrPath interactionProfilePathTouch = XR_NULL_PATH;
+    XrPath interactionProfilePathKHRSimple = XR_NULL_PATH;
+
+    OXR(xrStringToPath(engine->appState.Instance, "/interaction_profiles/oculus/touch_controller", &interactionProfilePathTouch));
+    OXR(xrStringToPath(engine->appState.Instance, "/interaction_profiles/khr/simple_controller", &interactionProfilePathKHRSimple));
+
+    // Toggle this to force simple as a first choice, otherwise use it as a last resort
+    if (useSimpleProfile) {
+        ALOGV("xrSuggestInteractionProfileBindings found bindings for Khronos SIMPLE controller");
+        interactionProfilePath = interactionProfilePathKHRSimple;
+    } else {
+        // Query Set
+        XrActionSet queryActionSet = CreateActionSet(1, "query_action_set", "Action Set used to query device caps");
+        XrAction dummyAction = CreateAction(queryActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "dummy_action", "Dummy Action", 0, NULL);
+
+        // Map bindings
+        XrActionSuggestedBinding bindings[1];
+        int currBinding = 0;
+        bindings[currBinding++] = ActionSuggestedBinding(dummyAction, "/user/hand/right/input/system/click");
+
+        XrInteractionProfileSuggestedBinding suggestedBindings = {};
+        suggestedBindings.type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING;
+        suggestedBindings.next = NULL;
+        suggestedBindings.suggestedBindings = bindings;
+        suggestedBindings.countSuggestedBindings = currBinding;
+
+        // Try all
+        suggestedBindings.interactionProfile = interactionProfilePathTouch;
+        XrResult suggestTouchResult = xrSuggestInteractionProfileBindings(engine->appState.Instance, &suggestedBindings);
+        OXR(suggestTouchResult);
+
+        if (XR_SUCCESS == suggestTouchResult) {
+            ALOGV("xrSuggestInteractionProfileBindings found bindings for QUEST controller");
+            interactionProfilePath = interactionProfilePathTouch;
+        }
+
+        if (interactionProfilePath == XR_NULL_PATH) {
+            // Simple as a fallback
+            bindings[0] = ActionSuggestedBinding(dummyAction, "/user/hand/right/input/select/click");
+            suggestedBindings.interactionProfile = interactionProfilePathKHRSimple;
+            XrResult suggestKHRSimpleResult = xrSuggestInteractionProfileBindings(engine->appState.Instance, &suggestedBindings);
+            OXR(suggestKHRSimpleResult);
+            if (XR_SUCCESS == suggestKHRSimpleResult) {
+                ALOGV("xrSuggestInteractionProfileBindings found bindings for Khronos SIMPLE controller");
+                interactionProfilePath = interactionProfilePathKHRSimple;
+            } else {
+                ALOGE("xrSuggestInteractionProfileBindings did NOT find any bindings.");
+                assert(qfalse);
+            }
+        }
+    }
+
+    // Action creation
+    {
+        // Map bindings
+        XrActionSuggestedBinding bindings[32]; // large enough for all profiles
+        int currBinding = 0;
+
+        {
+            if (interactionProfilePath == interactionProfilePathTouch) {
+                bindings[currBinding++] = ActionSuggestedBinding(indexLeftAction, "/user/hand/left/input/trigger");
+                bindings[currBinding++] = ActionSuggestedBinding(indexRightAction, "/user/hand/right/input/trigger");
+                bindings[currBinding++] = ActionSuggestedBinding(menuAction, "/user/hand/left/input/menu/click");
+                bindings[currBinding++] = ActionSuggestedBinding(buttonXAction, "/user/hand/left/input/x/click");
+                bindings[currBinding++] = ActionSuggestedBinding(buttonYAction, "/user/hand/left/input/y/click");
+                bindings[currBinding++] = ActionSuggestedBinding(buttonAAction, "/user/hand/right/input/a/click");
+                bindings[currBinding++] = ActionSuggestedBinding(buttonBAction, "/user/hand/right/input/b/click");
+                bindings[currBinding++] = ActionSuggestedBinding(gripLeftAction, "/user/hand/left/input/squeeze/value");
+                bindings[currBinding++] = ActionSuggestedBinding(gripRightAction, "/user/hand/right/input/squeeze/value");
+                bindings[currBinding++] = ActionSuggestedBinding(moveOnLeftJoystickAction, "/user/hand/left/input/thumbstick");
+                bindings[currBinding++] = ActionSuggestedBinding(moveOnRightJoystickAction, "/user/hand/right/input/thumbstick");
+                bindings[currBinding++] = ActionSuggestedBinding(thumbstickLeftClickAction, "/user/hand/left/input/thumbstick/click");
+                bindings[currBinding++] = ActionSuggestedBinding(thumbstickRightClickAction, "/user/hand/right/input/thumbstick/click");
+                bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftFeedback, "/user/hand/left/output/haptic");
+                bindings[currBinding++] = ActionSuggestedBinding(vibrateRightFeedback, "/user/hand/right/output/haptic");
+                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/left/input/aim/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/right/input/aim/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/left/input/grip/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/right/input/grip/pose");
+            }
+
+            if (interactionProfilePath == interactionProfilePathKHRSimple) {
+                bindings[currBinding++] = ActionSuggestedBinding(indexLeftAction, "/user/hand/left/input/select/click");
+                bindings[currBinding++] = ActionSuggestedBinding(indexRightAction, "/user/hand/right/input/select/click");
+                bindings[currBinding++] = ActionSuggestedBinding(buttonAAction, "/user/hand/left/input/menu/click");
+                bindings[currBinding++] = ActionSuggestedBinding(buttonXAction, "/user/hand/right/input/menu/click");
+                bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftFeedback, "/user/hand/left/output/haptic");
+                bindings[currBinding++] = ActionSuggestedBinding(vibrateRightFeedback, "/user/hand/right/output/haptic");
+                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/left/input/aim/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/right/input/aim/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/left/input/grip/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/right/input/grip/pose");
+            }
+        }
+
+        XrInteractionProfileSuggestedBinding suggestedBindings = {};
+        suggestedBindings.type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING;
+        suggestedBindings.next = NULL;
+        suggestedBindings.interactionProfile = interactionProfilePath;
+        suggestedBindings.suggestedBindings = bindings;
+        suggestedBindings.countSuggestedBindings = currBinding;
+        OXR(xrSuggestInteractionProfileBindings(engine->appState.Instance, &suggestedBindings));
+
+        // Enumerate actions
+        XrPath actionPathsBuffer[32];
+        char stringBuffer[256];
+        XrAction actionsToEnumerate[] = {
+                indexLeftAction,
+                indexRightAction,
+                menuAction,
+                buttonAAction,
+                buttonBAction,
+                buttonXAction,
+                buttonYAction,
+                gripLeftAction,
+                gripRightAction,
+                moveOnLeftJoystickAction,
+                moveOnRightJoystickAction,
+                thumbstickLeftClickAction,
+                thumbstickRightClickAction,
+                vibrateLeftFeedback,
+                vibrateRightFeedback,
+                aimPoseAction,
+                gripPoseAction,
+        };
+        for (size_t i = 0; i < sizeof(actionsToEnumerate) / sizeof(actionsToEnumerate[0]); ++i) {
+            XrBoundSourcesForActionEnumerateInfo enumerateInfo = {};
+            enumerateInfo.type = XR_TYPE_BOUND_SOURCES_FOR_ACTION_ENUMERATE_INFO;
+            enumerateInfo.next = NULL;
+            enumerateInfo.action = actionsToEnumerate[i];
+
+            // Get Count
+            uint32_t countOutput = 0;
+            OXR(xrEnumerateBoundSourcesForAction(
+                    engine->appState.Session, &enumerateInfo, 0 /* request size */, &countOutput, NULL));
+            ALOGV(
+                    "xrEnumerateBoundSourcesForAction action=%lld count=%u",
+                    (long long)enumerateInfo.action,
+                    countOutput);
+
+            if (countOutput < 32) {
+                OXR(xrEnumerateBoundSourcesForAction(
+                        engine->appState.Session, &enumerateInfo, 32, &countOutput, actionPathsBuffer));
+                for (uint32_t a = 0; a < countOutput; ++a) {
+                    XrInputSourceLocalizedNameGetInfo nameGetInfo = {};
+                    nameGetInfo.type = XR_TYPE_INPUT_SOURCE_LOCALIZED_NAME_GET_INFO;
+                    nameGetInfo.next = NULL;
+                    nameGetInfo.sourcePath = actionPathsBuffer[a];
+                    nameGetInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT |
+                                                  XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT |
+                                                  XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT;
+
+                    uint32_t stringCount = 0u;
+                    OXR(xrGetInputSourceLocalizedName(
+                            engine->appState.Session, &nameGetInfo, 0, &stringCount, NULL));
+                    if (stringCount < 256) {
+                        OXR(xrGetInputSourceLocalizedName(
+                                engine->appState.Session, &nameGetInfo, 256, &stringCount, stringBuffer));
+                        char pathStr[256];
+                        uint32_t strLen = 0;
+                        OXR(xrPathToString(
+                                engine->appState.Instance,
+                                actionPathsBuffer[a],
+                                (uint32_t)sizeof(pathStr),
+                                &strLen,
+                                pathStr));
+                        ALOGV(
+                                "  -> path = %lld `%s` -> `%s`",
+                                (long long)actionPathsBuffer[a],
+                                pathStr,
+                                stringBuffer);
+                    }
+                }
+            }
+        }
+    }
+    inputInitialized = qtrue;
 }
 
-static void IN_VRController( qboolean isRightController, ovrTracking remoteTracking )
+static void IN_VRController( qboolean isRightController, XrPosef pose )
 {
+    //Set gun angles - We need to calculate all those we might need (including adjustments) for the client to then take its pick
+    vec3_t rotation = {0};
     if (isRightController == (vr_righthanded->integer != 0))
-	{
-		//Set gun angles - We need to calculate all those we might need (including adjustments) for the client to then take its pick
-		vec3_t rotation = {0};
-		rotation[PITCH] = vr_weaponPitch->value;
-		QuatToYawPitchRoll(remoteTracking.HeadPose.Pose.Orientation, rotation, vr.weaponangles);
-
-		VectorSubtract(vr.weaponangles_last, vr.weaponangles, vr.weaponangles_delta);
-		VectorCopy(vr.weaponangles, vr.weaponangles_last);
-
-		///Weapon location relative to view
-		vr.weaponposition[0] = remoteTracking.HeadPose.Pose.Position.x;
-		vr.weaponposition[1] = remoteTracking.HeadPose.Pose.Position.y + vr_heightAdjust->value;
-		vr.weaponposition[2] = remoteTracking.HeadPose.Pose.Position.z;
-
-		VectorCopy(vr.weaponoffset_last[1], vr.weaponoffset_last[0]);
-		VectorCopy(vr.weaponoffset, vr.weaponoffset_last[1]);
-		VectorSubtract(vr.weaponposition, vr.hmdposition, vr.weaponoffset);
-	} else {
-        vec3_t rotation = {0};
-        QuatToYawPitchRoll(remoteTracking.HeadPose.Pose.Orientation, rotation, vr.offhandangles2); // used for off-hand direction mode
+    {
+        //Set gun angles - We need to calculate all those we might need (including adjustments) for the client to then take its pick
         rotation[PITCH] = vr_weaponPitch->value;
-        QuatToYawPitchRoll(remoteTracking.HeadPose.Pose.Orientation, rotation, vr.offhandangles);
+        QuatToYawPitchRoll(pose.orientation, rotation, vr.weaponangles);
+
+        VectorSubtract(vr.weaponangles_last, vr.weaponangles, vr.weaponangles_delta);
+        VectorCopy(vr.weaponangles, vr.weaponangles_last);
+
+        ///Weapon location relative to view
+        vr.weaponposition[0] = pose.position.x;
+        vr.weaponposition[1] = pose.position.y + vr_heightAdjust->value;
+        vr.weaponposition[2] = pose.position.z;
+
+        VectorCopy(vr.weaponoffset_last[1], vr.weaponoffset_last[0]);
+        VectorCopy(vr.weaponoffset, vr.weaponoffset_last[1]);
+        VectorSubtract(vr.weaponposition, vr.hmdposition, vr.weaponoffset);
+    } else {
+        QuatToYawPitchRoll(pose.orientation, rotation, vr.offhandangles2); // used for off-hand direction mode
+        rotation[PITCH] = vr_weaponPitch->value;
+        QuatToYawPitchRoll(pose.orientation, rotation, vr.offhandangles);
 
         ///location relative to view
-        vr.offhandposition[0] = remoteTracking.HeadPose.Pose.Position.x;
-        vr.offhandposition[1] = remoteTracking.HeadPose.Pose.Position.y + vr_heightAdjust->value;
-        vr.offhandposition[2] = remoteTracking.HeadPose.Pose.Position.z;
+        vr.weaponposition[0] = pose.position.x;
+        vr.weaponposition[1] = pose.position.y + vr_heightAdjust->value;
+        vr.weaponposition[2] = pose.position.z;
 
         VectorCopy(vr.offhandoffset_last[1], vr.offhandoffset_last[0]);
         VectorCopy(vr.offhandoffset, vr.offhandoffset_last[1]);
         VectorSubtract(vr.offhandposition, vr.hmdposition, vr.offhandoffset);
-	}
+    }
 
 	if (vr.virtual_screen || cl.snap.ps.pm_type == PM_INTERMISSION)
     {
@@ -737,7 +1103,8 @@ static void IN_VRJoystick( qboolean isRightController, float joystickX, float jo
             else
             {
 				//Positional movement speed correction for when we are not hitting target framerate
-				int refresh = vrapi_GetSystemPropertyInt(&(VR_GetEngine()->java), VRAPI_SYS_PROP_DISPLAY_REFRESH_RATE);
+				float refresh;
+				VR_GetEngine()->appState.pfnGetDisplayRefreshRate(VR_GetEngine()->appState.Session, &refresh);
 				float multiplier = (float)((1000.0 / refresh) / (in_vrEventTime - lastframetime));
 
 				float factor = (refresh / 72.0F) * 10.0f; // adjust positional factor based on refresh rate
@@ -935,7 +1302,6 @@ static void IN_VRButtons( qboolean isRightController, uint32_t buttons )
     } else {
         IN_HandleInactiveInput(&controller->buttons, ovrButton_Y, "Y", 0, qfalse);
     }
-
 }
 
 void IN_VRInputFrame( void )
@@ -945,26 +1311,16 @@ void IN_VRInputFrame( void )
 		memset(&rightController, 0, sizeof(rightController));
 		controllerInit = qtrue;
 	}
+	engine_t* engine = VR_GetEngine();
 
-	ovrMobile* ovr = VR_GetEngine()->ovr;
-	if (!ovr) {
-		return;
-	}
-
-    ovrResult result;
 	if (vr_extralatencymode != NULL &&
             vr_extralatencymode->integer) {
-        result = vrapi_SetExtraLatencyMode(VR_GetEngine()->ovr, VRAPI_EXTRA_LATENCY_MODE_ON);
-        assert(result == VRAPI_INITIALIZE_SUCCESS);
+        //TODO:vrapi_SetExtraLatencyMode(VR_GetEngine()->ovr, VRAPI_EXTRA_LATENCY_MODE_ON);
     }
 
-	if (vr_refreshrate != NULL && vr_refreshrate->integer)
-	{
-		vrapi_SetDisplayRefreshRate(VR_GetEngine()->ovr, (float)vr_refreshrate->integer);
+	if (vr_refreshrate != NULL && vr_refreshrate->integer) {
+        OXR(engine->appState.pfnRequestDisplayRefreshRate(engine->appState.Session, (float)vr_refreshrate->integer));
 	}
-
-    result = vrapi_SetClockLevels(VR_GetEngine()->ovr, 4, 4);
-    assert(result == VRAPI_INITIALIZE_SUCCESS);
 
 	vr.virtual_screen = VR_useScreenLayer();
 
@@ -976,10 +1332,14 @@ void IN_VRInputFrame( void )
     {
 		// We extract Yaw, Pitch, Roll instead of directly using the orientation
 		// to allow "additional" yaw manipulation with mouse/controller.
-		const ovrQuatf quatHmd =  VR_GetEngine()->tracking.HeadPose.Pose.Orientation;
-		const ovrVector3f positionHmd = VR_GetEngine()->tracking.HeadPose.Pose.Position;
+        XrSpaceLocation loc = {};
+        loc.type = XR_TYPE_SPACE_LOCATION;
+        OXR(xrLocateSpace(VR_GetEngine()->appState.HeadSpace, VR_GetEngine()->appState.CurrentSpace, VR_GetEngine()->predictedDisplayTime, &loc));
+        XrPosef xfStageFromHead = loc.pose;
+		const XrQuaternionf quatHmd = xfStageFromHead.orientation;
+		const XrVector3f positionHmd = xfStageFromHead.position;
 		vec3_t rotation = {0, 0, 0};
-		QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
+        QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
 		VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
 
 		//Position
@@ -1000,60 +1360,105 @@ void IN_VRInputFrame( void )
 		vr.clientview_yaw_last = clientview_yaw;
 	}
 
-	ovrInputCapabilityHeader capsHeader;
-	uint32_t index = 0;
-	for (;;) {
-		ovrResult enumResult = vrapi_EnumerateInputDevices(ovr, index, &capsHeader);
-		if (enumResult < 0) {
-			break;
-		}
-		++index;
-		
-		if (capsHeader.Type != ovrControllerType_TrackedRemote) {
-			continue;
-		}
+    if (leftControllerAimSpace == XR_NULL_HANDLE) {
+        leftControllerAimSpace = CreateActionSpace(aimPoseAction, leftHandPath);
+    }
+    if (rightControllerAimSpace == XR_NULL_HANDLE) {
+        rightControllerAimSpace = CreateActionSpace(aimPoseAction, rightHandPath);
+    }
+    if (leftControllerGripSpace == XR_NULL_HANDLE) {
+        leftControllerGripSpace = CreateActionSpace(gripPoseAction, leftHandPath);
+    }
+    if (rightControllerGripSpace == XR_NULL_HANDLE) {
+        rightControllerGripSpace = CreateActionSpace(gripPoseAction, rightHandPath);
+    }
 
-		ovrInputTrackedRemoteCapabilities caps;
-		caps.Header = capsHeader;
-		ovrResult capsResult = vrapi_GetInputDeviceCapabilities(ovr, &caps.Header);
-		if (capsResult < 0) {
-			continue;
-		}
+    // update input information
+    XrAction controller[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
+    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {
+            leftControllerAimSpace,
+            leftControllerGripSpace,
+            rightControllerAimSpace,
+            rightControllerGripSpace,
+    };
+    for (int i = 0; i < 4; i++) {
+        if (ActionPoseIsActive(controller[i], subactionPath[i])) {
+            LocVel lv = GetSpaceLocVel(controllerSpace[i], VR_GetEngine()->predictedDisplayTime);
+            VR_GetEngine()->appState.TrackedController[i].Active = (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
+            VR_GetEngine()->appState.TrackedController[i].Pose = lv.loc.pose;
+            for (int j = 0; j < 3; j++) {
+                float dt = 0.01f; // use 0.2f for for testing velocity vectors
+                (&VR_GetEngine()->appState.TrackedController[i].Pose.position.x)[j] += (&lv.vel.linearVelocity.x)[j] * dt;
+            }
+        } else {
+            ovrTrackedController_Clear(&VR_GetEngine()->appState.TrackedController[i]);
+        }
+    }
 
-		ovrInputStateTrackedRemote state;
-		state.Header.ControllerType = ovrControllerType_TrackedRemote;
-		ovrResult stateResult = vrapi_GetCurrentInputState(ovr, capsHeader.DeviceID, &state.Header);
-		if (stateResult < 0) {
-			continue;
-		}
+    // OpenXR input
+    {
+        // Attach to session
+        XrSessionActionSetsAttachInfo attachInfo = {};
+        attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
+        attachInfo.next = NULL;
+        attachInfo.countActionSets = 1;
+        attachInfo.actionSets = &runningActionSet;
+        OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
 
-		ovrTracking remoteTracking;
-		stateResult = vrapi_GetInputTrackingState(ovr, capsHeader.DeviceID, VR_GetEngine()->predictedDisplayTime,
-											 &remoteTracking);
-		if (stateResult < 0) {
-			continue;
-		}
+        // sync action data
+        XrActiveActionSet activeActionSet = {};
+        activeActionSet.actionSet = runningActionSet;
+        activeActionSet.subactionPath = XR_NULL_PATH;
 
-		qboolean isRight;
-		vrController_t* controller;
-		if (caps.ControllerCapabilities & ovrControllerCaps_LeftHand) {
-			isRight = qfalse;
-			controller = &leftController;
-            controllerIDs[0] = capsHeader.DeviceID;
-		} else if (caps.ControllerCapabilities & ovrControllerCaps_RightHand) {
-			isRight = qtrue;
-			controller = &rightController;
-            controllerIDs[1] = capsHeader.DeviceID;
-		}
-		else {
-			continue;
-		}
+        XrActionsSyncInfo syncInfo = {};
+        syncInfo.type = XR_TYPE_ACTIONS_SYNC_INFO;
+        syncInfo.next = NULL;
+        syncInfo.countActiveActionSets = 1;
+        syncInfo.activeActionSets = &activeActionSet;
+        OXR(xrSyncActions(engine->appState.Session, &syncInfo));
 
-        IN_VRButtons(isRight, state.Buttons);
-		IN_VRController(isRight, remoteTracking);
-		IN_VRJoystick(isRight, state.Joystick.x, state.Joystick.y);
-		IN_VRTriggers(isRight, state.IndexTrigger);
-	}
+        // query input action states
+        XrActionStateGetInfo getInfo = {};
+        getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+        getInfo.next = NULL;
+        getInfo.subactionPath = XR_NULL_PATH;
+    }
+
+    //button mapping
+    uint32_t lButtons = 0;
+    if (GetActionStateBoolean(menuAction).currentState) lButtons |= ovrButton_Enter;
+    if (GetActionStateBoolean(buttonXAction).currentState) lButtons |= ovrButton_X;
+    if (GetActionStateBoolean(buttonYAction).currentState) lButtons |= ovrButton_Y;
+    if (GetActionStateFloat(gripLeftAction).currentState > 0.5f) lButtons |= ovrButton_GripTrigger;
+    if (GetActionStateBoolean(thumbstickLeftClickAction).currentState) lButtons |= ovrButton_LThumb;
+    IN_VRButtons(qfalse, lButtons);
+    uint32_t rButtons = 0;
+    if (GetActionStateBoolean(buttonAAction).currentState) rButtons |= ovrButton_A;
+    if (GetActionStateBoolean(buttonBAction).currentState) rButtons |= ovrButton_B;
+    if (GetActionStateFloat(gripRightAction).currentState > 0.5f) rButtons |= ovrButton_GripTrigger;
+    if (GetActionStateBoolean(thumbstickRightClickAction).currentState) rButtons |= ovrButton_RThumb;
+    IN_VRButtons(qtrue, rButtons);
+
+    //index finger click
+    XrActionStateBoolean indexState;
+    indexState = GetActionStateBoolean(indexLeftAction);
+    IN_VRTriggers(qfalse, indexState.currentState ? 1 : 0);
+    indexState = GetActionStateBoolean(indexRightAction);
+    IN_VRTriggers(qtrue, indexState.currentState ? 1 : 0);
+
+    //thumbstick
+    XrActionStateVector2f moveJoystickState;
+    moveJoystickState = GetActionStateVector2(moveOnLeftJoystickAction);
+    IN_VRJoystick(qfalse, moveJoystickState.currentState.x, moveJoystickState.currentState.y);
+    moveJoystickState = GetActionStateVector2(moveOnRightJoystickAction);
+    IN_VRJoystick(qtrue, moveJoystickState.currentState.x, moveJoystickState.currentState.y);
+
+    //controller pose
+    if (engine->appState.TrackedController[0].Active)
+        IN_VRController(qfalse, engine->appState.TrackedController[0].Pose);
+    if (engine->appState.TrackedController[2].Active)
+        IN_VRController(qtrue, engine->appState.TrackedController[2].Pose);
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );

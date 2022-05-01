@@ -12,8 +12,8 @@ void VR_EnterVR( engine_t* engine, ovrJava java );
 void VR_LeaveVR( engine_t* engine );
 
 engine_t* VR_GetEngine( void );
-bool VR_isPauseable( void );
-bool VR_useScreenLayer( void );
+int VR_useScreenLayer( void );
+int VR_isPauseable( void );
 
 float radians(float deg);
 
