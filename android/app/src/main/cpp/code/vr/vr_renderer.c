@@ -6,6 +6,7 @@
 #include "../client/client.h"
 
 #include "vr_clientinfo.h"
+#include "vr_input.h"
 #include "vr_types.h"
 
 #include <assert.h>
@@ -19,6 +20,7 @@
 #endif
 
 extern vr_clientinfo_t vr;
+extern cvar_t *vr_heightAdjust;
 
 XrView* projections;
 
@@ -363,6 +365,38 @@ void VR_DrawFrame( engine_t* engine ) {
     XrPosef xfStageFromHead = loc.pose;
     OXR(xrLocateSpace(
             engine->appState.HeadSpace, engine->appState.LocalSpace, frameState.predictedDisplayTime, &loc));
+
+
+    {
+        // We extract Yaw, Pitch, Roll instead of directly using the orientation
+        // to allow "additional" yaw manipulation with mouse/controller.
+        XrSpaceLocation loc = {};
+        loc.type = XR_TYPE_SPACE_LOCATION;
+        OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
+        XrPosef xfStageFromHead = loc.pose;
+        const XrQuaternionf quatHmd = xfStageFromHead.orientation;
+        const XrVector3f positionHmd = xfStageFromHead.position;
+        vec3_t rotation = {0, 0, 0};
+        QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
+        VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
+
+        //Position
+        VectorSubtract(vr.hmdposition_last, vr.hmdposition, vr.hmdposition_delta);
+
+        //Keep this for our records
+        VectorCopy(vr.hmdposition, vr.hmdposition_last);
+
+        //Orientation
+        VectorSubtract(vr.hmdorientation_last, vr.hmdorientation, vr.hmdorientation_delta);
+
+        //Keep this for our records
+        VectorCopy(vr.hmdorientation, vr.hmdorientation_last);
+
+        // View yaw delta
+        const float clientview_yaw = vr.clientviewangles[YAW] - vr.hmdorientation[YAW];
+        vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
+        vr.clientview_yaw_last = clientview_yaw;
+    }
 
     XrViewLocateInfo projectionInfo = {};
     projectionInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
