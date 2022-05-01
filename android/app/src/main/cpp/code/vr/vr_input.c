@@ -2,7 +2,6 @@
 
 //#if __ANDROID__
 
-#include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/keycodes.h"
 #include "../client/client.h"
@@ -1328,37 +1327,6 @@ void IN_VRInputFrame( void )
 
 	//trigger frame tick for haptics
     VR_HapticEvent("frame_tick", 0, 0, 0, 0, 0);
-
-    {
-		// We extract Yaw, Pitch, Roll instead of directly using the orientation
-		// to allow "additional" yaw manipulation with mouse/controller.
-        XrSpaceLocation loc = {};
-        loc.type = XR_TYPE_SPACE_LOCATION;
-        OXR(xrLocateSpace(VR_GetEngine()->appState.HeadSpace, VR_GetEngine()->appState.CurrentSpace, VR_GetEngine()->predictedDisplayTime, &loc));
-        XrPosef xfStageFromHead = loc.pose;
-		const XrQuaternionf quatHmd = xfStageFromHead.orientation;
-		const XrVector3f positionHmd = xfStageFromHead.position;
-		vec3_t rotation = {0, 0, 0};
-        QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
-		VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
-
-		//Position
-		VectorSubtract(vr.hmdposition_last, vr.hmdposition, vr.hmdposition_delta);
-
-		//Keep this for our records
-		VectorCopy(vr.hmdposition, vr.hmdposition_last);
-
-		//Orientation
-		VectorSubtract(vr.hmdorientation_last, vr.hmdorientation, vr.hmdorientation_delta);
-
-		//Keep this for our records
-		VectorCopy(vr.hmdorientation, vr.hmdorientation_last);
-
-		// View yaw delta
-		const float clientview_yaw = vr.clientviewangles[YAW] - vr.hmdorientation[YAW];
-		vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
-		vr.clientview_yaw_last = clientview_yaw;
-	}
 
     if (leftControllerAimSpace == XR_NULL_HANDLE) {
         leftControllerAimSpace = CreateActionSpace(aimPoseAction, leftHandPath);
