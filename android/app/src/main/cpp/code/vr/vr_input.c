@@ -2,7 +2,6 @@
 
 //#if __ANDROID__
 
-#include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/keycodes.h"
 #include "../client/client.h"
