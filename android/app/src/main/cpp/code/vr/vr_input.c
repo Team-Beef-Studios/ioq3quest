@@ -20,8 +20,8 @@
 //OpenXR
 XrPath leftHandPath;
 XrPath rightHandPath;
-XrAction aimPoseAction;
-XrAction gripPoseAction;
+XrAction handPoseLeftAction;
+XrAction handPoseRightAction;
 XrAction indexLeftAction;
 XrAction indexRightAction;
 XrAction menuAction;
@@ -40,8 +40,6 @@ XrAction vibrateRightFeedback;
 XrActionSet runningActionSet;
 XrSpace leftControllerAimSpace = XR_NULL_HANDLE;
 XrSpace rightControllerAimSpace = XR_NULL_HANDLE;
-XrSpace leftControllerGripSpace = XR_NULL_HANDLE;
-XrSpace rightControllerGripSpace = XR_NULL_HANDLE;
 qboolean inputInitialized = qfalse;
 qboolean useSimpleProfile = qfalse;
 
@@ -658,9 +656,8 @@ void IN_VRInit( void )
 
     OXR(xrStringToPath(engine->appState.Instance, "/user/hand/left", &leftHandPath));
     OXR(xrStringToPath(engine->appState.Instance, "/user/hand/right", &rightHandPath));
-    XrPath handSubactionPaths[2] = {leftHandPath, rightHandPath};
-    aimPoseAction = CreateAction(runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "aim_pose", NULL, 2, &handSubactionPaths[0]);
-    gripPoseAction = CreateAction(runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "grip_pose", NULL, 2, &handSubactionPaths[0]);
+    handPoseLeftAction = CreateAction(runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "hand_pose_left", NULL, 1, &leftHandPath);
+    handPoseRightAction = CreateAction(runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "hand_pose_right", NULL, 1, &rightHandPath);
 
     XrPath interactionProfilePath = XR_NULL_PATH;
     XrPath interactionProfilePathTouch = XR_NULL_PATH;
@@ -738,10 +735,8 @@ void IN_VRInit( void )
                 bindings[currBinding++] = ActionSuggestedBinding(thumbstickRightClickAction, "/user/hand/right/input/thumbstick/click");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftFeedback, "/user/hand/left/output/haptic");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateRightFeedback, "/user/hand/right/output/haptic");
-                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/left/input/aim/pose");
-                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/right/input/aim/pose");
-                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/left/input/grip/pose");
-                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/right/input/grip/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(handPoseLeftAction, "/user/hand/left/input/aim/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(handPoseRightAction, "/user/hand/right/input/aim/pose");
             }
 
             if (interactionProfilePath == interactionProfilePathKHRSimple) {
@@ -751,10 +746,8 @@ void IN_VRInit( void )
                 bindings[currBinding++] = ActionSuggestedBinding(buttonXAction, "/user/hand/right/input/menu/click");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateLeftFeedback, "/user/hand/left/output/haptic");
                 bindings[currBinding++] = ActionSuggestedBinding(vibrateRightFeedback, "/user/hand/right/output/haptic");
-                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/left/input/aim/pose");
-                bindings[currBinding++] = ActionSuggestedBinding(aimPoseAction, "/user/hand/right/input/aim/pose");
-                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/left/input/grip/pose");
-                bindings[currBinding++] = ActionSuggestedBinding(gripPoseAction, "/user/hand/right/input/grip/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(handPoseLeftAction, "/user/hand/left/input/aim/pose");
+                bindings[currBinding++] = ActionSuggestedBinding(handPoseRightAction, "/user/hand/right/input/aim/pose");
             }
         }
 
@@ -785,8 +778,8 @@ void IN_VRInit( void )
                 thumbstickRightClickAction,
                 vibrateLeftFeedback,
                 vibrateRightFeedback,
-                aimPoseAction,
-                gripPoseAction,
+                handPoseLeftAction,
+                handPoseRightAction
         };
         for (size_t i = 0; i < sizeof(actionsToEnumerate) / sizeof(actionsToEnumerate[0]); ++i) {
             XrBoundSourcesForActionEnumerateInfo enumerateInfo = {};
@@ -869,9 +862,9 @@ static void IN_VRController( qboolean isRightController, XrPosef pose )
         QuatToYawPitchRoll(pose.orientation, rotation, vr.offhandangles);
 
         ///location relative to view
-        vr.weaponposition[0] = pose.position.x;
-        vr.weaponposition[1] = pose.position.y + vr_heightAdjust->value;
-        vr.weaponposition[2] = pose.position.z;
+        vr.offhandposition[0] = pose.position.x;
+        vr.offhandposition[1] = pose.position.y + vr_heightAdjust->value;
+        vr.offhandposition[2] = pose.position.z;
 
         VectorCopy(vr.offhandoffset_last[1], vr.offhandoffset_last[0]);
         VectorCopy(vr.offhandoffset, vr.offhandoffset_last[1]);
@@ -1342,28 +1335,17 @@ void IN_VRInputFrame( void )
     VR_HapticEvent("frame_tick", 0, 0, 0, 0, 0);
 
     if (leftControllerAimSpace == XR_NULL_HANDLE) {
-        leftControllerAimSpace = CreateActionSpace(aimPoseAction, leftHandPath);
+        leftControllerAimSpace = CreateActionSpace(handPoseLeftAction, leftHandPath);
     }
     if (rightControllerAimSpace == XR_NULL_HANDLE) {
-        rightControllerAimSpace = CreateActionSpace(aimPoseAction, rightHandPath);
-    }
-    if (leftControllerGripSpace == XR_NULL_HANDLE) {
-        leftControllerGripSpace = CreateActionSpace(gripPoseAction, leftHandPath);
-    }
-    if (rightControllerGripSpace == XR_NULL_HANDLE) {
-        rightControllerGripSpace = CreateActionSpace(gripPoseAction, rightHandPath);
+        rightControllerAimSpace = CreateActionSpace(handPoseRightAction, rightHandPath);
     }
 
     // update input information
-    XrAction controller[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
-    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
-    XrSpace controllerSpace[] = {
-            leftControllerAimSpace,
-            leftControllerGripSpace,
-            rightControllerAimSpace,
-            rightControllerGripSpace,
-    };
-    for (int i = 0; i < 4; i++) {
+    XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
+    XrPath subactionPath[] = {leftHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
+    for (int i = 0; i < 2; i++) {
         if (ActionPoseIsActive(controller[i], subactionPath[i])) {
             LocVel lv = GetSpaceLocVel(controllerSpace[i], VR_GetEngine()->predictedDisplayTime);
             VR_GetEngine()->appState.TrackedController[i].Active = (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
@@ -1438,8 +1420,8 @@ void IN_VRInputFrame( void )
     //controller pose
     if (engine->appState.TrackedController[0].Active)
         IN_VRController(qfalse, engine->appState.TrackedController[0].Pose);
-    if (engine->appState.TrackedController[2].Active)
-        IN_VRController(qtrue, engine->appState.TrackedController[2].Pose);
+    if (engine->appState.TrackedController[1].Active)
+        IN_VRController(qtrue, engine->appState.TrackedController[1].Pose);
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
