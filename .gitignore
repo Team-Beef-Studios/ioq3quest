@@ -1,4 +1,6 @@
 build
+android/app/src/main/cpp/code/OpenXR-SDK
+android/app/src/main/cpp/code/OpenXR
 android/app/src/main/cpp/code/VrApi
 *.swp
 *tags

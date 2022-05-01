@@ -1,22 +1,24 @@
 #include "vr_base.h"
-#include "../VrApi/Include/VrApi.h"
-#include "../VrApi/Include/VrApi_Helpers.h"
-#include "../VrApi/Include/VrApi_Types.h"
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/client.h"
 
 //#if __ANDROID__
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wstrict-prototypes"
-#pragma clang diagnostic pop
-
-#include <EGL/egl.h>
-
 #include <assert.h>
+#include <unistd.h>
 
 static engine_t vr_engine;
+qboolean vr_initialized = qfalse;
+
+const char* const requiredExtensionNames[] = {
+        XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
+        XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
+        XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME,
+        XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
+        XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME};
+const uint32_t numRequiredExtensions =
+        sizeof(requiredExtensionNames) / sizeof(requiredExtensionNames[0]);
 
 cvar_t *vr_worldscale = NULL;
 cvar_t *vr_worldscaleScaler = NULL;
@@ -46,18 +48,92 @@ cvar_t *vr_showConsoleMessages = NULL;
 
 engine_t* VR_Init( ovrJava java )
 {
-	ovrInitParms initParams;
-	ovrResult initResult;
+    if (vr_initialized)
+        return &vr_engine;
 
-	memset(&vr_engine, 0, sizeof(vr_engine));
+    ovrApp_Clear(&vr_engine.appState);
 
-	initParams = vrapi_DefaultInitParms(&java);
-	initResult = vrapi_Initialize(&initParams);
-	assert(initResult == VRAPI_INITIALIZE_SUCCESS);
-	
-	vr_engine.java = java;
+    PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
+    xrGetInstanceProcAddr(
+            XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)&xrInitializeLoaderKHR);
+    if (xrInitializeLoaderKHR != NULL) {
+        XrLoaderInitInfoAndroidKHR loaderInitializeInfoAndroid;
+        memset(&loaderInitializeInfoAndroid, 0, sizeof(loaderInitializeInfoAndroid));
+        loaderInitializeInfoAndroid.type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR;
+        loaderInitializeInfoAndroid.next = NULL;
+        loaderInitializeInfoAndroid.applicationVM = java.Vm;
+        loaderInitializeInfoAndroid.applicationContext = java.ActivityObject;
+        xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR*)&loaderInitializeInfoAndroid);
+    }
 
-	return &vr_engine;
+    // Create the OpenXR instance.
+    XrApplicationInfo appInfo;
+    memset(&appInfo, 0, sizeof(appInfo));
+    strcpy(appInfo.applicationName, "Quake 3 Arena");
+    appInfo.applicationVersion = 0;
+    strcpy(appInfo.engineName, "Quake 3 Arena");
+    appInfo.engineVersion = 0;
+    appInfo.apiVersion = XR_CURRENT_API_VERSION;
+
+    XrInstanceCreateInfo instanceCreateInfo;
+    memset(&instanceCreateInfo, 0, sizeof(instanceCreateInfo));
+    instanceCreateInfo.type = XR_TYPE_INSTANCE_CREATE_INFO;
+    instanceCreateInfo.next = NULL;
+    instanceCreateInfo.createFlags = 0;
+    instanceCreateInfo.applicationInfo = appInfo;
+    instanceCreateInfo.enabledApiLayerCount = 0;
+    instanceCreateInfo.enabledApiLayerNames = NULL;
+    instanceCreateInfo.enabledExtensionCount = numRequiredExtensions;
+    instanceCreateInfo.enabledExtensionNames = requiredExtensionNames;
+
+    XrResult initResult;
+    OXR(initResult = xrCreateInstance(&instanceCreateInfo, &vr_engine.appState.Instance));
+    if (initResult != XR_SUCCESS) {
+        ALOGE("Failed to create XR instance: %d.", initResult);
+        exit(1);
+    }
+
+    XrInstanceProperties instanceInfo;
+    instanceInfo.type = XR_TYPE_INSTANCE_PROPERTIES;
+    instanceInfo.next = NULL;
+    OXR(xrGetInstanceProperties(vr_engine.appState.Instance, &instanceInfo));
+    ALOGV(
+            "Runtime %s: Version : %u.%u.%u",
+            instanceInfo.runtimeName,
+            XR_VERSION_MAJOR(instanceInfo.runtimeVersion),
+            XR_VERSION_MINOR(instanceInfo.runtimeVersion),
+            XR_VERSION_PATCH(instanceInfo.runtimeVersion));
+
+    XrSystemGetInfo systemGetInfo;
+    memset(&systemGetInfo, 0, sizeof(systemGetInfo));
+    systemGetInfo.type = XR_TYPE_SYSTEM_GET_INFO;
+    systemGetInfo.next = NULL;
+    systemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+
+    XrSystemId systemId;
+    OXR(initResult = xrGetSystem(vr_engine.appState.Instance, &systemGetInfo, &systemId));
+    if (initResult != XR_SUCCESS) {
+        ALOGE("Failed to get system.");
+        exit(1);
+    }
+
+    // Get the graphics requirements.
+    PFN_xrGetOpenGLESGraphicsRequirementsKHR pfnGetOpenGLESGraphicsRequirementsKHR = NULL;
+    OXR(xrGetInstanceProcAddr(
+            vr_engine.appState.Instance,
+            "xrGetOpenGLESGraphicsRequirementsKHR",
+            (PFN_xrVoidFunction*)(&pfnGetOpenGLESGraphicsRequirementsKHR)));
+
+    XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {};
+    graphicsRequirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR;
+    OXR(pfnGetOpenGLESGraphicsRequirementsKHR(vr_engine.appState.Instance, systemId, &graphicsRequirements));
+
+    vr_engine.appState.MainThreadTid = gettid();
+    vr_engine.appState.SystemId = systemId;
+
+    vr_engine.java = java;
+    vr_initialized = qtrue;
+    return &vr_engine;
 }
 
 void VR_InitCvars( void )
@@ -184,53 +260,77 @@ void VR_InitCvars( void )
 
 void VR_Destroy( engine_t* engine )
 {
-	if (engine == &vr_engine) {
-		vrapi_Shutdown();
-	}
+    if (engine == &vr_engine) {
+        xrDestroyInstance(engine->appState.Instance);
+        ovrApp_Destroy(&engine->appState);
+    }
 }
 
 void VR_EnterVR( engine_t* engine, ovrJava java ) {
-	if (!engine->ovr) {
-		ovrModeParms modeParams = vrapi_DefaultModeParms(&java);
-		modeParams.Display = (size_t)eglGetCurrentDisplay();
-		modeParams.WindowSurface = (size_t)eglGetCurrentSurface(EGL_DRAW);
-		modeParams.ShareContext = (size_t)eglGetCurrentContext();
 
-		engine->ovr = vrapi_EnterVrMode(&modeParams);
-		engine->frameIndex = 0;
+    if (engine->appState.Session) {
+        Com_Printf("VR_EnterVR called with existing session");
+        return;
+    }
 
-		vrapi_SetTrackingSpace(engine->ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+    // Create the OpenXR Session.
+    XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {};
+    graphicsBindingAndroidGLES.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR;
+    graphicsBindingAndroidGLES.next = NULL;
+    graphicsBindingAndroidGLES.display = eglGetCurrentDisplay();
+    graphicsBindingAndroidGLES.config = eglGetCurrentSurface(EGL_DRAW);
+    graphicsBindingAndroidGLES.context = eglGetCurrentContext();
 
-        vrapi_SetClockLevels(engine->ovr, 4, 4);
-	}
+    XrSessionCreateInfo sessionCreateInfo = {};
+    memset(&sessionCreateInfo, 0, sizeof(sessionCreateInfo));
+    sessionCreateInfo.type = XR_TYPE_SESSION_CREATE_INFO;
+    sessionCreateInfo.next = &graphicsBindingAndroidGLES;
+    sessionCreateInfo.createFlags = 0;
+    sessionCreateInfo.systemId = engine->appState.SystemId;
+
+    XrResult initResult;
+    OXR(initResult = xrCreateSession(engine->appState.Instance, &sessionCreateInfo, &engine->appState.Session));
+    if (initResult != XR_SUCCESS) {
+        ALOGE("Failed to create XR session: %d.", initResult);
+        exit(1);
+    }
 }
 
 void VR_LeaveVR( engine_t* engine ) {
-	if (engine->ovr) {
-		vrapi_LeaveVrMode(engine->ovr);
-		engine->ovr = NULL;
-	}
+    if (engine->appState.Session) {
+        OXR(xrDestroySpace(engine->appState.HeadSpace));
+        OXR(xrDestroySpace(engine->appState.LocalSpace));
+        // StageSpace is optional.
+        if (engine->appState.StageSpace != XR_NULL_HANDLE) {
+            OXR(xrDestroySpace(engine->appState.StageSpace));
+        }
+        OXR(xrDestroySpace(engine->appState.FakeStageSpace));
+        engine->appState.CurrentSpace = XR_NULL_HANDLE;
+        OXR(xrDestroySession(engine->appState.Session));
+        OXR(xrDestroyInstance(engine->appState.Instance));
+        engine->appState.Session = NULL;
+    }
 }
 
 engine_t* VR_GetEngine( void ) {
 	return &vr_engine;
 }
 
-bool VR_isPauseable( void )
+int VR_isPauseable( void )
 {
-	return (bool)( ( clc.state == CA_ACTIVE) && !Cvar_VariableValue ("cl_paused") );
+	return ( clc.state == CA_ACTIVE) && !Cvar_VariableValue ("cl_paused");
 }
 
-bool VR_useScreenLayer( void )
+int VR_useScreenLayer( void )
 {
 	//intermission is never full screen
     if ( cl.snap.ps.pm_type == PM_INTERMISSION )
     {
-        return qfalse;
+        return 0;
     }
 
     int keyCatcher = Key_GetCatcher( );
-	return (bool)( clc.state == CA_CINEMATIC ||
+	return ( clc.state == CA_CINEMATIC ||
 			( keyCatcher & (KEYCATCH_UI | KEYCATCH_CONSOLE) ));
 }
 //#endif

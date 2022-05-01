@@ -2535,8 +2535,9 @@ void RE_StretchPic ( float x, float y, float w, float h,
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
 #if __ANDROID__
-void RE_SetVRHeadsetParms( const ovrMatrix4f *projectionMatrix,  const ovrMatrix4f *nonVRProjectionMatrix,
-        int renderBuffer );
+void RE_SetVRHeadsetParms( const float projectionMatrix[4][4],
+						   const float nonVRProjectionMatrix[4][4],
+						   int renderBuffer );
 #endif
 void RE_HUDBufferStart( qboolean clear );
 void RE_HUDBufferEnd( void );

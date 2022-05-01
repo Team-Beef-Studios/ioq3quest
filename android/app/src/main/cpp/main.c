@@ -4,9 +4,6 @@
 
 #include <android/log.h>
 
-#include <VrApi.h>
-#include <VrApi_Helpers.h>
-
 #include <client/keycodes.h>
 #include <qcommon/q_shared.h>
 #include <qcommon/qcommon.h>
@@ -27,7 +24,7 @@ extern void CON_LogcatFn( void (*LogcatFn)( const char* message ) );
 static JNIEnv* g_Env = NULL;
 static JavaVM* g_JavaVM = NULL;
 static jobject g_ActivityObject = NULL;
-static bool    g_HasFocus = true;
+static qboolean g_HasFocus = qtrue;
 
 JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeCreate(JNIEnv* env, jclass cls, jobject thisObject)
 {
@@ -80,23 +77,22 @@ int main(int argc, char* argv[]) {
     Com_Init(args);
     NET_Init( );
 
+	VR_EnterVR(engine, java);
 	VR_InitRenderer(engine);
 
-	VR_EnterVR(engine, java);
-
-	bool hasFocus = true;
-	bool paused = false;
+	qboolean hasFocus = qtrue;
+	qboolean paused = qfalse;
 	while (1) {
 		if (hasFocus != g_HasFocus) {
 			hasFocus = g_HasFocus;
 			if (!hasFocus && VR_isPauseable()) {
 				Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_ESCAPE, qtrue, 0, NULL );
 				//Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_CONSOLE, qtrue, 0, NULL );
-				paused = true;
+				paused = qtrue;
 			} else if (hasFocus && paused) {
 				//Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_CONSOLE, qtrue, 0, NULL );
 				Com_QueueEvent( Sys_Milliseconds(), SE_KEY, K_ESCAPE, qtrue, 0, NULL );
-				paused = false;
+				paused = qfalse;
 			}
 		}
 
