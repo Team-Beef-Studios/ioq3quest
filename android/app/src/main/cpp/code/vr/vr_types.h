@@ -100,7 +100,7 @@ typedef struct {
 
     GLboolean TouchPadDownLastFrame;
     ovrRenderer Renderer;
-    ovrTrackedController TrackedController[4]; // left aim, left grip, right aim, right grip
+    ovrTrackedController TrackedController[2];
 } ovrApp;
 
 
