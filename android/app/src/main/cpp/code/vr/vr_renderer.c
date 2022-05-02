@@ -465,6 +465,7 @@ void VR_DrawFrame( engine_t* engine ) {
 
     XrCompositionLayerProjectionView projection_layer_elements[2] = {};
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
+        vr.menuYaw = vr.hmdorientation[YAW];
 
         for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
             ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
@@ -510,8 +511,12 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.subImage.imageRect.extent.height = height;
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-        const XrVector3f pos = {xfStageFromHead.position.x, -0.25f, xfStageFromHead.position.z - 4.0f};
-        cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
+        XrVector3f pos = {
+                xfStageFromHead.position.x - sin(radians(vr.menuYaw)) * 4.0f,
+                -0.25f,
+                xfStageFromHead.position.z - cos(radians(vr.menuYaw)) * 4.0f
+        };
+        cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, radians(vr.menuYaw));
         cylinder_layer.pose.position = pos;
         cylinder_layer.radius = 12.0f;
         cylinder_layer.centralAngle = MATH_PI * 0.5f;
