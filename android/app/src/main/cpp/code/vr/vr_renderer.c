@@ -323,7 +323,9 @@ void VR_DrawFrame( engine_t* engine ) {
 	}
 
     GLboolean stageBoundsDirty = GL_TRUE;
-    ovrApp_HandleXrEvents(&engine->appState);
+    if (ovrApp_HandleXrEvents(&engine->appState)) {
+        vr.menuYaw = vr.hmdorientation[YAW];
+    }
     if (engine->appState.SessionActive == GL_FALSE) {
         return;
     }
@@ -501,7 +503,7 @@ void VR_DrawFrame( engine_t* engine ) {
         XrCompositionLayerCylinderKHR cylinder_layer = {};
         cylinder_layer.type = XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR;
         cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        cylinder_layer.space = engine->appState.LocalSpace;
+        cylinder_layer.space = engine->appState.CurrentSpace;
         cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
         memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
         cylinder_layer.subImage.swapchain = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Handle;

@@ -159,7 +159,7 @@ typedef enum {
 
 void ovrApp_Clear(ovrApp* app);
 void ovrApp_Destroy(ovrApp* app);
-void ovrApp_HandleXrEvents(ovrApp* app);
+GLboolean ovrApp_HandleXrEvents(ovrApp* app);
 
 void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer);
 void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer);

@@ -314,8 +314,9 @@ void ovrApp_HandleSessionStateChanges(ovrApp* app, XrSessionState state) {
     }
 }
 
-void ovrApp_HandleXrEvents(ovrApp* app) {
+GLboolean ovrApp_HandleXrEvents(ovrApp* app) {
     XrEventDataBuffer eventDataBuffer = {};
+    GLboolean recenter = GL_FALSE;
 
     // Poll for events
     for (;;) {
@@ -368,6 +369,7 @@ void ovrApp_HandleXrEvents(ovrApp* app) {
                         ref_space_change_event->referenceSpaceType,
                         (void*)ref_space_change_event->session,
                         FromXrTime(ref_space_change_event->changeTime));
+                recenter = GL_TRUE;
             } break;
             case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
                 const XrEventDataSessionStateChanged* session_state_changed_event =
@@ -398,6 +400,7 @@ void ovrApp_HandleXrEvents(ovrApp* app) {
                 break;
         }
     }
+    return recenter;
 }
 
 /*
