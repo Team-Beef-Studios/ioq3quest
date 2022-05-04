@@ -236,7 +236,6 @@ void ovrApp_Clear(ovrApp* app) {
     memset(&app->ViewConfigurationView, 0, ovrMaxNumEyes * sizeof(XrViewConfigurationView));
     app->SystemId = XR_NULL_SYSTEM_ID;
     app->HeadSpace = XR_NULL_HANDLE;
-    app->LocalSpace = XR_NULL_HANDLE;
     app->StageSpace = XR_NULL_HANDLE;
     app->FakeStageSpace = XR_NULL_HANDLE;
     app->CurrentSpace = XR_NULL_HANDLE;

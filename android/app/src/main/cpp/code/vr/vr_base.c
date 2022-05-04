@@ -299,7 +299,6 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
 void VR_LeaveVR( engine_t* engine ) {
     if (engine->appState.Session) {
         OXR(xrDestroySpace(engine->appState.HeadSpace));
-        OXR(xrDestroySpace(engine->appState.LocalSpace));
         // StageSpace is optional.
         if (engine->appState.StageSpace != XR_NULL_HANDLE) {
             OXR(xrDestroySpace(engine->appState.StageSpace));

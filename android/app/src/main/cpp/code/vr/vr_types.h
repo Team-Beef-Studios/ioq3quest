@@ -79,7 +79,6 @@ typedef struct {
     XrViewConfigurationView ViewConfigurationView[ovrMaxNumEyes];
     XrSystemId SystemId;
     XrSpace HeadSpace;
-    XrSpace LocalSpace;
     XrSpace StageSpace;
     XrSpace FakeStageSpace;
     XrSpace CurrentSpace;
