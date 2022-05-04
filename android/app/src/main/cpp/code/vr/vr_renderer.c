@@ -164,29 +164,30 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 
 void VR_Recenter(engine_t* engine) {
 
+    // Calculate recenter reference
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
+    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
+    if (engine->appState.CurrentSpace != XR_NULL_HANDLE) {
+        vec3_t rotation = {0, 0, 0};
+        XrSpaceLocation loc = {};
+        loc.type = XR_TYPE_SPACE_LOCATION;
+        OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, engine->predictedDisplayTime, &loc));
+        QuatToYawPitchRoll(loc.pose.orientation, rotation, vr.hmdorientation);
+
+        vr.recenterYaw += radians(vr.hmdorientation[YAW]);
+        spaceCreateInfo.poseInReferenceSpace.orientation.x = 0;
+        spaceCreateInfo.poseInReferenceSpace.orientation.y = sin(vr.recenterYaw / 2);
+        spaceCreateInfo.poseInReferenceSpace.orientation.z = 0;
+        spaceCreateInfo.poseInReferenceSpace.orientation.w = cos(vr.recenterYaw / 2);
+    }
+
     // Delete previous space instances
-    qboolean spacesAlreadyExisted = qfalse;
     if (engine->appState.StageSpace != XR_NULL_HANDLE) {
         OXR(xrDestroySpace(engine->appState.StageSpace));
     }
     if (engine->appState.FakeStageSpace != XR_NULL_HANDLE) {
         OXR(xrDestroySpace(engine->appState.FakeStageSpace));
-        spacesAlreadyExisted = qtrue;
-    }
-
-    // Create a space to the first path
-    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
-    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
-    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
-    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
-
-    // Calculate recenter reference
-    if (engine->appState.CurrentSpace != XR_NULL_HANDLE) {
-        vr.recenterYaw += radians(vr.clientviewangles[YAW]);
-        spaceCreateInfo.poseInReferenceSpace.orientation.x = 0;
-        spaceCreateInfo.poseInReferenceSpace.orientation.y = sin(vr.recenterYaw / 2);
-        spaceCreateInfo.poseInReferenceSpace.orientation.z = 0;
-        spaceCreateInfo.poseInReferenceSpace.orientation.w = cos(vr.recenterYaw / 2);
     }
 
     // Create a default stage space to use if SPACE_TYPE_STAGE is not
@@ -206,14 +207,7 @@ void VR_Recenter(engine_t* engine) {
     }
 
     // Update menu orientation
-    if (spacesAlreadyExisted) {
-        vec3_t rotation = {0, 0, 0};
-        XrSpaceLocation loc = {};
-        loc.type = XR_TYPE_SPACE_LOCATION;
-        OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, engine->predictedDisplayTime, &loc));
-        QuatToYawPitchRoll(loc.pose.orientation, rotation, vr.hmdorientation);
-        vr.menuYaw = vr.hmdorientation[YAW];
-    }
+    vr.menuYaw = 0;
 }
 
 void VR_InitRenderer( engine_t* engine ) {
