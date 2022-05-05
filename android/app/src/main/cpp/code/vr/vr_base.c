@@ -294,12 +294,18 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
         ALOGE("Failed to create XR session: %d.", initResult);
         exit(1);
     }
+
+    // Create a space to the first path
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
+    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
+    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.HeadSpace));
 }
 
 void VR_LeaveVR( engine_t* engine ) {
     if (engine->appState.Session) {
         OXR(xrDestroySpace(engine->appState.HeadSpace));
-        OXR(xrDestroySpace(engine->appState.LocalSpace));
         // StageSpace is optional.
         if (engine->appState.StageSpace != XR_NULL_HANDLE) {
             OXR(xrDestroySpace(engine->appState.StageSpace));
@@ -307,7 +313,6 @@ void VR_LeaveVR( engine_t* engine ) {
         OXR(xrDestroySpace(engine->appState.FakeStageSpace));
         engine->appState.CurrentSpace = XR_NULL_HANDLE;
         OXR(xrDestroySession(engine->appState.Session));
-        OXR(xrDestroyInstance(engine->appState.Instance));
         engine->appState.Session = NULL;
     }
 }

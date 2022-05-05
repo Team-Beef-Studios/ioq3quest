@@ -79,7 +79,6 @@ typedef struct {
     XrViewConfigurationView ViewConfigurationView[ovrMaxNumEyes];
     XrSystemId SystemId;
     XrSpace HeadSpace;
-    XrSpace LocalSpace;
     XrSpace StageSpace;
     XrSpace FakeStageSpace;
     XrSpace CurrentSpace;
@@ -159,7 +158,7 @@ typedef enum {
 
 void ovrApp_Clear(ovrApp* app);
 void ovrApp_Destroy(ovrApp* app);
-void ovrApp_HandleXrEvents(ovrApp* app);
+GLboolean ovrApp_HandleXrEvents(ovrApp* app);
 
 void ovrFramebuffer_Acquire(ovrFramebuffer* frameBuffer);
 void ovrFramebuffer_Resolve(ovrFramebuffer* frameBuffer);

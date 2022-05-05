@@ -23,6 +23,7 @@ extern vr_clientinfo_t vr;
 extern cvar_t *vr_heightAdjust;
 
 XrView* projections;
+GLboolean stageSupported = GL_FALSE;
 
 void VR_UpdateStageBounds(ovrApp* pappState) {
     XrExtent2Df stageBounds = {};
@@ -161,6 +162,54 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 	}
 }
 
+void VR_Recenter(engine_t* engine) {
+
+    // Calculate recenter reference
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
+    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
+    if (engine->appState.CurrentSpace != XR_NULL_HANDLE) {
+        vec3_t rotation = {0, 0, 0};
+        XrSpaceLocation loc = {};
+        loc.type = XR_TYPE_SPACE_LOCATION;
+        OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, engine->predictedDisplayTime, &loc));
+        QuatToYawPitchRoll(loc.pose.orientation, rotation, vr.hmdorientation);
+
+        vr.recenterYaw += radians(vr.hmdorientation[YAW]);
+        spaceCreateInfo.poseInReferenceSpace.orientation.x = 0;
+        spaceCreateInfo.poseInReferenceSpace.orientation.y = sin(vr.recenterYaw / 2);
+        spaceCreateInfo.poseInReferenceSpace.orientation.z = 0;
+        spaceCreateInfo.poseInReferenceSpace.orientation.w = cos(vr.recenterYaw / 2);
+    }
+
+    // Delete previous space instances
+    if (engine->appState.StageSpace != XR_NULL_HANDLE) {
+        OXR(xrDestroySpace(engine->appState.StageSpace));
+    }
+    if (engine->appState.FakeStageSpace != XR_NULL_HANDLE) {
+        OXR(xrDestroySpace(engine->appState.FakeStageSpace));
+    }
+
+    // Create a default stage space to use if SPACE_TYPE_STAGE is not
+    // supported, or calls to xrGetReferenceSpaceBoundsRect fail.
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    spaceCreateInfo.poseInReferenceSpace.position.y = -1.6750f;
+    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.FakeStageSpace));
+    ALOGV("Created fake stage space from local space with offset");
+    engine->appState.CurrentSpace = engine->appState.FakeStageSpace;
+
+    if (stageSupported) {
+        spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
+        spaceCreateInfo.poseInReferenceSpace.position.y = 0.0f;
+        OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.StageSpace));
+        ALOGV("Created stage space");
+        engine->appState.CurrentSpace = engine->appState.StageSpace;
+    }
+
+    // Update menu orientation
+    vr.menuYaw = 0;
+}
+
 void VR_InitRenderer( engine_t* engine ) {
 #if ENABLE_GL_DEBUG
 	glEnable(GL_DEBUG_OUTPUT);
@@ -227,7 +276,6 @@ void VR_InitRenderer( engine_t* engine ) {
     OXR(xrEnumerateReferenceSpaces(
             engine->appState.Session, numOutputSpaces, &numOutputSpaces, referenceSpaces));
 
-    GLboolean stageSupported = GL_FALSE;
     for (uint32_t i = 0; i < numOutputSpaces; i++) {
         if (referenceSpaces[i] == XR_REFERENCE_SPACE_TYPE_STAGE) {
             stageSupported = GL_TRUE;
@@ -237,32 +285,8 @@ void VR_InitRenderer( engine_t* engine ) {
 
     free(referenceSpaces);
 
-    // Create a space to the first path
-    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
-    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
-    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
-    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
-    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.HeadSpace));
-
-    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.LocalSpace));
-
-    // Create a default stage space to use if SPACE_TYPE_STAGE is not
-    // supported, or calls to xrGetReferenceSpaceBoundsRect fail.
-    {
-        spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-        spaceCreateInfo.poseInReferenceSpace.position.y = -1.6750f;
-        OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.FakeStageSpace));
-        ALOGV("Created fake stage space from local space with offset");
-        engine->appState.CurrentSpace = engine->appState.FakeStageSpace;
-    }
-
-    if (stageSupported) {
-        spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
-        spaceCreateInfo.poseInReferenceSpace.position.y = 0.0f;
-        OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.StageSpace));
-        ALOGV("Created stage space");
-        engine->appState.CurrentSpace = engine->appState.StageSpace;
+    if (engine->appState.CurrentSpace == XR_NULL_HANDLE) {
+        VR_Recenter(engine);
     }
 
     projections = (XrView*)(malloc(ovrMaxNumEyes * sizeof(XrView)));
@@ -323,7 +347,9 @@ void VR_DrawFrame( engine_t* engine ) {
 	}
 
     GLboolean stageBoundsDirty = GL_TRUE;
-    ovrApp_HandleXrEvents(&engine->appState);
+    if (ovrApp_HandleXrEvents(&engine->appState)) {
+        VR_Recenter(engine);
+    }
     if (engine->appState.SessionActive == GL_FALSE) {
         return;
     }
@@ -358,44 +384,34 @@ void VR_DrawFrame( engine_t* engine ) {
     beginFrameDesc.next = NULL;
     OXR(xrBeginFrame(engine->appState.Session, &beginFrameDesc));
 
+    // We extract Yaw, Pitch, Roll instead of directly using the orientation
+    // to allow "additional" yaw manipulation with mouse/controller.
     XrSpaceLocation loc = {};
     loc.type = XR_TYPE_SPACE_LOCATION;
-    OXR(xrLocateSpace(
-            engine->appState.HeadSpace, engine->appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
+    OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
     XrPosef xfStageFromHead = loc.pose;
-    OXR(xrLocateSpace(
-            engine->appState.HeadSpace, engine->appState.LocalSpace, frameState.predictedDisplayTime, &loc));
+    const XrQuaternionf quatHmd = xfStageFromHead.orientation;
+    const XrVector3f positionHmd = xfStageFromHead.position;
+    vec3_t rotation = {0, 0, 0};
+    QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
+    VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
 
-    {
-        // We extract Yaw, Pitch, Roll instead of directly using the orientation
-        // to allow "additional" yaw manipulation with mouse/controller.
-        XrSpaceLocation loc = {};
-        loc.type = XR_TYPE_SPACE_LOCATION;
-        OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
-        XrPosef xfStageFromHead = loc.pose;
-        const XrQuaternionf quatHmd = xfStageFromHead.orientation;
-        const XrVector3f positionHmd = xfStageFromHead.position;
-        vec3_t rotation = {0, 0, 0};
-        QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
-        VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
+    //Position
+    VectorSubtract(vr.hmdposition_last, vr.hmdposition, vr.hmdposition_delta);
 
-        //Position
-        VectorSubtract(vr.hmdposition_last, vr.hmdposition, vr.hmdposition_delta);
+    //Keep this for our records
+    VectorCopy(vr.hmdposition, vr.hmdposition_last);
 
-        //Keep this for our records
-        VectorCopy(vr.hmdposition, vr.hmdposition_last);
+    //Orientation
+    VectorSubtract(vr.hmdorientation_last, vr.hmdorientation, vr.hmdorientation_delta);
 
-        //Orientation
-        VectorSubtract(vr.hmdorientation_last, vr.hmdorientation, vr.hmdorientation_delta);
+    //Keep this for our records
+    VectorCopy(vr.hmdorientation, vr.hmdorientation_last);
 
-        //Keep this for our records
-        VectorCopy(vr.hmdorientation, vr.hmdorientation_last);
-
-        // View yaw delta
-        const float clientview_yaw = vr.clientviewangles[YAW] - vr.hmdorientation[YAW];
-        vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
-        vr.clientview_yaw_last = clientview_yaw;
-    }
+    // View yaw delta
+    const float clientview_yaw = vr.clientviewangles[YAW] - vr.hmdorientation[YAW];
+    vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
+    vr.clientview_yaw_last = clientview_yaw;
 
     XrViewLocateInfo projectionInfo = {};
     projectionInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
@@ -465,6 +481,7 @@ void VR_DrawFrame( engine_t* engine ) {
 
     XrCompositionLayerProjectionView projection_layer_elements[2] = {};
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
+        vr.menuYaw = vr.hmdorientation[YAW];
 
         for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
             ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
@@ -500,7 +517,7 @@ void VR_DrawFrame( engine_t* engine ) {
         XrCompositionLayerCylinderKHR cylinder_layer = {};
         cylinder_layer.type = XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR;
         cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        cylinder_layer.space = engine->appState.LocalSpace;
+        cylinder_layer.space = engine->appState.CurrentSpace;
         cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
         memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
         cylinder_layer.subImage.swapchain = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Handle;
@@ -510,8 +527,12 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.subImage.imageRect.extent.height = height;
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-        const XrVector3f pos = {xfStageFromHead.position.x, -0.25f, xfStageFromHead.position.z - 4.0f};
-        cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, 0);
+        XrVector3f pos = {
+                xfStageFromHead.position.x - sin(radians(vr.menuYaw)) * 4.0f,
+                -0.25f,
+                xfStageFromHead.position.z - cos(radians(vr.menuYaw)) * 4.0f
+        };
+        cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, radians(vr.menuYaw));
         cylinder_layer.pose.position = pos;
         cylinder_layer.radius = 12.0f;
         cylinder_layer.centralAngle = MATH_PI * 0.5f;
