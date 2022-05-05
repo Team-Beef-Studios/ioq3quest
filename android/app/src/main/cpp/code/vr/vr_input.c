@@ -1341,24 +1341,6 @@ void IN_VRInputFrame( void )
         rightControllerAimSpace = CreateActionSpace(handPoseRightAction, rightHandPath);
     }
 
-    // update input information
-    XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
-    XrPath subactionPath[] = {leftHandPath, rightHandPath};
-    XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
-    for (int i = 0; i < 2; i++) {
-        if (ActionPoseIsActive(controller[i], subactionPath[i])) {
-            LocVel lv = GetSpaceLocVel(controllerSpace[i], VR_GetEngine()->predictedDisplayTime);
-            VR_GetEngine()->appState.TrackedController[i].Active = (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
-            VR_GetEngine()->appState.TrackedController[i].Pose = lv.loc.pose;
-            for (int j = 0; j < 3; j++) {
-                float dt = 0.01f; // use 0.2f for for testing velocity vectors
-                (&VR_GetEngine()->appState.TrackedController[i].Pose.position.x)[j] += (&lv.vel.linearVelocity.x)[j] * dt;
-            }
-        } else {
-            ovrTrackedController_Clear(&VR_GetEngine()->appState.TrackedController[i]);
-        }
-    }
-
     // OpenXR input
     {
         // Attach to session
@@ -1425,6 +1407,26 @@ void IN_VRInputFrame( void )
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
+}
+
+void IN_VRUpdateControllers( float predictedDisplayTime )
+{
+    XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
+    XrPath subactionPath[] = {leftHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
+    for (int i = 0; i < 2; i++) {
+        if (ActionPoseIsActive(controller[i], subactionPath[i])) {
+            LocVel lv = GetSpaceLocVel(controllerSpace[i], predictedDisplayTime);
+            VR_GetEngine()->appState.TrackedController[i].Active = (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
+            VR_GetEngine()->appState.TrackedController[i].Pose = lv.loc.pose;
+            for (int j = 0; j < 3; j++) {
+                float dt = 0.01f; // use 0.2f for for testing velocity vectors
+                (&VR_GetEngine()->appState.TrackedController[i].Pose.position.x)[j] += (&lv.vel.linearVelocity.x)[j] * dt;
+            }
+        } else {
+            ovrTrackedController_Clear(&VR_GetEngine()->appState.TrackedController[i]);
+        }
+    }
 }
 
 //#endif

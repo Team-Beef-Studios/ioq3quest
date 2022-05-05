@@ -413,6 +413,9 @@ void VR_DrawFrame( engine_t* engine ) {
     vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
     vr.clientview_yaw_last = clientview_yaw;
 
+    // Update controllers
+    IN_VRUpdateControllers( frameState.predictedDisplayTime );
+
     XrViewLocateInfo projectionInfo = {};
     projectionInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
     projectionInfo.viewConfigurationType = engine->appState.ViewportConfig.viewConfigurationType;
