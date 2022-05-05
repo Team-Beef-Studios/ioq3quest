@@ -1399,18 +1399,13 @@ void IN_VRInputFrame( void )
     moveJoystickState = GetActionStateVector2(moveOnRightJoystickAction);
     IN_VRJoystick(qtrue, moveJoystickState.currentState.x, moveJoystickState.currentState.y);
 
-    //controller pose
-    if (engine->appState.TrackedController[0].Active)
-        IN_VRController(qfalse, engine->appState.TrackedController[0].Pose);
-    if (engine->appState.TrackedController[1].Active)
-        IN_VRController(qtrue, engine->appState.TrackedController[1].Pose);
-
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
 }
 
 void IN_VRUpdateControllers( float predictedDisplayTime )
 {
+    //get controller poses
     XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
     XrPath subactionPath[] = {leftHandPath, rightHandPath};
     XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
@@ -1427,6 +1422,12 @@ void IN_VRUpdateControllers( float predictedDisplayTime )
             ovrTrackedController_Clear(&VR_GetEngine()->appState.TrackedController[i]);
         }
     }
+
+    //apply controller poses
+    if (VR_GetEngine()->appState.TrackedController[0].Active)
+        IN_VRController(qfalse, VR_GetEngine()->appState.TrackedController[0].Pose);
+    if (VR_GetEngine()->appState.TrackedController[1].Active)
+        IN_VRController(qtrue, VR_GetEngine()->appState.TrackedController[1].Pose);
 }
 
 //#endif
