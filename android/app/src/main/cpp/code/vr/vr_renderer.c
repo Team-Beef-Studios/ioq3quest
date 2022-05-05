@@ -285,14 +285,9 @@ void VR_InitRenderer( engine_t* engine ) {
 
     free(referenceSpaces);
 
-    // Create a space to the first path
-    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
-    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
-    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
-    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
-    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.HeadSpace));
-
-    VR_Recenter(engine);
+    if (engine->appState.CurrentSpace == XR_NULL_HANDLE) {
+        VR_Recenter(engine);
+    }
 
     projections = (XrView*)(malloc(ovrMaxNumEyes * sizeof(XrView)));
 

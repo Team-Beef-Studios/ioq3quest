@@ -294,6 +294,13 @@ void VR_EnterVR( engine_t* engine, ovrJava java ) {
         ALOGE("Failed to create XR session: %d.", initResult);
         exit(1);
     }
+
+    // Create a space to the first path
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {};
+    spaceCreateInfo.type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+    spaceCreateInfo.poseInReferenceSpace.orientation.w = 1.0f;
+    OXR(xrCreateReferenceSpace(engine->appState.Session, &spaceCreateInfo, &engine->appState.HeadSpace));
 }
 
 void VR_LeaveVR( engine_t* engine ) {
