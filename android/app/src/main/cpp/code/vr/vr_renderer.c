@@ -414,6 +414,7 @@ void VR_DrawFrame( engine_t* engine ) {
     vr.clientview_yaw_last = clientview_yaw;
 
     // Update controllers
+    IN_VRSyncActions();
     IN_VRUpdateControllers( frameState.predictedDisplayTime );
 
     XrViewLocateInfo projectionInfo = {};

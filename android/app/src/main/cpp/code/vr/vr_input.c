@@ -1326,35 +1326,6 @@ void IN_VRInputFrame( void )
         rightControllerAimSpace = CreateActionSpace(handPoseRightAction, rightHandPath);
     }
 
-    // OpenXR input
-    {
-        // Attach to session
-        XrSessionActionSetsAttachInfo attachInfo = {};
-        attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
-        attachInfo.next = NULL;
-        attachInfo.countActionSets = 1;
-        attachInfo.actionSets = &runningActionSet;
-        OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
-
-        // sync action data
-        XrActiveActionSet activeActionSet = {};
-        activeActionSet.actionSet = runningActionSet;
-        activeActionSet.subactionPath = XR_NULL_PATH;
-
-        XrActionsSyncInfo syncInfo = {};
-        syncInfo.type = XR_TYPE_ACTIONS_SYNC_INFO;
-        syncInfo.next = NULL;
-        syncInfo.countActiveActionSets = 1;
-        syncInfo.activeActionSets = &activeActionSet;
-        OXR(xrSyncActions(engine->appState.Session, &syncInfo));
-
-        // query input action states
-        XrActionStateGetInfo getInfo = {};
-        getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
-        getInfo.next = NULL;
-        getInfo.subactionPath = XR_NULL_PATH;
-    }
-
     //button mapping
     uint32_t lButtons = 0;
     if (GetActionStateBoolean(menuAction).currentState) lButtons |= ovrButton_Enter;
@@ -1386,6 +1357,37 @@ void IN_VRInputFrame( void )
 
 	lastframetime = in_vrEventTime;
 	in_vrEventTime = Sys_Milliseconds( );
+}
+
+void IN_VRSyncActions( void )
+{
+    engine_t* engine = VR_GetEngine();
+
+    // Attach to session
+    XrSessionActionSetsAttachInfo attachInfo = {};
+    attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
+    attachInfo.next = NULL;
+    attachInfo.countActionSets = 1;
+    attachInfo.actionSets = &runningActionSet;
+    OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
+
+    // sync action data
+    XrActiveActionSet activeActionSet = {};
+    activeActionSet.actionSet = runningActionSet;
+    activeActionSet.subactionPath = XR_NULL_PATH;
+
+    XrActionsSyncInfo syncInfo = {};
+    syncInfo.type = XR_TYPE_ACTIONS_SYNC_INFO;
+    syncInfo.next = NULL;
+    syncInfo.countActiveActionSets = 1;
+    syncInfo.activeActionSets = &activeActionSet;
+    OXR(xrSyncActions(engine->appState.Session, &syncInfo));
+
+    // query input action states
+    XrActionStateGetInfo getInfo = {};
+    getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+    getInfo.next = NULL;
+    getInfo.subactionPath = XR_NULL_PATH;
 }
 
 void IN_VRUpdateControllers( float predictedDisplayTime )
