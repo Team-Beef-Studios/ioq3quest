@@ -43,11 +43,6 @@ XrSpace rightControllerAimSpace = XR_NULL_HANDLE;
 qboolean inputInitialized = qfalse;
 qboolean useSimpleProfile = qfalse;
 
-typedef struct {
-    XrSpaceLocation loc;
-    XrSpaceVelocity vel;
-} LocVel;
-
 enum {
 	VR_TOUCH_AXIS_UP = 1 << 0,
 	VR_TOUCH_AXIS_UPRIGHT = 1 << 1,
@@ -577,16 +572,6 @@ qboolean ActionPoseIsActive(XrAction action, XrPath subactionPath) {
     state.type = XR_TYPE_ACTION_STATE_POSE;
     OXR(xrGetActionStatePose(VR_GetEngine()->appState.Session, &getInfo, &state));
     return state.isActive != XR_FALSE;
-}
-
-LocVel GetSpaceLocVel(XrSpace space, XrTime time) {
-    LocVel lv = {{}};
-    lv.loc.type = XR_TYPE_SPACE_LOCATION;
-    lv.loc.next = &lv.vel;
-    lv.vel.type = XR_TYPE_SPACE_VELOCITY;
-    OXR(xrLocateSpace(space, VR_GetEngine()->appState.CurrentSpace, time, &lv.loc));
-    lv.loc.next = NULL; // pointer no longer valid or necessary
-    return lv;
 }
 
 XrActionStateFloat GetActionStateFloat(XrAction action) {
@@ -1405,29 +1390,30 @@ void IN_VRInputFrame( void )
 
 void IN_VRUpdateControllers( float predictedDisplayTime )
 {
+    engine_t* engine = VR_GetEngine();
+
     //get controller poses
     XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
     XrPath subactionPath[] = {leftHandPath, rightHandPath};
     XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
     for (int i = 0; i < 2; i++) {
         if (ActionPoseIsActive(controller[i], subactionPath[i])) {
-            LocVel lv = GetSpaceLocVel(controllerSpace[i], predictedDisplayTime);
-            VR_GetEngine()->appState.TrackedController[i].Active = (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
-            VR_GetEngine()->appState.TrackedController[i].Pose = lv.loc.pose;
-            for (int j = 0; j < 3; j++) {
-                float dt = 0.01f; // use 0.2f for for testing velocity vectors
-                (&VR_GetEngine()->appState.TrackedController[i].Pose.position.x)[j] += (&lv.vel.linearVelocity.x)[j] * dt;
-            }
+            XrSpaceLocation loc = {};
+            loc.type = XR_TYPE_SPACE_LOCATION;
+            OXR(xrLocateSpace(controllerSpace[i], engine->appState.CurrentSpace, predictedDisplayTime, &loc));
+
+            engine->appState.TrackedController[i].Active = (loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
+            engine->appState.TrackedController[i].Pose = loc.pose;
         } else {
-            ovrTrackedController_Clear(&VR_GetEngine()->appState.TrackedController[i]);
+            ovrTrackedController_Clear(&engine->appState.TrackedController[i]);
         }
     }
 
     //apply controller poses
-    if (VR_GetEngine()->appState.TrackedController[0].Active)
-        IN_VRController(qfalse, VR_GetEngine()->appState.TrackedController[0].Pose);
-    if (VR_GetEngine()->appState.TrackedController[1].Active)
-        IN_VRController(qtrue, VR_GetEngine()->appState.TrackedController[1].Pose);
+    if (engine->appState.TrackedController[0].Active)
+        IN_VRController(qfalse, engine->appState.TrackedController[0].Pose);
+    if (engine->appState.TrackedController[1].Active)
+        IN_VRController(qtrue, engine->appState.TrackedController[1].Pose);
 }
 
 //#endif
