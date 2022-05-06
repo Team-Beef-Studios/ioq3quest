@@ -385,7 +385,7 @@ void VR_DrawFrame( engine_t* engine ) {
     OXR(xrBeginFrame(engine->appState.Session, &beginFrameDesc));
 
     // Update HMD and controllers
-    IN_VRUpdateHMD( frameState.predictedDisplayTime );
+    XrPosef xfStageFromHead = IN_VRUpdateHMD( frameState.predictedDisplayTime );
     IN_VRUpdateControllers( frameState.predictedDisplayTime );
     IN_VRSyncActions();
 

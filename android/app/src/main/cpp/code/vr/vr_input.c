@@ -1418,7 +1418,7 @@ void IN_VRUpdateControllers( float predictedDisplayTime )
         IN_VRController(qtrue, engine->appState.TrackedController[1].Pose);
 }
 
-void IN_VRUpdateHMD( float predictedDisplayTime )
+XrPosef IN_VRUpdateHMD( float predictedDisplayTime )
 {
     engine_t* engine = VR_GetEngine();
 
@@ -1450,6 +1450,8 @@ void IN_VRUpdateHMD( float predictedDisplayTime )
     const float clientview_yaw = vr.clientviewangles[YAW] - vr.hmdorientation[YAW];
     vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
     vr.clientview_yaw_last = clientview_yaw;
+
+    return xfStageFromHead;
 }
 
 //#endif
