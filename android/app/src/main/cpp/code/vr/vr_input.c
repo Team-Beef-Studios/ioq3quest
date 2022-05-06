@@ -1400,12 +1400,21 @@ void IN_VRUpdateControllers( float predictedDisplayTime )
     XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
     for (int i = 0; i < 2; i++) {
         if (ActionPoseIsActive(controller[i], subactionPath[i])) {
+            XrSpaceVelocity vel = {};
+            vel.type = XR_TYPE_SPACE_VELOCITY;
             XrSpaceLocation loc = {};
             loc.type = XR_TYPE_SPACE_LOCATION;
+            loc.next = &vel;
             OXR(xrLocateSpace(controllerSpace[i], engine->appState.CurrentSpace, predictedDisplayTime, &loc));
 
             engine->appState.TrackedController[i].Active = (loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
             engine->appState.TrackedController[i].Pose = loc.pose;
+
+            // apply velocity
+            float dt = (in_vrEventTime - lastframetime) * 0.001f;
+            for (int j = 0; j < 3; j++) {
+                (&engine->appState.TrackedController[i].Pose.position.x)[j] += (&vel.linearVelocity.x)[j] * dt;
+            }
         } else {
             ovrTrackedController_Clear(&engine->appState.TrackedController[i]);
         }
