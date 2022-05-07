@@ -265,7 +265,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_bobup , "cg_bobup", "0.0", CVAR_CHEAT },
 	{ &cg_bobpitch, "cg_bobpitch", "0.0", CVAR_ARCHIVE },
 	{ &cg_bobroll, "cg_bobroll", "0.0", CVAR_ARCHIVE },
-	{ &cg_weaponbob, "cg_weaponbob", "1", CVAR_ARCHIVE },
+	{ &cg_weaponbob, "cg_weaponbob", "0", CVAR_ARCHIVE },
 	{ &cg_swingSpeed, "cg_swingSpeed", "0.3", CVAR_CHEAT },
 	{ &cg_animSpeed, "cg_animspeed", "1", CVAR_CHEAT },
 	{ &cg_debugAnim, "cg_debuganim", "0", CVAR_CHEAT },
