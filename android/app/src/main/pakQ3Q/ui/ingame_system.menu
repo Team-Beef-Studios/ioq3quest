@@ -199,7 +199,7 @@ itemDef {
 		group grpSystem
    		type ITEM_TYPE_SLIDER
 		text "Brightness:"
-		cvarfloat "r_gamma" 0.05 0.8 1.2
+		cvarfloat "r_gamma" 0.05 0.6 1.0
 		rect 0 70 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 133
