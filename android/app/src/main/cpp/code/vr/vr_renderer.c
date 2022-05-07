@@ -386,8 +386,8 @@ void VR_DrawFrame( engine_t* engine ) {
 
     // Update HMD and controllers
     XrPosef xfStageFromHead = IN_VRUpdateHMD( frameState.predictedDisplayTime );
-    IN_VRUpdateControllers( frameState.predictedDisplayTime );
     IN_VRSyncActions();
+    IN_VRUpdateControllers( frameState.predictedDisplayTime );
 
     XrViewLocateInfo projectionInfo = {};
     projectionInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
