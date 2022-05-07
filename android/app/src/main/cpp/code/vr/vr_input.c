@@ -43,11 +43,6 @@ XrSpace rightControllerAimSpace = XR_NULL_HANDLE;
 qboolean inputInitialized = qfalse;
 qboolean useSimpleProfile = qfalse;
 
-typedef struct {
-    XrSpaceLocation loc;
-    XrSpaceVelocity vel;
-} LocVel;
-
 enum {
 	VR_TOUCH_AXIS_UP = 1 << 0,
 	VR_TOUCH_AXIS_UPRIGHT = 1 << 1,
@@ -577,16 +572,6 @@ qboolean ActionPoseIsActive(XrAction action, XrPath subactionPath) {
     state.type = XR_TYPE_ACTION_STATE_POSE;
     OXR(xrGetActionStatePose(VR_GetEngine()->appState.Session, &getInfo, &state));
     return state.isActive != XR_FALSE;
-}
-
-LocVel GetSpaceLocVel(XrSpace space, XrTime time) {
-    LocVel lv = {{}};
-    lv.loc.type = XR_TYPE_SPACE_LOCATION;
-    lv.loc.next = &lv.vel;
-    lv.vel.type = XR_TYPE_SPACE_VELOCITY;
-    OXR(xrLocateSpace(space, VR_GetEngine()->appState.CurrentSpace, time, &lv.loc));
-    lv.loc.next = NULL; // pointer no longer valid or necessary
-    return lv;
 }
 
 XrActionStateFloat GetActionStateFloat(XrAction action) {
@@ -1341,53 +1326,6 @@ void IN_VRInputFrame( void )
         rightControllerAimSpace = CreateActionSpace(handPoseRightAction, rightHandPath);
     }
 
-    // update input information
-    XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
-    XrPath subactionPath[] = {leftHandPath, rightHandPath};
-    XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
-    for (int i = 0; i < 2; i++) {
-        if (ActionPoseIsActive(controller[i], subactionPath[i])) {
-            LocVel lv = GetSpaceLocVel(controllerSpace[i], VR_GetEngine()->predictedDisplayTime);
-            VR_GetEngine()->appState.TrackedController[i].Active = (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
-            VR_GetEngine()->appState.TrackedController[i].Pose = lv.loc.pose;
-            for (int j = 0; j < 3; j++) {
-                float dt = 0.01f; // use 0.2f for for testing velocity vectors
-                (&VR_GetEngine()->appState.TrackedController[i].Pose.position.x)[j] += (&lv.vel.linearVelocity.x)[j] * dt;
-            }
-        } else {
-            ovrTrackedController_Clear(&VR_GetEngine()->appState.TrackedController[i]);
-        }
-    }
-
-    // OpenXR input
-    {
-        // Attach to session
-        XrSessionActionSetsAttachInfo attachInfo = {};
-        attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
-        attachInfo.next = NULL;
-        attachInfo.countActionSets = 1;
-        attachInfo.actionSets = &runningActionSet;
-        OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
-
-        // sync action data
-        XrActiveActionSet activeActionSet = {};
-        activeActionSet.actionSet = runningActionSet;
-        activeActionSet.subactionPath = XR_NULL_PATH;
-
-        XrActionsSyncInfo syncInfo = {};
-        syncInfo.type = XR_TYPE_ACTIONS_SYNC_INFO;
-        syncInfo.next = NULL;
-        syncInfo.countActiveActionSets = 1;
-        syncInfo.activeActionSets = &activeActionSet;
-        OXR(xrSyncActions(engine->appState.Session, &syncInfo));
-
-        // query input action states
-        XrActionStateGetInfo getInfo = {};
-        getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
-        getInfo.next = NULL;
-        getInfo.subactionPath = XR_NULL_PATH;
-    }
-
     //button mapping
     uint32_t lButtons = 0;
     if (GetActionStateBoolean(menuAction).currentState) lButtons |= ovrButton_Enter;
@@ -1417,14 +1355,112 @@ void IN_VRInputFrame( void )
     moveJoystickState = GetActionStateVector2(moveOnRightJoystickAction);
     IN_VRJoystick(qtrue, moveJoystickState.currentState.x, moveJoystickState.currentState.y);
 
-    //controller pose
+	lastframetime = in_vrEventTime;
+	in_vrEventTime = Sys_Milliseconds( );
+}
+
+void IN_VRSyncActions( void )
+{
+    engine_t* engine = VR_GetEngine();
+
+    // Attach to session
+    XrSessionActionSetsAttachInfo attachInfo = {};
+    attachInfo.type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO;
+    attachInfo.next = NULL;
+    attachInfo.countActionSets = 1;
+    attachInfo.actionSets = &runningActionSet;
+    OXR(xrAttachSessionActionSets(engine->appState.Session, &attachInfo));
+
+    // sync action data
+    XrActiveActionSet activeActionSet = {};
+    activeActionSet.actionSet = runningActionSet;
+    activeActionSet.subactionPath = XR_NULL_PATH;
+
+    XrActionsSyncInfo syncInfo = {};
+    syncInfo.type = XR_TYPE_ACTIONS_SYNC_INFO;
+    syncInfo.next = NULL;
+    syncInfo.countActiveActionSets = 1;
+    syncInfo.activeActionSets = &activeActionSet;
+    OXR(xrSyncActions(engine->appState.Session, &syncInfo));
+
+    // query input action states
+    XrActionStateGetInfo getInfo = {};
+    getInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+    getInfo.next = NULL;
+    getInfo.subactionPath = XR_NULL_PATH;
+}
+
+void IN_VRUpdateControllers( float predictedDisplayTime )
+{
+    engine_t* engine = VR_GetEngine();
+
+    //get controller poses
+    XrAction controller[] = {handPoseLeftAction, handPoseRightAction};
+    XrPath subactionPath[] = {leftHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {leftControllerAimSpace, rightControllerAimSpace};
+    for (int i = 0; i < 2; i++) {
+        if (ActionPoseIsActive(controller[i], subactionPath[i])) {
+            XrSpaceVelocity vel = {};
+            vel.type = XR_TYPE_SPACE_VELOCITY;
+            XrSpaceLocation loc = {};
+            loc.type = XR_TYPE_SPACE_LOCATION;
+            loc.next = &vel;
+            OXR(xrLocateSpace(controllerSpace[i], engine->appState.CurrentSpace, predictedDisplayTime, &loc));
+
+            engine->appState.TrackedController[i].Active = (loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
+            engine->appState.TrackedController[i].Pose = loc.pose;
+
+            // apply velocity
+            float dt = (in_vrEventTime - lastframetime) * 0.001f;
+            for (int j = 0; j < 3; j++) {
+                (&engine->appState.TrackedController[i].Pose.position.x)[j] += (&vel.linearVelocity.x)[j] * dt;
+            }
+        } else {
+            ovrTrackedController_Clear(&engine->appState.TrackedController[i]);
+        }
+    }
+
+    //apply controller poses
     if (engine->appState.TrackedController[0].Active)
         IN_VRController(qfalse, engine->appState.TrackedController[0].Pose);
     if (engine->appState.TrackedController[1].Active)
         IN_VRController(qtrue, engine->appState.TrackedController[1].Pose);
+}
 
-	lastframetime = in_vrEventTime;
-	in_vrEventTime = Sys_Milliseconds( );
+XrPosef IN_VRUpdateHMD( float predictedDisplayTime )
+{
+    engine_t* engine = VR_GetEngine();
+
+    // We extract Yaw, Pitch, Roll instead of directly using the orientation
+    // to allow "additional" yaw manipulation with mouse/controller.
+    XrSpaceLocation loc = {};
+    loc.type = XR_TYPE_SPACE_LOCATION;
+    OXR(xrLocateSpace(engine->appState.HeadSpace, engine->appState.CurrentSpace, predictedDisplayTime, &loc));
+    XrPosef xfStageFromHead = loc.pose;
+    const XrQuaternionf quatHmd = xfStageFromHead.orientation;
+    const XrVector3f positionHmd = xfStageFromHead.position;
+    vec3_t rotation = {0, 0, 0};
+    QuatToYawPitchRoll(quatHmd, rotation, vr.hmdorientation);
+    VectorSet(vr.hmdposition, positionHmd.x, positionHmd.y + vr_heightAdjust->value, positionHmd.z);
+
+    //Position
+    VectorSubtract(vr.hmdposition_last, vr.hmdposition, vr.hmdposition_delta);
+
+    //Keep this for our records
+    VectorCopy(vr.hmdposition, vr.hmdposition_last);
+
+    //Orientation
+    VectorSubtract(vr.hmdorientation_last, vr.hmdorientation, vr.hmdorientation_delta);
+
+    //Keep this for our records
+    VectorCopy(vr.hmdorientation, vr.hmdorientation_last);
+
+    // View yaw delta
+    const float clientview_yaw = vr.clientviewangles[YAW] - vr.hmdorientation[YAW];
+    vr.clientview_yaw_delta = vr.clientview_yaw_last - clientview_yaw;
+    vr.clientview_yaw_last = clientview_yaw;
+
+    return xfStageFromHead;
 }
 
 //#endif
