@@ -8,6 +8,9 @@
 
 void IN_VRInputFrame( void );
 void IN_VRInit( void );
+void IN_VRSyncActions( void );
+XrPosef IN_VRUpdateHMD( float predictedDisplayTime );
+void IN_VRUpdateControllers( float predictedDisplayTime );
 
 void QuatToYawPitchRoll(XrQuaternionf q, vec3_t rotation, vec3_t out);
 
