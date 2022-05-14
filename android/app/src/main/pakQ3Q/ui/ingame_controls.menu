@@ -279,6 +279,7 @@ itemDef {
 		textscale .25
       		forecolor 1 1 1 1
       		visible 1
+      		action { uiScript update "vr_switchThumbsticks" }
     		}
 
 	itemDef {

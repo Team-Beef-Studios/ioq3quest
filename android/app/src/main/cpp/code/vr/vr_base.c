@@ -161,14 +161,25 @@ void VR_InitCvars( void )
 		Cvar_Get ("vr_button_map_RTHUMBLEFT_ALT", "", CVAR_ARCHIVE); // unmapped
 	}
 
+	// Map face buttons based on thumbstick assigned to movement
+	// (cannot move and jump/crouch with same thumb at same time)
+	qboolean switchThumbsticks = Cvar_VariableValue( "vr_switchThumbsticks" ) != 0;
+	if (switchThumbsticks) {
+		Cvar_Get ("vr_button_map_A", "+button2", CVAR_ARCHIVE); // Use Item
+		Cvar_Get ("vr_button_map_B", "+button3", CVAR_ARCHIVE); // Gesture
+		Cvar_Get ("vr_button_map_X", "+moveup", CVAR_ARCHIVE); // Jump
+		Cvar_Get ("vr_button_map_Y", "+movedown", CVAR_ARCHIVE); // Crouch
+	} else {
+		Cvar_Get ("vr_button_map_A", "+moveup", CVAR_ARCHIVE); // Jump
+		Cvar_Get ("vr_button_map_B", "+movedown", CVAR_ARCHIVE); // Crouch
+		Cvar_Get ("vr_button_map_X", "+button2", CVAR_ARCHIVE); // Use Item
+		Cvar_Get ("vr_button_map_Y", "+button3", CVAR_ARCHIVE); // Gesture
+	}
+
 	//Remaining button mapping (buttons not affected by schemas)
-	Cvar_Get ("vr_button_map_A", "+moveup", CVAR_ARCHIVE); // Jump
 	Cvar_Get ("vr_button_map_A_ALT", "", CVAR_ARCHIVE); // unmapped
-	Cvar_Get ("vr_button_map_B", "+movedown", CVAR_ARCHIVE); // Crouch
 	Cvar_Get ("vr_button_map_B_ALT", "", CVAR_ARCHIVE); // unmapped
-	Cvar_Get ("vr_button_map_X", "+button2", CVAR_ARCHIVE); // Use Item
 	Cvar_Get ("vr_button_map_X_ALT", "", CVAR_ARCHIVE); // unmapped
-	Cvar_Get ("vr_button_map_Y", "+button3", CVAR_ARCHIVE); // Gesture
 	Cvar_Get ("vr_button_map_Y_ALT", "", CVAR_ARCHIVE); // unmapped
 	Cvar_Get ("vr_button_map_SECONDARYTHUMBSTICK", "+scores", CVAR_ARCHIVE); // Scoreboard
 	Cvar_Get ("vr_button_map_SECONDARYTHUMBSTICK_ALT", "", CVAR_ARCHIVE); // unmapped
