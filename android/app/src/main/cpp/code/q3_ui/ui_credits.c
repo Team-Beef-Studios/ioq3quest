@@ -145,11 +145,11 @@ Special Thanks to the whole discord!
 	y += 1.42 * PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawProportionalString( 320, y, "Dedicated Beta Testers", UI_CENTER|UI_SMALLFONT, color_red );
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
-	UI_DrawString( 320, y, "XQuader, Ceno, Cukier, Bummser, Retro1N, Benny91, April, Ikarus,", UI_CENTER|UI_SMALLFONT, color_white );
+	UI_DrawString( 320, y, "f2hunter, XQuader, Ceno, Cukier, Bummser, Retro1N, Benny91, Ikarus,", UI_CENTER|UI_SMALLFONT, color_white );
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawString( 320, y, "Bim, Lubos, MasakaPete, Config2, Maniac, Ghostdog72, Slydog43,", UI_CENTER|UI_SMALLFONT, color_white );
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
-	UI_DrawString( 320, y, "Cornelius, Ferret, RealityForge, PvtGenO, SatanSlayer", UI_CENTER|UI_SMALLFONT, color_white );
+	UI_DrawString( 320, y, "April, Cornelius, Ferret, RealityForge, PvtGenO, SatanSlayer", UI_CENTER|UI_SMALLFONT, color_white );
 
 	y += 1.42 * PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawProportionalString( 320, y, "Special Thanks to the whole Team Beef discord!", UI_CENTER|UI_SMALLFONT, color_red );
