@@ -1517,10 +1517,6 @@ void GLSL_ShutdownGPUShaders(void)
 
 	for ( i = 0; i < 4; i++)
 		GLSL_DeleteGPUShader(&tr.depthBlurShader[i]);
-
-	//Clean up buffers
-	qglDeleteBuffers(PROJECTION_COUNT, viewMatricesBuffer);
-	qglDeleteBuffers(PROJECTION_COUNT, projectionMatricesBuffer);
 }
 
 
