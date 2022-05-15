@@ -56,3 +56,4 @@ Release/
 local.properties
 drbeef-release-key.keystore
 android/app/src/main/cpp/code/vr/vr_version.h
+android/app/src/main/assets/pakQ3Q.pk3

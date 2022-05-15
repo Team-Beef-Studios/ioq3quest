@@ -2,8 +2,8 @@
 
 setlocal
 
-set BUILD_TYPE=debug
-set VERSION=1.1.0
+set BUILD_TYPE=release
+set VERSION=1.1.0-quest1
 
 @REM Define the following environment variables to sign a release build
 @REM set KEYSTORE=
