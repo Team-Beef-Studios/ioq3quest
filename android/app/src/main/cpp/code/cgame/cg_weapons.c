@@ -1318,6 +1318,10 @@ static void CG_LightningBolt( centity_t *cent, vec3_t origin ) {
 		vec3_t angle;
 		CG_CalculateVRWeaponPosition(muzzlePoint, angle);
 		AngleVectors(angle, forward, NULL, NULL );
+
+		//Handle this here so it is refreshed on every frame, not just when the lightning gun is first fired
+		int position = vr->weapon_stabilised ? 4 : (vr->right_handed ? 1 : 2);
+		trap_HapticEvent("RTCWQuest:fire_tesla", position, 0, 100, 0, 0);
 	} else {
 		// !CPMA
 		AngleVectors( cent->lerpAngles, forward, NULL, NULL );
@@ -2529,7 +2533,7 @@ void CG_FireWeapon( centity_t *cent ) {
 				trap_HapticEvent("rocket_fire", position, 0, 100, 0, 0);
 				break;
 			case WP_LIGHTNING:
-				trap_HapticEvent("RTCWQuest:fire_tesla", position, 0, 100, 0, 0);
+				//Haptics handled in the CG_LightningBolt code
 				break;
 			case WP_RAILGUN:
 				trap_HapticEvent("RTCWQuest:fire_sniper", position, 0, 100, 0, 0);
@@ -2543,7 +2547,7 @@ void CG_FireWeapon( centity_t *cent ) {
 				trap_HapticEvent("bfg_fire", position, 0, 100, 0, 0);
 				break;
 			case WP_GRAPPLING_HOOK:
-				trap_HapticEvent("chainsaw_fire", position, 0, 100, 0, 0);
+				//No Haptics
 				break;
 #ifdef MISSIONPACK
 			case WP_NAILGUN:
