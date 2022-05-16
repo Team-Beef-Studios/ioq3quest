@@ -122,10 +122,15 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pakQ3Q.pk3", true);
 		copy_asset("/sdcard/ioquake3Quest/missionpack", "pakQ3Q.pk3", true);
 
+		// cleanup incompatible shaders
+		delete_asset("/sdcard/ioquake3Quest/baseq3/glsl");
+		delete_asset("/sdcard/ioquake3Quest/missionpack/glsl");
+
 		//If open arena is installed then copy necessary stuff
 		if (new File("/sdcard/ioquake3Quest/baseoa").exists()) {
 			copy_asset("/sdcard/ioquake3Quest/baseoa", "autoexec_oa.cfg", "autoexec.cfg", false);
 			copy_asset("/sdcard/ioquake3Quest/baseoa", "pakQ3Q.pk3", true);
+			delete_asset("/sdcard/ioquake3Quest/baseoa/glsl");
 		}
 
 		//Read these from a file and pass through
@@ -187,6 +192,23 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 			new File(directory).mkdirs();
 			_copy_asset(name, path + "/" + newName);
 		}
+	}
+
+	public void delete_asset(String path) {
+		File file = new File(path);
+		delete_asset(file);
+	}
+
+	public void delete_asset(File file) {
+		if (!file.exists()) {
+			return;
+		}
+		if (file.isDirectory()) {
+			for (File nestedFile : file.listFiles()) {
+				delete_asset(nestedFile);
+			}
+		}
+		file.delete();
 	}
 
 	public void _copy_asset(String name_in, String name_out) {
