@@ -26,7 +26,8 @@
 #include <GLES3/gl32.h>
 #endif
 
-#define SUPER_SAMPLE  1.15f
+//Set to 1.0 for Quest 1
+#define SUPER_SAMPLE  1.0f
 
 extern vr_clientinfo_t vr;
 
