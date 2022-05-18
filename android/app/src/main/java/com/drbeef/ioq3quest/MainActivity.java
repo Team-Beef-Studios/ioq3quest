@@ -106,27 +106,26 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 	}
 
 	public void create() throws IOException {
-		//Make the directories
+		// Prepare base game directory
 		new File("/sdcard/ioquake3Quest/baseq3").mkdirs();
-		new File("/sdcard/ioquake3Quest/missionpack").mkdirs();
 
-		//Copy the command line params file
+		// Copy the command line params file and autoexec
 		copy_asset("/sdcard/ioquake3Quest", "commandline.txt", false);
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "autoexec.cfg", false);
-		copy_asset("/sdcard/ioquake3Quest/missionpack", "autoexec.cfg", false);
-
-		//copy demo
-		copy_asset("/sdcard/ioquake3Quest/baseq3", "pak0.pk3", false);
-
-		//our special pak files
+		// Copy our special pak file and demo
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pakQ3Q.pk3", true);
-		copy_asset("/sdcard/ioquake3Quest/missionpack", "pakQ3Q.pk3", true);
-
-		// cleanup incompatible shaders
+		copy_asset("/sdcard/ioquake3Quest/baseq3", "pak0.pk3", false);
+		// Cleanup incompatible shaders
 		delete_asset("/sdcard/ioquake3Quest/baseq3/glsl");
-		delete_asset("/sdcard/ioquake3Quest/missionpack/glsl");
 
-		//If open arena is installed then copy necessary stuff
+		// If Team Arena is installed then copy necessary stuff
+		if (new File("/sdcard/ioquake3Quest/missionpack").exists()) {
+			copy_asset("/sdcard/ioquake3Quest/missionpack", "autoexec.cfg", false);
+			copy_asset("/sdcard/ioquake3Quest/missionpack", "pakQ3Q.pk3", true);
+			delete_asset("/sdcard/ioquake3Quest/missionpack/glsl");
+		}
+
+		// If Open Arena is installed then copy necessary stuff
 		if (new File("/sdcard/ioquake3Quest/baseoa").exists()) {
 			copy_asset("/sdcard/ioquake3Quest/baseoa", "autoexec_oa.cfg", "autoexec.cfg", false);
 			copy_asset("/sdcard/ioquake3Quest/baseoa", "pakQ3Q.pk3", true);
