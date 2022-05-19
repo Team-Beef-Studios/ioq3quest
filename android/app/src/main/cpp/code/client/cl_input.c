@@ -620,6 +620,10 @@ void CL_FinishMove( usercmd_t *cmd ) {
 		{
 			angles[ROLL] = 0; // suppress roll
 		}
+		else
+		{
+			angles[ROLL] = vr.hmdorientation[ROLL];
+		}
 
 		for (i = 0; i < 3; i++) {
 			cmd->angles[i] = ANGLE2SHORT(angles[i]);
