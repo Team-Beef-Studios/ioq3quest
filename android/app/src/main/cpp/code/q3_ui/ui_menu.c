@@ -229,7 +229,7 @@ static void Main_MenuDraw( void ) {
 	int yPos = 410;
 	if (uis.demoversion) {
 		yPos = 372;
-		UI_DrawString( 320, yPos, "Demo: Play the 1st tier of SP or MP on our demo servers", UI_CENTER|UI_SMALLFONT, color_white );
+		UI_DrawString( 320, yPos, "DEMO: You can only play on Demo-Servers and play first part of SP!", UI_CENTER|UI_SMALLFONT, color_white );
 		yPos += SMALLCHAR_HEIGHT;
 		UI_DrawString( 320, yPos, "Install full game for more!", UI_CENTER|UI_SMALLFONT, color_white );
 		yPos += SMALLCHAR_HEIGHT;
