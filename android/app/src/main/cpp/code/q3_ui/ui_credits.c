@@ -163,7 +163,7 @@ Special Thanks to the whole discord!
 		UI_DrawProportionalString(320, y, "original ioquake3 contributors!", UI_CENTER | UI_SMALLFONT, color_orange);
 	}
 
-	UI_DrawString( 320, 459, "Quake3Quest: https://www.quake3.quakevr.com/", UI_CENTER|UI_SMALLFONT, color_red );
+	UI_DrawString( 320, 459, "Quake3Quest: https://quake3.quakevr.com/", UI_CENTER|UI_SMALLFONT, color_red );
 }
 
 

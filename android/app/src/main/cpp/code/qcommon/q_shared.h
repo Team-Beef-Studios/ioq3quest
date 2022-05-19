@@ -431,7 +431,9 @@ qboolean Q_IsColorString(const char *p);  // ^[0-9a-zA-Z]
 #define COLOR_CYAN	'5'
 #define COLOR_MAGENTA	'6'
 #define COLOR_WHITE	'7'
-#define ColorIndexForNumber(c) ((c) & 0x07)
+#define COLOR_LIGHT_GREY	'8'
+#define COLOR_MID_GREY	'9'
+#define ColorIndexForNumber(c) ((c) & 0x0f)
 #define ColorIndex(c) (ColorIndexForNumber((c) - '0'))
 
 #define S_COLOR_BLACK	"^0"
@@ -442,8 +444,10 @@ qboolean Q_IsColorString(const char *p);  // ^[0-9a-zA-Z]
 #define S_COLOR_CYAN	"^5"
 #define S_COLOR_MAGENTA	"^6"
 #define S_COLOR_WHITE	"^7"
+#define S_COLOR_LIGHT_GREY	"^8"
+#define S_COLOR_MID_GREY	"^9"
 
-extern vec4_t	g_color_table[8];
+extern vec4_t	g_color_table[10];
 
 #define	MAKERGB( v, r, g, b ) v[0]=r;v[1]=g;v[2]=b
 #define	MAKERGBA( v, r, g, b, a ) v[0]=r;v[1]=g;v[2]=b;v[3]=a
