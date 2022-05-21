@@ -107,8 +107,8 @@ Additional Contributions
 Bummser, Skillfur, Ceno, Cukier, Eispfogel, Pizzaluigi
 
 Dedicated Beta Testers
-XQuader, Ceno, Cukier, Bummser, Retro1N, Benny91, April, Ikarus,
-Bim, Lubos, MasakaPete, Config2, Maniac, Ghostdog72, Slydog43,
+f2hunter, XQuader, Ceno, Cukier, Bummser, Retro1N, Benny91, April, Ikarus,
+GeTall, Lubos, MasakaPete, Config2, Maniac, Ghostdog72, Slydog43,
 Cornelius, Ferret, RealityForge, PvtGenO, SatanSlayer
 
 Special Thanks to the whole discord!
@@ -147,7 +147,7 @@ Special Thanks to the whole discord!
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawString( 320, y, "f2hunter, XQuader, Ceno, Cukier, Bummser, Retro1N, Benny91, Ikarus,", UI_CENTER|UI_SMALLFONT, color_white );
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
-	UI_DrawString( 320, y, "Bim, Lubos, MasakaPete, Config2, Maniac, Ghostdog72, Slydog43,", UI_CENTER|UI_SMALLFONT, color_white );
+	UI_DrawString( 320, y, "GeTall, Lubos, MasakaPete, Config2, Maniac, Ghostdog72, Slydog43,", UI_CENTER|UI_SMALLFONT, color_white );
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawString( 320, y, "April, Cornelius, Ferret, RealityForge, PvtGenO, SatanSlayer", UI_CENTER|UI_SMALLFONT, color_white );
 
