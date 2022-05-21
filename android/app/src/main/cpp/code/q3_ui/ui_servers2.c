@@ -702,7 +702,8 @@ static void ArenaServers_Insert( char* adrstr, char* info, int pingtime )
 	servernodeptr->minPing    = atoi( Info_ValueForKey( info, "minPing") );
 	servernodeptr->maxPing    = atoi( Info_ValueForKey( info, "maxPing") );
 	servernodeptr->bPB = atoi( Info_ValueForKey( info, "punkbuster") );
-    servernodeptr->demo =     (strcasestr(info, "demo") != NULL);
+    servernodeptr->demo =     (strcasestr(info, "demo") != NULL) ||
+            (strcmp(servernodeptr->hostname, "Quake3Quest") == 0); // Demo can connect to another quest
 
 	/*
 	s = Info_ValueForKey( info, "nettype" );
