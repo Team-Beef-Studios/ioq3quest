@@ -41,7 +41,7 @@ cvar_t	*sv_maxclients;
 
 cvar_t	*sv_privateClients;		// number of clients reserved for password
 cvar_t	*sv_hostname;
-cvar_t	*sv_master[MAX_MASTER_SERVERS];	// master server ip address
+cvar_t	*vr_master[MAX_MASTER_SERVERS];	// master server ip address
 cvar_t	*sv_reconnectlimit;		// minimum seconds between connect messages
 cvar_t	*sv_showloss;			// report when usercmds are lost
 cvar_t	*sv_padPackets;			// add nop bytes to messages
@@ -262,20 +262,20 @@ void SV_MasterHeartbeat(const char *message)
 	// send to group masters
 	for (i = 0; i < MAX_MASTER_SERVERS; i++)
 	{
-		if(!sv_master[i]->string[0])
+		if(!vr_master[i]->string[0])
 			continue;
 
 		// see if we haven't already resolved the name or if it's been over 24 hours
 		// resolving usually causes hitches on win95, so only do it when needed
-		if (sv_master[i]->modified || svs.time > svs.masterResolveTime[i])
+		if (vr_master[i]->modified || svs.time > svs.masterResolveTime[i])
 		{
-			sv_master[i]->modified = qfalse;
+			vr_master[i]->modified = qfalse;
 			svs.masterResolveTime[i] = svs.time + MASTERDNS_MSEC;
 			
 			if(netenabled & NET_ENABLEV4)
 			{
-				Com_Printf("Resolving %s (IPv4)\n", sv_master[i]->string);
-				res = NET_StringToAdr(sv_master[i]->string, &adr[i][0], NA_IP);
+				Com_Printf("Resolving %s (IPv4)\n", vr_master[i]->string);
+				res = NET_StringToAdr(vr_master[i]->string, &adr[i][0], NA_IP);
 
 				if(res == 2)
 				{
@@ -284,15 +284,15 @@ void SV_MasterHeartbeat(const char *message)
 				}
 				
 				if(res)
-					Com_Printf( "%s resolved to %s\n", sv_master[i]->string, NET_AdrToStringwPort(adr[i][0]));
+					Com_Printf( "%s resolved to %s\n", vr_master[i]->string, NET_AdrToStringwPort(adr[i][0]));
 				else
-					Com_Printf( "%s has no IPv4 address.\n", sv_master[i]->string);
+					Com_Printf( "%s has no IPv4 address.\n", vr_master[i]->string);
 			}
 			
 			if(netenabled & NET_ENABLEV6)
 			{
-				Com_Printf("Resolving %s (IPv6)\n", sv_master[i]->string);
-				res = NET_StringToAdr(sv_master[i]->string, &adr[i][1], NA_IP6);
+				Com_Printf("Resolving %s (IPv6)\n", vr_master[i]->string);
+				res = NET_StringToAdr(vr_master[i]->string, &adr[i][1], NA_IP6);
 
 				if(res == 2)
 				{
@@ -301,9 +301,9 @@ void SV_MasterHeartbeat(const char *message)
 				}
 				
 				if(res)
-					Com_Printf( "%s resolved to %s\n", sv_master[i]->string, NET_AdrToStringwPort(adr[i][1]));
+					Com_Printf( "%s resolved to %s\n", vr_master[i]->string, NET_AdrToStringwPort(adr[i][1]));
 				else
-					Com_Printf( "%s has no IPv6 address.\n", sv_master[i]->string);
+					Com_Printf( "%s has no IPv6 address.\n", vr_master[i]->string);
 			}
 		}
 
@@ -313,7 +313,7 @@ void SV_MasterHeartbeat(const char *message)
 		}
 
 
-		Com_Printf ("Sending heartbeat to %s\n", sv_master[i]->string );
+		Com_Printf ("Sending heartbeat to %s\n", vr_master[i]->string );
 
 		// this command should be changed if the server info / status format
 		// ever incompatably changes

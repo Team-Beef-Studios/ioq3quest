@@ -2488,11 +2488,11 @@ static qboolean UI_NetSource_HandleKey(int flags, float *special, int key) {
 
 		if(ui_netSource.integer >= UIAS_GLOBAL1 && ui_netSource.integer <= UIAS_GLOBAL5)
 		{
-			char masterstr[2], cvarname[sizeof("sv_master1")];
+			char masterstr[2], cvarname[sizeof("vr_master1")];
 		
 			while(ui_netSource.integer >= UIAS_GLOBAL1 && ui_netSource.integer <= UIAS_GLOBAL5)
 			{
-				Com_sprintf(cvarname, sizeof(cvarname), "sv_master%d", ui_netSource.integer - UIAS_GLOBAL0);
+				Com_sprintf(cvarname, sizeof(cvarname), "vr_master%d", ui_netSource.integer - UIAS_GLOBAL0);
 				trap_Cvar_VariableStringBuffer(cvarname, masterstr, sizeof(masterstr));
 				if(*masterstr)
 					break;

@@ -117,6 +117,8 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		// Copy our special pak file and demo
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pakQ3Q.pk3", true);
 		copy_asset("/sdcard/ioquake3Quest/baseq3", "pak0.pk3", false);
+		//Copy Omarlego's excellent replacement background
+		copy_asset("/sdcard/ioquake3Quest/baseq3", "z_custom_background66.pk3", false);
 		// Cleanup incompatible shaders
 		delete_asset("/sdcard/ioquake3Quest/baseq3/glsl");
 
