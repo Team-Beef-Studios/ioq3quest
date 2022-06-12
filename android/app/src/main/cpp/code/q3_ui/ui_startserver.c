@@ -99,6 +99,14 @@ static const char *gametype_items[] = {
 static int gametype_remap[] = {GT_FFA, GT_TEAM, GT_TOURNAMENT, GT_CTF};
 static int gametype_remap2[] = {0, 2, 0, 1, 3};
 
+static int fraglimit_values[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 75, 100, 200, 500, -1};
+static const char *fraglimit_items[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "15",
+										"20", "25", "30", "40", "50", "75", "100", "200", "500", NULL};
+
+static int timelimit_values[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 60, 120, 240, 480, -1};
+static const char *timelimit_items[] = {"No limit", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "15",
+										"20", "25", "30", "40", "50", "60", "120", "240", "480", NULL};
+
 // use ui_servers2.c definition
 extern const char* punkbuster_items[];
 
@@ -631,9 +639,9 @@ typedef struct {
 	menubitmap_s		picframe;
 
 	menulist_s			dedicated;
-	menufield_s			timelimit;
-	menufield_s			fraglimit;
-	menufield_s			flaglimit;
+	menulist_s			timelimit;
+	menulist_s			fraglimit;
+	menulist_s			flaglimit;
 	menuradiobutton_s	friendlyfire;
 	menufield_s			hostname;
 	menuradiobutton_s	pure;
@@ -735,9 +743,9 @@ static void ServerOptions_Start( void ) {
 	char	buf[64];
 	const char *info;
 
-	timelimit	 = atoi( s_serveroptions.timelimit.field.buffer );
-	fraglimit	 = atoi( s_serveroptions.fraglimit.field.buffer );
-	flaglimit	 = atoi( s_serveroptions.flaglimit.field.buffer );
+	timelimit	 = timelimit_values[s_serveroptions.timelimit.curvalue];
+	fraglimit	 = fraglimit_values[s_serveroptions.fraglimit.curvalue];
+	flaglimit	 = fraglimit_values[s_serveroptions.flaglimit.curvalue];
 	dedicated	 = s_serveroptions.dedicated.curvalue;
 	friendlyfire = s_serveroptions.friendlyfire.curvalue;
 	pure		 = s_serveroptions.pure.curvalue;
@@ -1127,6 +1135,21 @@ static void ServerOptions_InitBotNames( void ) {
 	}
 }
 
+static int getValueIndex(int* values, int value, int defaultVal)
+{
+	int index = 0;
+	while (values[index] != -1)
+	{
+		if (values[index] == value)
+		{
+			return index;
+		}
+		index++;
+	}
+
+	//Just return the default
+	return defaultVal;
+}
 
 /*
 =================
@@ -1141,24 +1164,24 @@ static void ServerOptions_SetMenuItems( void ) {
 	switch( s_serveroptions.gametype ) {
 	case GT_FFA:
 	default:
-		Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_ffa_fraglimit" ) ) );
-		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_ffa_timelimit" ) ) );
+		s_serveroptions.fraglimit.curvalue = getValueIndex(fraglimit_values, trap_Cvar_VariableValue( "ui_ffa_fraglimit" ), 11);
+		s_serveroptions.timelimit.curvalue = getValueIndex(timelimit_values, trap_Cvar_VariableValue( "ui_ffa_timelimit" ), 0);
 		break;
 
 	case GT_TOURNAMENT:
-		Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_tourney_fraglimit" ) ) );
-		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_tourney_timelimit" ) ) );
+		s_serveroptions.fraglimit.curvalue = getValueIndex(fraglimit_values, trap_Cvar_VariableValue( "ui_tourney_fraglimit" ), 11);
+        s_serveroptions.timelimit.curvalue = getValueIndex(timelimit_values, trap_Cvar_VariableValue( "ui_tourney_timelimit" ), 0);
 		break;
 
 	case GT_TEAM:
-		Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_team_fraglimit" ) ) );
-		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_team_timelimit" ) ) );
+		s_serveroptions.fraglimit.curvalue = getValueIndex(fraglimit_values, trap_Cvar_VariableValue( "ui_team_fraglimit"), 11);
+        s_serveroptions.timelimit.curvalue = getValueIndex(timelimit_values, trap_Cvar_VariableValue( "ui_team_timelimit" ), 0);
 		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_team_friendly" ) );
 		break;
 
 	case GT_CTF:
-		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 100, trap_Cvar_VariableValue( "ui_ctf_capturelimit" ) ) );
-		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_ctf_timelimit" ) ) );
+		s_serveroptions.flaglimit.curvalue = getValueIndex(fraglimit_values, trap_Cvar_VariableValue( "ui_ctf_capturelimit" ), 11);
+        s_serveroptions.timelimit.curvalue = getValueIndex(timelimit_values, trap_Cvar_VariableValue( "ui_ctf_timelimit" ), 0);
 		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ctf_friendly" ) );
 		break;
 	}
@@ -1281,35 +1304,35 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 
 	y = 272;
 	if( s_serveroptions.gametype != GT_CTF ) {
-		s_serveroptions.fraglimit.generic.type       = MTYPE_FIELD;
+		s_serveroptions.fraglimit.generic.type       = MTYPE_SPINCONTROL;
 		s_serveroptions.fraglimit.generic.name       = "Frag Limit:";
-		s_serveroptions.fraglimit.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.fraglimit.generic.flags      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 		s_serveroptions.fraglimit.generic.x	         = OPTIONS_X;
 		s_serveroptions.fraglimit.generic.y	         = y;
 		s_serveroptions.fraglimit.generic.statusbar  = ServerOptions_StatusBar;
-		s_serveroptions.fraglimit.field.widthInChars = 3;
-		s_serveroptions.fraglimit.field.maxchars     = 3;
+		s_serveroptions.fraglimit.curvalue			 = 11;
+		s_serveroptions.fraglimit.itemnames			 = fraglimit_items;
 	}
 	else {
-		s_serveroptions.flaglimit.generic.type       = MTYPE_FIELD;
+		s_serveroptions.flaglimit.generic.type       = MTYPE_SPINCONTROL;
 		s_serveroptions.flaglimit.generic.name       = "Capture Limit:";
-		s_serveroptions.flaglimit.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.flaglimit.generic.flags      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 		s_serveroptions.flaglimit.generic.x	         = OPTIONS_X;
 		s_serveroptions.flaglimit.generic.y	         = y;
 		s_serveroptions.flaglimit.generic.statusbar  = ServerOptions_StatusBar;
-		s_serveroptions.flaglimit.field.widthInChars = 3;
-		s_serveroptions.flaglimit.field.maxchars     = 3;
+		s_serveroptions.flaglimit.curvalue			 = 9;
+		s_serveroptions.flaglimit.itemnames			 = fraglimit_items;
 	}
 
 	y += BIGCHAR_HEIGHT+2;
-	s_serveroptions.timelimit.generic.type       = MTYPE_FIELD;
+	s_serveroptions.timelimit.generic.type       = MTYPE_SPINCONTROL;
 	s_serveroptions.timelimit.generic.name       = "Time Limit:";
-	s_serveroptions.timelimit.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_serveroptions.timelimit.generic.flags      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_serveroptions.timelimit.generic.x	         = OPTIONS_X;
 	s_serveroptions.timelimit.generic.y	         = y;
 	s_serveroptions.timelimit.generic.statusbar  = ServerOptions_StatusBar;
-	s_serveroptions.timelimit.field.widthInChars = 3;
-	s_serveroptions.timelimit.field.maxchars     = 3;
+    s_serveroptions.flaglimit.curvalue			 = 0;
+    s_serveroptions.timelimit.itemnames			 = timelimit_items;
 
 	if( s_serveroptions.gametype >= GT_TEAM ) {
 		y += BIGCHAR_HEIGHT+2;
