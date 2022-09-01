@@ -1,12 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-	compileSdkVersion 32
-    ndkVersion "21.1.6352462"
+	compileSdkVersion 29
+	buildToolsVersion "29.0.3"
+	ndkVersion "21.1.6352462"
+
 	defaultConfig {
 		applicationId = 'com.drbeef.ioq3quest'
 		minSdkVersion 25
-		targetSdkVersion 32
+		//noinspection ExpiredTargetSdkVersion
+		targetSdkVersion 29
 		versionCode 57
 		versionName "1.1.2"
 		externalNativeBuild {
@@ -43,6 +46,6 @@ android {
 
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-	implementation 'androidx.appcompat:appcompat:1.4.2'
-	implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+	implementation 'androidx.appcompat:appcompat:1.0.2'
+	implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 }
