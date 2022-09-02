@@ -44,7 +44,10 @@ void ovrFramebuffer_Clear(ovrFramebuffer* frameBuffer) {
     frameBuffer->ColorSwapChain.Width = 0;
     frameBuffer->ColorSwapChain.Height = 0;
     frameBuffer->ColorSwapChainImage = NULL;
-    frameBuffer->DepthBuffers = NULL;
+    frameBuffer->DepthSwapChain.Handle = XR_NULL_HANDLE;
+    frameBuffer->DepthSwapChain.Width = 0;
+    frameBuffer->DepthSwapChain.Height = 0;
+    frameBuffer->DepthSwapChainImage = NULL;
     frameBuffer->FrameBuffers = NULL;
 }
 
@@ -64,8 +67,6 @@ bool ovrFramebuffer_Create(
     XrSwapchainCreateInfo swapChainCreateInfo;
     memset(&swapChainCreateInfo, 0, sizeof(swapChainCreateInfo));
     swapChainCreateInfo.type = XR_TYPE_SWAPCHAIN_CREATE_INFO;
-    swapChainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-    swapChainCreateInfo.format = GL_RGBA8;
     swapChainCreateInfo.sampleCount = 1;
     swapChainCreateInfo.width = width;
     swapChainCreateInfo.height = height;
@@ -75,56 +76,58 @@ bool ovrFramebuffer_Create(
 
     frameBuffer->ColorSwapChain.Width = swapChainCreateInfo.width;
     frameBuffer->ColorSwapChain.Height = swapChainCreateInfo.height;
+    frameBuffer->DepthSwapChain.Width = swapChainCreateInfo.width;
+    frameBuffer->DepthSwapChain.Height = swapChainCreateInfo.height;
 
-    // Create the swapchain.
+    // Create the color swapchain.
+    swapChainCreateInfo.format = GL_RGBA8;
+    swapChainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
     OXR(xrCreateSwapchain(session, &swapChainCreateInfo, &frameBuffer->ColorSwapChain.Handle));
+
+    // Create the depth swapchain.
+    swapChainCreateInfo.format = GL_DEPTH24_STENCIL8;
+    swapChainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    OXR(xrCreateSwapchain(session, &swapChainCreateInfo, &frameBuffer->DepthSwapChain.Handle));
+
     // Get the number of swapchain images.
     OXR(xrEnumerateSwapchainImages(
             frameBuffer->ColorSwapChain.Handle, 0, &frameBuffer->TextureSwapChainLength, NULL));
+
     // Allocate the swapchain images array.
     frameBuffer->ColorSwapChainImage = (XrSwapchainImageOpenGLESKHR*)malloc(
+            frameBuffer->TextureSwapChainLength * sizeof(XrSwapchainImageOpenGLESKHR));
+    frameBuffer->DepthSwapChainImage = (XrSwapchainImageOpenGLESKHR*)malloc(
             frameBuffer->TextureSwapChainLength * sizeof(XrSwapchainImageOpenGLESKHR));
 
     // Populate the swapchain image array.
     for (uint32_t i = 0; i < frameBuffer->TextureSwapChainLength; i++) {
         frameBuffer->ColorSwapChainImage[i].type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR;
         frameBuffer->ColorSwapChainImage[i].next = NULL;
+        frameBuffer->DepthSwapChainImage[i].type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR;
+        frameBuffer->DepthSwapChainImage[i].next = NULL;
     }
     OXR(xrEnumerateSwapchainImages(
             frameBuffer->ColorSwapChain.Handle,
             frameBuffer->TextureSwapChainLength,
             &frameBuffer->TextureSwapChainLength,
             (XrSwapchainImageBaseHeader*)frameBuffer->ColorSwapChainImage));
+    OXR(xrEnumerateSwapchainImages(
+            frameBuffer->DepthSwapChain.Handle,
+            frameBuffer->TextureSwapChainLength,
+            &frameBuffer->TextureSwapChainLength,
+            (XrSwapchainImageBaseHeader*)frameBuffer->DepthSwapChainImage));
 
-    frameBuffer->DepthBuffers =
-            (GLuint*)malloc(frameBuffer->TextureSwapChainLength * sizeof(GLuint));
-    frameBuffer->FrameBuffers =
-            (GLuint*)malloc(frameBuffer->TextureSwapChainLength * sizeof(GLuint));
-
+    frameBuffer->FrameBuffers = (GLuint*)malloc(frameBuffer->TextureSwapChainLength * sizeof(GLuint));
     for (uint32_t i = 0; i < frameBuffer->TextureSwapChainLength; i++) {
         // Create the color buffer texture.
         const GLuint colorTexture = frameBuffer->ColorSwapChainImage[i].image;
-
-        GLfloat borderColor[] = {0.0f, 0.0f, 0.0f, 0.0f};
-        GLenum textureTarget = GL_TEXTURE_2D_ARRAY;
-        GL(glBindTexture(textureTarget, colorTexture));
-        GL(glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor));
-        GL(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-        GL(glTexParameteri(textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-        GL(glTexParameteri(textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL(glTexParameteri(textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-        GL(glBindTexture(textureTarget, 0));
-
-        // Create depth buffer.
-        GL(glGenTextures(1, &frameBuffer->DepthBuffers[i]));
-        GL(glBindTexture(textureTarget, frameBuffer->DepthBuffers[i]));
-        GL(glTexStorage3D(textureTarget, 1, GL_DEPTH_COMPONENT24, width, height, 2));
-        GL(glBindTexture(textureTarget, 0));
+        const GLuint depthTexture = frameBuffer->DepthSwapChainImage[i].image;
 
         // Create the frame buffer.
         GL(glGenFramebuffers(1, &frameBuffer->FrameBuffers[i]));
         GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->FrameBuffers[i]));
-        GL(glFramebufferTextureMultiviewOVR(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, frameBuffer->DepthBuffers[i], 0, 0, 2));
+        GL(glFramebufferTextureMultiviewOVR(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, depthTexture, 0, 0, 2));
+        GL(glFramebufferTextureMultiviewOVR(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0, 0, 2));
         GL(glFramebufferTextureMultiviewOVR(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorTexture, 0, 0, 2));
         GL(GLenum renderFramebufferStatus = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER));
         GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
@@ -139,11 +142,10 @@ bool ovrFramebuffer_Create(
 
 void ovrFramebuffer_Destroy(ovrFramebuffer* frameBuffer) {
     GL(glDeleteFramebuffers(frameBuffer->TextureSwapChainLength, frameBuffer->FrameBuffers));
-    GL(glDeleteRenderbuffers(frameBuffer->TextureSwapChainLength, frameBuffer->DepthBuffers));
     OXR(xrDestroySwapchain(frameBuffer->ColorSwapChain.Handle));
+    OXR(xrDestroySwapchain(frameBuffer->DepthSwapChain.Handle));
     free(frameBuffer->ColorSwapChainImage);
-
-    free(frameBuffer->DepthBuffers);
+    free(frameBuffer->DepthSwapChainImage);
     free(frameBuffer->FrameBuffers);
 
     ovrFramebuffer_Clear(frameBuffer);
@@ -250,7 +252,6 @@ void ovrApp_Clear(ovrApp* app) {
     app->LayerCount = 0;
     app->MainThreadTid = 0;
     app->RenderThreadTid = 0;
-    app->TouchPadDownLastFrame = false;
 
     ovrRenderer_Clear(&app->Renderer);
 }

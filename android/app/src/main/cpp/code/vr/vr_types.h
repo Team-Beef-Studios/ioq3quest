@@ -56,8 +56,9 @@ typedef struct {
     uint32_t TextureSwapChainLength;
     uint32_t TextureSwapChainIndex;
     ovrSwapChain ColorSwapChain;
+    ovrSwapChain DepthSwapChain;
     XrSwapchainImageOpenGLESKHR* ColorSwapChainImage;
-    GLuint* DepthBuffers;
+    XrSwapchainImageOpenGLESKHR* DepthSwapChainImage;
     GLuint* FrameBuffers;
 } ovrFramebuffer;
 
@@ -97,7 +98,6 @@ typedef struct {
     ovrCompositorLayer_Union Layers[ovrMaxLayerCount];
     int LayerCount;
 
-    GLboolean TouchPadDownLastFrame;
     ovrRenderer Renderer;
     ovrTrackedController TrackedController[2];
 } ovrApp;
