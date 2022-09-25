@@ -2824,7 +2824,7 @@ void CG_DrawActive( void ) {
 	// clear around the rendered view if sized down
 	CG_TileClear();
 
-	if(!vr->weapon_zoomed)
+	if(!vr->weapon_zoomed && !vr->virtual_screen)
 		CG_DrawCrosshair3D();
 
 	// offset vieworg appropriately if we're doing stereo separation
@@ -2892,7 +2892,7 @@ void CG_DrawActive( void ) {
 	}
 
 	//Now draw the HUD shader in the world
-    if (trap_Cvar_VariableValue("vr_hudDrawStatus") != 2.0f)
+    if (trap_Cvar_VariableValue("vr_hudDrawStatus") != 2.0f && !vr->weapon_zoomed && !vr->virtual_screen)
 	{
 		refEntity_t ent;
 		trace_t trace;
@@ -2955,7 +2955,7 @@ void CG_DrawActive( void ) {
         //Now draw the screen 2D stuff
         CG_DrawScreen2D();
 
-        if (!vr->weapon_zoomed)
+        if (!vr->weapon_zoomed && !vr->virtual_screen)
 		{
 			cg.drawingHUD = qtrue;
 

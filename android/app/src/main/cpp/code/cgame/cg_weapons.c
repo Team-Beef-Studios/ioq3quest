@@ -1728,8 +1728,8 @@ void CG_AddViewWeapon( playerState_t *ps ) {
         return;
     }
 
-    if (vr->weapon_zoomed) {
-        return; // do not draw weapon model with enabled weapon scope
+    if (vr->weapon_zoomed || vr->virtual_screen) {
+        return; // do not draw weapon model with enabled weapon scope or when in menu
     }
 
 	cent = &cg.predictedPlayerEntity;	// &cg_entities[cg.snap->ps.clientNum];
