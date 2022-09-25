@@ -249,10 +249,12 @@ GRAPHICS OPTIONS MENU
 #define ID_PLAYERSHADOW	109
 #define ID_GAMMA		110
 #define ID_HIGHQUALITYSKY	111
+#define ID_SUPERSAMPLING	112
 
-#define	NUM_REFRESHRATE	4
+#define	NUM_REFRESHRATE	5
 #define NUM_SHADOWS 3
 #define NUM_RAILGUN 2
+#define	NUM_SUPERSAMPLING	5
 
 typedef struct {
 	menuframework_s	menu;
@@ -276,6 +278,7 @@ typedef struct {
 	menulist_s		playershadow;
 	menuslider_s	gamma;
 	menuradiobutton_s	highqualitysky;
+	menulist_s		supersampling;
 
 	menubitmap_s	apply;
 	menubitmap_s	back;
@@ -292,6 +295,7 @@ typedef struct
 	int playershadow;
 	float gamma;
 	int highqualitysky;
+	float supersampling;
 } InitialVideoOptions_s;
 
 static InitialVideoOptions_s	s_ivo;
@@ -313,6 +317,7 @@ static void GraphicsOptions_GetInitialVideo( void )
 	s_ivo.playershadow	= s_graphicsoptions.playershadow.curvalue;
 	s_ivo.gamma       = s_graphicsoptions.gamma.curvalue;
 	s_ivo.highqualitysky = s_graphicsoptions.highqualitysky.curvalue;
+	s_ivo.supersampling = s_graphicsoptions.supersampling.curvalue;
 }
 
 /*
@@ -401,6 +406,9 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 				case 3:
 					refresh = 90;
 					break;
+				case 4:
+					refresh = 120;
+					break;
 				}
 			trap_Cvar_SetValue("vr_refreshrate", refresh);
 		}
@@ -450,6 +458,29 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 
 	case ID_HIGHQUALITYSKY:
 		trap_Cvar_SetValue( "r_fastsky", !s_graphicsoptions.highqualitysky.curvalue );
+		break;
+
+	case ID_SUPERSAMPLING: {
+			float supersampling;
+			switch (s_graphicsoptions.supersampling.curvalue) {
+				case 0:
+					supersampling = 0.8;
+					break;
+				case 1:
+					supersampling = 0.9;
+					break;
+				case 2:
+					supersampling = 1.0;
+					break;
+				case 3:
+					supersampling = 1.1;
+					break;
+				case 4:
+					supersampling = 1.2;
+					break;
+				}
+			trap_Cvar_SetValue("vr_superSampling", supersampling);
+		}
 		break;
 
 	case ID_DRIVERINFO:
@@ -542,6 +573,12 @@ static void GraphicsOptions_SetMenuItems( void )
 		case 90:
 			s_graphicsoptions.refreshrate.curvalue = 3;
 			break;
+		case 120:
+			s_graphicsoptions.refreshrate.curvalue = 4;
+			break;
+		default:
+			s_graphicsoptions.refreshrate.curvalue = 1;
+			break;
 	}
 
 	switch ( (int) trap_Cvar_VariableValue( "cg_shadows" ) )
@@ -568,6 +605,21 @@ static void GraphicsOptions_SetMenuItems( void )
 		default:
 			s_graphicsoptions.playershadow.curvalue = 2;
 			break;
+	}
+
+	float superSampling = trap_Cvar_VariableValue( "vr_superSampling" );
+	if (superSampling == 0.8f) {
+		s_graphicsoptions.supersampling.curvalue = 0;
+	} else if (superSampling == 0.9f) {
+		s_graphicsoptions.supersampling.curvalue = 1;
+	} else if (superSampling == 1.0f) {
+		s_graphicsoptions.supersampling.curvalue = 2;
+	} else if (superSampling == 1.1f) {
+		s_graphicsoptions.supersampling.curvalue = 3;
+	} else if (superSampling == 1.2f) {
+		s_graphicsoptions.supersampling.curvalue = 4;
+	} else {
+		s_graphicsoptions.supersampling.curvalue = 3;
 	}
 
 	s_graphicsoptions.lighting.curvalue = trap_Cvar_VariableValue( "r_vertexLight" ) != 0;
@@ -602,9 +654,10 @@ void GraphicsOptions_MenuInit( void )
 	static const char *s_refreshrate[] =
 	{
 		"60",
-		"72 (Recommended)",
+		"72",
 		"80",
 		"90",
+		"120",
 		NULL
 	};
 
@@ -620,6 +673,16 @@ void GraphicsOptions_MenuInit( void )
 	{
 		"Q2 Style",
 		"Q3 Style",
+		NULL
+	};
+
+	static const char *s_supersampling[] =
+	{
+		"0.8",
+		"0.9",
+		"1.0",
+		"1.1",
+		"1.2",
 		NULL
 	};
 
@@ -687,7 +750,7 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.network.style				= UI_RIGHT;
 	s_graphicsoptions.network.color				= color_red;
 
-	y = 254 - 5 * (BIGCHAR_HEIGHT + 2);
+	y = 254 - 6 * (BIGCHAR_HEIGHT + 2);
 
 	// references "vr_refreshrate"
 	s_graphicsoptions.refreshrate.generic.type		= MTYPE_SPINCONTROL;
@@ -699,6 +762,18 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.refreshrate.generic.callback	= GraphicsOptions_Event;
 	s_graphicsoptions.refreshrate.generic.id		= ID_REFRESHRATE;
 	s_graphicsoptions.refreshrate.numitems			= NUM_REFRESHRATE;
+	y += BIGCHAR_HEIGHT+2;
+
+	// references "vr_superSampling"
+	s_graphicsoptions.supersampling.generic.type		= MTYPE_SPINCONTROL;
+	s_graphicsoptions.supersampling.generic.name		= "SS (needs restart):";
+	s_graphicsoptions.supersampling.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_graphicsoptions.supersampling.generic.x			= 400;
+	s_graphicsoptions.supersampling.generic.y			= y;
+	s_graphicsoptions.supersampling.itemnames	        = s_supersampling;
+	s_graphicsoptions.supersampling.generic.callback	= GraphicsOptions_Event;
+	s_graphicsoptions.supersampling.generic.id			= ID_SUPERSAMPLING;
+	s_graphicsoptions.supersampling.numitems			= NUM_SUPERSAMPLING;
 	y += BIGCHAR_HEIGHT+2;
 
 	// references "r_gamma"
@@ -828,6 +903,7 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.refreshrate );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.supersampling );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.railgun );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.gamma );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );

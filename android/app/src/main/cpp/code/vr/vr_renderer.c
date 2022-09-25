@@ -30,7 +30,7 @@
 #include <GLES3/gl32.h>
 #endif
 
-#define SUPER_SAMPLE  1.15f
+#define DEFAULT_SUPER_SAMPLING  1.1f
 
 extern vr_clientinfo_t vr;
 
@@ -68,11 +68,26 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 {
 	static int width = 0;
 	static int height = 0;
-	
+	float superSampling = 0.0f;
+
+	if (vr.superSampling == 0.0f) {
+		vr.superSampling = Cvar_VariableValue("vr_superSampling");
+		if (vr.superSampling != 0.0f) {
+			Cbuf_AddText( "vid_restart\n" );
+		}
+	}
+
+	if (vr.superSampling == 0.0f || VR_useScreenLayer()) {
+		// SS value affects scaling in menu, therefore default is used when menu is displayed
+		superSampling = DEFAULT_SUPER_SAMPLING;
+	} else {
+		superSampling = vr.superSampling;
+	}
+
 	if (engine)
 	{
-		*pWidth = width = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * SUPER_SAMPLE;
-		*pHeight = height = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * SUPER_SAMPLE;
+		*pWidth = width = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * superSampling;
+		*pHeight = height = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * superSampling;
 
 		vr.fov_x = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
 		vr.fov_y = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
