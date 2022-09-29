@@ -103,7 +103,7 @@ itemDef {
 		type ITEM_TYPE_MULTI
 		text "Supersampling:"
 		cvar "vr_superSampling"
-		cvarFloatList { "0.8" 0.8 "0.9" 0.9 "1.0" 1.0 "1.1" 1.1 "1.2" 1.2 }
+		cvarFloatList { "0.8" 0.8 "0.9" 0.9 "1.0" 1.0 "1.1" 1.1 "1.2" 1.2 "1.3" 1.3 }
 		rect 99 67 256 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 128

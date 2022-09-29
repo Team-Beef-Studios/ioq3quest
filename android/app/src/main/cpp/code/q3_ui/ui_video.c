@@ -254,7 +254,7 @@ GRAPHICS OPTIONS MENU
 #define	NUM_REFRESHRATE	5
 #define NUM_SHADOWS 3
 #define NUM_RAILGUN 2
-#define	NUM_SUPERSAMPLING	5
+#define	NUM_SUPERSAMPLING	6
 
 typedef struct {
 	menuframework_s	menu;
@@ -478,6 +478,9 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 				case 4:
 					supersampling = 1.2;
 					break;
+				case 5:
+					supersampling = 1.3;
+					break;
 				}
 			trap_Cvar_SetValue("vr_superSampling", supersampling);
 		}
@@ -618,6 +621,8 @@ static void GraphicsOptions_SetMenuItems( void )
 		s_graphicsoptions.supersampling.curvalue = 3;
 	} else if (superSampling == 1.2f) {
 		s_graphicsoptions.supersampling.curvalue = 4;
+	} else if (superSampling == 1.3f) {
+		s_graphicsoptions.supersampling.curvalue = 5;
 	} else {
 		s_graphicsoptions.supersampling.curvalue = 3;
 	}
@@ -683,6 +688,7 @@ void GraphicsOptions_MenuInit( void )
 		"1.0",
 		"1.1",
 		"1.2",
+		"1.3",
 		NULL
 	};
 
