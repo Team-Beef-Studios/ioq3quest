@@ -766,7 +766,7 @@ void GraphicsOptions_MenuInit( void )
 
 	// references "vr_superSampling"
 	s_graphicsoptions.supersampling.generic.type		= MTYPE_SPINCONTROL;
-	s_graphicsoptions.supersampling.generic.name		= "SS (needs restart):";
+	s_graphicsoptions.supersampling.generic.name		= "Supersampling:";
 	s_graphicsoptions.supersampling.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_graphicsoptions.supersampling.generic.x			= 400;
 	s_graphicsoptions.supersampling.generic.y			= y;

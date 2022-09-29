@@ -34,6 +34,12 @@
 
 extern vr_clientinfo_t vr;
 
+int menuResWidth = 0.0f;
+int menuResHeight = 0.0f;
+int gameResWidth = 0.0f;
+int gameResHeight = 0.0f;
+qboolean fullscreenMode = qfalse;
+
 void APIENTRY VR_GLDebugLog(GLenum source, GLenum type, GLuint id,
 	GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -66,19 +72,17 @@ void APIENTRY VR_GLDebugLog(GLenum source, GLenum type, GLuint id,
 
 void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 {
-	static int width = 0;
-	static int height = 0;
 	float superSampling = 0.0f;
 
-	if (vr.superSampling == 0.0f) {
-		vr.superSampling = Cvar_VariableValue("vr_superSampling");
+	float configuredSuperSampling = Cvar_VariableValue("vr_superSampling");
+	if (vr.superSampling == 0.0f || configuredSuperSampling != vr.superSampling) {
+		vr.superSampling = configuredSuperSampling;
 		if (vr.superSampling != 0.0f) {
 			Cbuf_AddText( "vid_restart\n" );
 		}
 	}
 
-	if (vr.superSampling == 0.0f || VR_useScreenLayer()) {
-		// SS value affects scaling in menu, therefore default is used when menu is displayed
+	if (vr.superSampling == 0.0f) {
 		superSampling = DEFAULT_SUPER_SAMPLING;
 	} else {
 		superSampling = vr.superSampling;
@@ -86,8 +90,11 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 
 	if (engine)
 	{
-		*pWidth = width = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * superSampling;
-		*pHeight = height = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * superSampling;
+		menuResWidth = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * DEFAULT_SUPER_SAMPLING;
+		menuResHeight = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * DEFAULT_SUPER_SAMPLING;
+
+		*pWidth = gameResWidth = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH) * superSampling;
+		*pHeight = gameResHeight = vrapi_GetSystemPropertyInt(&engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT) * superSampling;
 
 		vr.fov_x = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
 		vr.fov_y = vrapi_GetSystemPropertyInt( &engine->java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
@@ -95,8 +102,8 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 	else
 	{
 		//use cached values
-		*pWidth = width;
-		*pHeight = height;
+		*pWidth = gameResWidth;
+		*pHeight = gameResHeight;
 	}
 }
 
@@ -163,7 +170,7 @@ void VR_InitRenderer( engine_t* engine ) {
 }
 
 void VR_DestroyRenderer( engine_t* engine ) {
-	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye)
+	//for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye)
 	{
 		if (engine->framebuffers.swapchainLength > 0) {
 			glDeleteFramebuffers(engine->framebuffers.swapchainLength,
@@ -327,18 +334,17 @@ void VR_DrawFrame( engine_t* engine ) {
 	const ovrMatrix4f monoVRMatrix = ovrMatrix4f_CreateProjectionFov(
 			30.0f, 30.0f, 0.0f, 0.0f, 1.0f, 0.0f );
 
-    int eyeW, eyeH;
-    VR_GetResolution(engine, &eyeW, &eyeH);
-
     if (VR_useScreenLayer() ||
 			(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON))
 	{
+		fullscreenMode = qtrue;
+
 		static ovrLayer_Union2 cylinderLayer;
 		memset( &cylinderLayer, 0, sizeof( ovrLayer_Union2 ) );
 
 		// Add a simple cylindrical layer
 		cylinderLayer.Cylinder =
-				BuildCylinderLayer(engine, eyeW, eyeW * 0.75f, &engine->tracking, radians(vr.menuYaw) );
+				BuildCylinderLayer(engine, menuResWidth, menuResWidth * 0.75f, &engine->tracking, radians(vr.menuYaw) );
 
 		const ovrLayerHeader2* layers[] = {
 			&cylinderLayer.Header
@@ -356,7 +362,7 @@ void VR_DrawFrame( engine_t* engine ) {
         re.SetVRHeadsetParms(&projectionMatrix, &monoVRMatrix,
                              engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex]);
 
-		VR_ClearFrameBuffer(engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex], eyeW, eyeH);
+		VR_ClearFrameBuffer(engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex], menuResWidth, menuResHeight);
 
 		Com_Frame();
 
@@ -374,6 +380,11 @@ void VR_DrawFrame( engine_t* engine ) {
 	}
 	else
 	{
+		if (fullscreenMode) {
+			VR_ReInitRenderer();
+			fullscreenMode = qfalse;
+        }
+
 		vr.menuYaw = vr.hmdorientation[YAW];
 
 		ovrLayerProjection2 layer = vrapi_DefaultLayerProjection2();
@@ -390,7 +401,7 @@ void VR_DrawFrame( engine_t* engine ) {
 		}
 		layer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
 
-        VR_ClearFrameBuffer(engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex], eyeW, eyeH);
+        VR_ClearFrameBuffer(engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex], gameResWidth, gameResHeight);
 
 		re.SetVRHeadsetParms(&projectionMatrix, &monoVRMatrix,
 							 engine->framebuffers.framebuffers[engine->framebuffers.swapchainIndex]);
