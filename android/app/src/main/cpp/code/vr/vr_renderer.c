@@ -19,11 +19,14 @@
 #include <GLES3/gl32.h>
 #endif
 
+#define DEFAULT_SUPER_SAMPLING  1.1f
+
 extern vr_clientinfo_t vr;
 extern cvar_t *vr_heightAdjust;
 
 XrView* projections;
 GLboolean stageSupported = GL_FALSE;
+qboolean fullscreenMode = qfalse;
 
 void VR_UpdateStageBounds(ovrApp* pappState) {
     XrExtent2Df stageBounds = {};
@@ -77,7 +80,22 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 {
 	static int width = 0;
 	static int height = 0;
-	
+	float superSampling = 0.0f;
+
+	float configuredSuperSampling = Cvar_VariableValue("vr_superSampling");
+	if (vr.superSampling == 0.0f || configuredSuperSampling != vr.superSampling) {
+		vr.superSampling = configuredSuperSampling;
+		if (vr.superSampling != 0.0f) {
+			Cbuf_AddText( "vid_restart\n" );
+		}
+	}
+
+	if (vr.superSampling == 0.0f) {
+		superSampling = DEFAULT_SUPER_SAMPLING;
+	} else {
+		superSampling = vr.superSampling;
+	}
+
 	if (engine)
 	{
         // Enumerate the viewport configurations.
@@ -151,8 +169,8 @@ void VR_GetResolution(engine_t* engine, int *pWidth, int *pHeight)
 
         free(viewportConfigurationTypes);
 
-        *pWidth = width = engine->appState.ViewConfigurationView[0].recommendedImageRectWidth;
-        *pHeight = height = engine->appState.ViewConfigurationView[0].recommendedImageRectHeight;
+        *pWidth = width = engine->appState.ViewConfigurationView[0].recommendedImageRectWidth * superSampling;
+        *pHeight = height = engine->appState.ViewConfigurationView[0].recommendedImageRectHeight * superSampling;
 	}
 	else
 	{
@@ -294,8 +312,8 @@ void VR_InitRenderer( engine_t* engine ) {
     ovrRenderer_Create(
             engine->appState.Session,
             &engine->appState.Renderer,
-            engine->appState.ViewConfigurationView[0].recommendedImageRectWidth,
-            engine->appState.ViewConfigurationView[0].recommendedImageRectHeight);
+            eyeW,
+            eyeH);
 }
 
 void VR_DestroyRenderer( engine_t* engine )
@@ -460,6 +478,11 @@ void VR_DrawFrame( engine_t* engine ) {
     if (!VR_useScreenLayer() && !(cl.snap.ps.pm_flags & PMF_FOLLOW && vr.follow_mode == VRFM_FIRSTPERSON)) {
         vr.menuYaw = vr.hmdorientation[YAW];
 
+        if (fullscreenMode) {
+            VR_ReInitRenderer();
+            fullscreenMode = qfalse;
+        }
+
         for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
             ovrFramebuffer* frameBuffer = &engine->appState.Renderer.FrameBuffer;
 
@@ -487,6 +510,8 @@ void VR_DrawFrame( engine_t* engine ) {
 
         engine->appState.Layers[engine->appState.LayerCount++].Projection = projection_layer;
     } else {
+
+        fullscreenMode = qtrue;
 
         // Build the cylinder layer
         int width = engine->appState.Renderer.FrameBuffer.ColorSwapChain.Width;
