@@ -2,16 +2,14 @@ apply plugin: 'com.android.application'
 
 android {
 	compileSdkVersion 29
-	buildToolsVersion "29.0.3"
+	buildToolsVersion "29.0.2"
 	ndkVersion "21.1.6352462"
-
 	defaultConfig {
 		applicationId = 'com.drbeef.ioq3quest'
 		minSdkVersion 25
-		//noinspection ExpiredTargetSdkVersion
-		targetSdkVersion 29
-		versionCode 57
-		versionName "1.1.2"
+		targetSdkVersion 26
+		versionCode 1
+		versionName "1.0"
 		externalNativeBuild {
 			cmake {
 				arguments '-DANDROID_STL=c++_static'
