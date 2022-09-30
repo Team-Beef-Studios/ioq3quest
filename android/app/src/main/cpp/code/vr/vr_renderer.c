@@ -23,7 +23,8 @@ extern vr_clientinfo_t vr;
 extern cvar_t *vr_heightAdjust;
 
 XrView* projections;
-GLboolean stageSupported = GL_FALSE;
+qboolean needRecenter = qtrue;
+qboolean stageSupported = qfalse;
 
 void VR_UpdateStageBounds(ovrApp* pappState) {
     XrExtent2Df stageBounds = {};
@@ -278,7 +279,7 @@ void VR_InitRenderer( engine_t* engine ) {
 
     for (uint32_t i = 0; i < numOutputSpaces; i++) {
         if (referenceSpaces[i] == XR_REFERENCE_SPACE_TYPE_STAGE) {
-            stageSupported = GL_TRUE;
+            stageSupported = qtrue;
             break;
         }
     }
@@ -505,13 +506,13 @@ void VR_DrawFrame( engine_t* engine ) {
         cylinder_layer.subImage.imageArrayIndex = 0;
         const XrVector3f axis = {0.0f, 1.0f, 0.0f};
         XrVector3f pos = {
-                invViewTransform[0].position.x - sin(radians(vr.menuYaw)) * 4.0f,
-                -0.25f,
-                invViewTransform[0].position.z - cos(radians(vr.menuYaw)) * 4.0f
+                invViewTransform[0].position.x - sin(radians(vr.menuYaw)) * 6.0f,
+                invViewTransform[0].position.y,
+                invViewTransform[0].position.z - cos(radians(vr.menuYaw)) * 6.0f
         };
         cylinder_layer.pose.orientation = XrQuaternionf_CreateFromVectorAngle(axis, radians(vr.menuYaw));
         cylinder_layer.pose.position = pos;
-        cylinder_layer.radius = 12.0f;
+        cylinder_layer.radius = 8.0f;
         cylinder_layer.centralAngle = MATH_PI * 0.5f;
         cylinder_layer.aspectRatio = width / (float)height / 0.75f;
 
@@ -534,4 +535,10 @@ void VR_DrawFrame( engine_t* engine ) {
     OXR(xrEndFrame(engine->appState.Session, &endFrameInfo));
     frameBuffer->TextureSwapChainIndex++;
     frameBuffer->TextureSwapChainIndex %= frameBuffer->TextureSwapChainLength;
+
+    if (needRecenter)
+    {
+        VR_Recenter(engine);
+        needRecenter = qfalse;
+    }
 }
