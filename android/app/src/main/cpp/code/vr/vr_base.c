@@ -31,6 +31,7 @@ cvar_t *vr_weaponPitch = NULL;
 cvar_t *vr_twoHandedWeapons = NULL;
 cvar_t *vr_showItemInHand = NULL;
 cvar_t *vr_refreshrate = NULL;
+cvar_t *vr_superSampling = NULL;
 cvar_t *vr_weaponScope = NULL;
 cvar_t *vr_rollWhenHit = NULL;
 cvar_t *vr_hudYOffset = NULL;
@@ -76,6 +77,7 @@ void VR_InitCvars( void )
     vr_twoHandedWeapons = Cvar_Get ("vr_twoHandedWeapons", "1", CVAR_ARCHIVE);
     vr_showItemInHand = Cvar_Get ("vr_showItemInHand", "1", CVAR_ARCHIVE);
 	vr_refreshrate = Cvar_Get ("vr_refreshrate", "72", CVAR_ARCHIVE);
+	vr_superSampling = Cvar_Get ("vr_superSampling", "1.1", CVAR_ARCHIVE);
     vr_weaponScope = Cvar_Get ("vr_weaponScope", "1", CVAR_ARCHIVE);
 	vr_rollWhenHit = Cvar_Get ("vr_rollWhenHit", "0", CVAR_ARCHIVE);
 	vr_hudYOffset = Cvar_Get ("vr_hudYOffset", "0", CVAR_ARCHIVE);

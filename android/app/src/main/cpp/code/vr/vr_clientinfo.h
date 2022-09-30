@@ -63,6 +63,8 @@ typedef struct {
     int *menuCursorX;
     int *menuCursorY;
     qboolean menuLeftHanded;
+
+    float superSampling;
 } vr_clientinfo_t;
 
 #endif //vr_clientinfo_h
