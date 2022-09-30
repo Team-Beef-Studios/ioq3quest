@@ -8,8 +8,8 @@ android {
 		applicationId = 'com.drbeef.ioq3quest'
 		minSdkVersion 25
 		targetSdkVersion 26
-		versionCode 1
-		versionName "1.0"
+		versionCode 58
+		versionName "1.1.3"
 		externalNativeBuild {
 			cmake {
 				arguments '-DANDROID_STL=c++_static'
