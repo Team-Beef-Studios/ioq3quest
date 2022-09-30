@@ -65,6 +65,7 @@ typedef struct {
     qboolean menuLeftHanded;
 
     float recenterYaw;
+    float superSampling;
 } vr_clientinfo_t;
 
 #endif //vr_clientinfo_h
