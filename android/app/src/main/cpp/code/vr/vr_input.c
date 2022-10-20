@@ -551,7 +551,7 @@ static void IN_VRController( qboolean isRightController, ovrTracking remoteTrack
                 vec2_t xy;
                 rotateAboutOrigin(Cvar_VariableValue("cg_stereoSeparation") / 2.0f, 0.0f, -vr.hmdorientation[YAW], xy);
                 float x = vr.offhandposition[0] - (vr.hmdposition[0] + xy[0]);
-                float y = vr.offhandposition[1] - (vr.hmdposition[1] - 0.1f) + vr_heightAdjust->value; // Use a point lower
+                float y = vr.offhandposition[1] - (vr.hmdposition[1] - 0.1f); // Use a point lower
                 float z = vr.offhandposition[2] - (vr.hmdposition[2] + xy[1]);
 
                 float zxDist = length(x, z);
