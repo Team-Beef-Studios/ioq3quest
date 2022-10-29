@@ -65,7 +65,7 @@ typedef struct {
 
 	menuradiobutton_s	autoswitch;
 	menuradiobutton_s	scope;
-	menuradiobutton_s	twohanded;
+	menulist_s			twohanded;
 	menulist_s          directionmode;
 	menulist_s          snapturn;
 	menuradiobutton_s   uturn;
@@ -84,7 +84,7 @@ static controls3_t s_controls3;
 static void Controls3_SetMenuItems( void ) {
 	s_controls3.autoswitch.curvalue			= trap_Cvar_VariableValue( "cg_autoswitch" ) != 0;
     s_controls3.scope.curvalue				= trap_Cvar_VariableValue( "vr_weaponScope" ) != 0;
-    s_controls3.twohanded.curvalue		    = trap_Cvar_VariableValue( "vr_twoHandedWeapons" ) != 0;
+    s_controls3.twohanded.curvalue		    = trap_Cvar_VariableValue( "vr_twoHandedWeapons" );
 	s_controls3.directionmode.curvalue		= (int)trap_Cvar_VariableValue( "vr_directionMode" )  % NUM_DIRECTIONMODE;
 	s_controls3.snapturn.curvalue			= (int)trap_Cvar_VariableValue( "vr_snapturn" ) / 45;
 	s_controls3.uturn.curvalue				= trap_Cvar_VariableValue( "vr_uturn" ) != 0;
@@ -268,6 +268,14 @@ static void Controls3_MenuInit( void ) {
 					NULL
 			};
 
+	static const char *s_twohandedmode[] =
+			{
+					"Disabled",
+					"Enabled (Basic)",
+					"Enabled (VR Gun Stock)",
+					NULL
+			};
+
 	memset( &s_controls3, 0 ,sizeof(controls3_t) );
 
 	Controls3_Cache();
@@ -317,13 +325,15 @@ static void Controls3_MenuInit( void ) {
     s_controls3.scope.generic.y	          = y;
 
     y += BIGCHAR_HEIGHT+2;
-    s_controls3.twohanded.generic.type        = MTYPE_RADIOBUTTON;
+    s_controls3.twohanded.generic.type        = MTYPE_SPINCONTROL;
     s_controls3.twohanded.generic.name	      = "Two-Handed Weapons:";
     s_controls3.twohanded.generic.flags	      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
     s_controls3.twohanded.generic.callback    = Controls3_MenuEvent;
     s_controls3.twohanded.generic.id          = ID_TWOHANDED;
     s_controls3.twohanded.generic.x	          = VR_X_POS;
     s_controls3.twohanded.generic.y	          = y;
+	s_controls3.twohanded.itemnames	        	= s_twohandedmode;
+	s_controls3.twohanded.numitems				= 3;
 
 	y += BIGCHAR_HEIGHT+2;
 	s_controls3.directionmode.generic.type			= MTYPE_SPINCONTROL;
