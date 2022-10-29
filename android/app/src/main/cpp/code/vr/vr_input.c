@@ -889,20 +889,39 @@ static void IN_VRController( qboolean isRightController, XrPosef pose )
 
         if (vr_twoHandedWeapons->integer && vr.weapon_stabilised)
         {
-            //Apply smoothing to the weapon hand
-            vec3_t smooth_weaponoffset;
-            VectorAdd(vr.weaponoffset, vr.weaponoffset_last[0], smooth_weaponoffset);
-            VectorAdd(smooth_weaponoffset, vr.weaponoffset_last[1],smooth_weaponoffset);
-            VectorScale(smooth_weaponoffset, 1.0f/3.0f, smooth_weaponoffset);
+            if (vr_twoHandedWeapons->integer == 2) // Virtual gun stock
+            {
+                // Offset to the appropriate eye a little bit
+                vec2_t xy;
+                rotateAboutOrigin(Cvar_VariableValue("cg_stereoSeparation") / 2.0f, 0.0f, -vr.hmdorientation[YAW], xy);
+                float x = vr.offhandposition[0] - (vr.hmdposition[0] + xy[0]);
+                float y = vr.offhandposition[1] - (vr.hmdposition[1] - 0.1f); // Use a point lower
+                float z = vr.offhandposition[2] - (vr.hmdposition[2] + xy[1]);
 
-            vec3_t vec;
-            VectorSubtract(vr.offhandoffset, smooth_weaponoffset, vec);
+                float zxDist = length(x, z);
 
-            float zxDist = length(vec[0], vec[2]);
+                if (zxDist != 0.0f && z != 0.0f) {
+                    VectorSet(vr.weaponangles, -degrees(atanf(y / zxDist)),
+                              -degrees(atan2f(x, -z)), 0);
+                }
+            }
+            else // Basic two-handed
+            {
+                // Apply smoothing to the weapon hand
+                vec3_t smooth_weaponoffset;
+                VectorAdd(vr.weaponoffset, vr.weaponoffset_last[0], smooth_weaponoffset);
+                VectorAdd(smooth_weaponoffset, vr.weaponoffset_last[1],smooth_weaponoffset);
+                VectorScale(smooth_weaponoffset, 1.0f/3.0f, smooth_weaponoffset);
 
-            if (zxDist != 0.0f && vec[2] != 0.0f) {
-                VectorSet(vr.weaponangles, -degrees(atanf(vec[1] / zxDist)),
-                          -degrees(atan2f(vec[0], -vec[2])), vr.weaponangles[ROLL] / 2.0f); //Dampen roll on stabilised weapon
+                vec3_t vec;
+                VectorSubtract(vr.offhandoffset, smooth_weaponoffset, vec);
+
+                float zxDist = length(vec[0], vec[2]);
+
+                if (zxDist != 0.0f && vec[2] != 0.0f) {
+                    VectorSet(vr.weaponangles, -degrees(atanf(vec[1] / zxDist)),
+                              -degrees(atan2f(vec[0], -vec[2])), vr.weaponangles[ROLL] / 2.0f); // Dampen roll on stabilised weapon
+                }
             }
         }
     }

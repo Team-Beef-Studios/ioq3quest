@@ -191,9 +191,10 @@ itemDef {
 	itemDef {
       		name controls
 		group grpControls
-      		type ITEM_TYPE_YESNO
+      		type ITEM_TYPE_MULTI
 		text "Two-Handed Weapons:"
 		cvar "vr_twoHandedWeapons"
+		cvarFloatList { "Disabled" 0 "Enabled (Basic)" 1 "Enabled (VR Gun Stock)" 2}
 		rect 30 56 200 20
       		textalign ITEM_ALIGN_RIGHT
       		textalignx 143
