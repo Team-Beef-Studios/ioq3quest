@@ -36,6 +36,14 @@ JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeFocusChanged
     g_HasFocus = focus;
 }
 
+JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeKey(JNIEnv *env, jclass clazz, jint keycode, jint action)
+{
+	if ((action == 0) || (action == 1))
+	{
+		Com_QueueEvent( 0, SE_CHAR, keycode, action == 0, 0, NULL );
+	}
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 {
     g_JavaVM = vm;

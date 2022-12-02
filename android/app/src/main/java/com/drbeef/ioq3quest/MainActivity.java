@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.Pair;
+import android.view.KeyEvent;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -70,6 +71,14 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		}
 
 		super.onDestroy();
+	}
+
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event) {
+		//ASCII characters directly passed into the engine
+		nativeKey(event.getKeyCode(), event.getAction());
+		//special keys using SDL
+		return super.dispatchKeyEvent(event);
 	}
 
 	/**
@@ -246,6 +255,7 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 
 	public static native void nativeCreate(MainActivity thisObject);
 	public static native void nativeFocusChanged(boolean focus);
+	public static native void nativeKey(int keycode, int action);
 
 	static {
 		System.loadLibrary("main");
