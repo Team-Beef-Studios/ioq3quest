@@ -38,9 +38,9 @@ JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeFocusChanged
 
 JNIEXPORT void JNICALL Java_com_drbeef_ioq3quest_MainActivity_nativeKey(JNIEnv *env, jclass clazz, jint keycode, jint action)
 {
-	if ((action == 0) || (action == 1))
+	if (action == 0)
 	{
-		Com_QueueEvent( 0, SE_CHAR, keycode, action == 0, 0, NULL );
+		Com_QueueEvent( 0, SE_CHAR, keycode, qtrue, 0, NULL );
 	}
 }
 
