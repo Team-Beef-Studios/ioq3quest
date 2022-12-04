@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.Pair;
+import android.view.KeyEvent;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -35,6 +36,7 @@ import static android.system.Os.setenv;
 
 public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 {
+	private static final String SUPPORTED_ASCII = "qwertyuiop[]asdfghjkl;'\\<zxcvbnm,./QWERTYUIOP{}ASDFGHJKL:\"|>ZXCVBNM<>?`1234567890-=~!@#$%^&*()_+";
 	private int permissionCount = 0;
 	private static final int READ_EXTERNAL_STORAGE_PERMISSION_ID = 1;
 	private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_ID = 2;
@@ -70,6 +72,17 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 		}
 
 		super.onDestroy();
+	}
+
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event) {
+		//ASCII characters directly passed into the engine
+		if (SUPPORTED_ASCII.indexOf(event.getUnicodeChar()) >= 0) {
+			nativeKey(event.getUnicodeChar(), event.getAction());
+			return true;
+		}
+		//special keys using SDL
+		return super.dispatchKeyEvent(event);
 	}
 
 	/**
@@ -246,6 +259,7 @@ public class MainActivity extends SDLActivity // implements KeyEvent.Callback
 
 	public static native void nativeCreate(MainActivity thisObject);
 	public static native void nativeFocusChanged(boolean focus);
+	public static native void nativeKey(int keycode, int action);
 
 	static {
 		System.loadLibrary("main");
