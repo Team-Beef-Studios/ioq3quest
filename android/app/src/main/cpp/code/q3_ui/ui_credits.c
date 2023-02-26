@@ -142,7 +142,7 @@ Special Thanks to the whole discord!
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawString( 320, y, "Bummser, Skillfur, Ceno, Cukier, Eispfogel", UI_CENTER|UI_SMALLFONT, color_white );
 	y += PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
-	UI_DrawString( 320, y, "Omarlego (custom Q3Q background), Pizzaluigi", UI_CENTER|UI_SMALLFONT, color_white );
+	UI_DrawString( 320, y, "katherinecode (custom Q3Q background), Pizzaluigi", UI_CENTER|UI_SMALLFONT, color_white );
 
 	y += 1.42 * PROP_HEIGHT * PROP_SMALL_SIZE_SCALE;
 	UI_DrawProportionalString( 320, y, "Dedicated Beta Testers", UI_CENTER|UI_SMALLFONT, color_red );
