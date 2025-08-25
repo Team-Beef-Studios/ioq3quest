@@ -141,6 +141,7 @@ vmCvar_t	ui_browserGameType;
 vmCvar_t	ui_browserSortKey;
 vmCvar_t	ui_browserShowFull;
 vmCvar_t	ui_browserShowEmpty;
+vmCvar_t	ui_browserExcludeBots;
 
 vmCvar_t	ui_brassTime;
 vmCvar_t	ui_drawCrosshair;
@@ -200,6 +201,7 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_browserSortKey, "ui_browserSortKey", "4", CVAR_ARCHIVE },
 	{ &ui_browserShowFull, "ui_browserShowFull", "1", CVAR_ARCHIVE },
 	{ &ui_browserShowEmpty, "ui_browserShowEmpty", "1", CVAR_ARCHIVE },
+	{ &ui_browserExcludeBots, "ui_browserExcludeBots", "0", CVAR_ARCHIVE },
 
 	{ &ui_brassTime, "cg_brassTime", "2500", CVAR_ARCHIVE },
 	{ &ui_drawCrosshair, "cg_drawCrosshair", "4", CVAR_ARCHIVE },
