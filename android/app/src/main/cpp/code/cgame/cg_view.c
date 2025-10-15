@@ -768,7 +768,7 @@ static int CG_CalcViewValues( ) {
 			CG_LaserSight(weaponorigin, trace.endpos, colour, 1.0f);
         }
 
-		if (cg.predictedPlayerState.pm_flags == PM_SPECTATOR)
+		if (cg.predictedPlayerState.pm_type == PM_SPECTATOR)
 		{
 			//If spectating, just take the weapon angles directly
 			VectorCopy(weaponangles, vr->calculated_weaponangles);
